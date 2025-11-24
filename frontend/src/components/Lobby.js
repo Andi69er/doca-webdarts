@@ -32,18 +32,22 @@ function Lobby() {
     });
 
     socket.on('receiveMessage', (message) => {
+      console.log('DEBUG: Received receiveMessage event:', message);
       setChatMessages(prev => [...prev, message]);
     });
 
     socket.on('onlineUsers', (users) => {
+      console.log('DEBUG: Received onlineUsers event:', users);
       setOnlineUsers(users);
     });
 
     // Wenn ein Raum erstellt wurde UND wir darin sind, leiten wir zum Spiel weiter
     socket.on('roomCreationError', (error) => {
+      console.log('DEBUG: Received roomCreationError event:', error);
       alert(`Raum-Erstellung fehlgeschlagen: ${error.message}`);
     });
     socket.on('joinedRoom', (data) => {
+        console.log('DEBUG: Received joinedRoom event:', data);
         if(data.success) {
             navigate(`/game/${data.room.id}`);
         } else {
@@ -52,7 +56,9 @@ function Lobby() {
     });
 
     // Beim ersten Laden der Komponente die aktuellen Daten vom Server holen
+    console.log('DEBUG: Emitting getRooms event');
     socket.emit('getRooms');
+    console.log('DEBUG: Emitting getOnlineUsers event');
     socket.emit('getOnlineUsers');
 
     // Aufräumfunktion: Die Listener entfernen, wenn die Komponente verlassen wird
@@ -61,6 +67,9 @@ function Lobby() {
       socket.off('receiveMessage');
       socket.off('onlineUsers');
       socket.off('joinedRoom');
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
     };
   }, [socket, navigate]); // navigate als Abhängigkeit hinzugefügt
 
@@ -73,7 +82,10 @@ function Lobby() {
     e.preventDefault();
     if (!formData.roomName.trim()) return;
 
-    console.log('Creating room with data:', formData);
+    console.log('DEBUG: Raum-Erstellungs-Button wurde geklickt');
+    console.log('DEBUG: Form data:', formData);
+    console.log('DEBUG: Socket connected:', socket.connected);
+    console.log('DEBUG: Socket ID:', socket.id);
 
     const roomData = {
       name: formData.roomName,
@@ -88,12 +100,14 @@ function Lobby() {
         startingPlayer: formData.startingPlayer
       }
     };
-    console.log('Emitting createRoom:', roomData);
+    console.log('DEBUG: Emitting createRoom event with data:', roomData);
     socket.emit('createRoom', roomData);
   };
 
   const handleJoinRoom = (roomId) => {
+    console.log('DEBUG: Handle join room clicked for roomId:', roomId);
     // Wir leiten nicht mehr direkt weiter, sondern warten auf das 'joinedRoom' Event
+    console.log('DEBUG: Emitting joinRoom event:', { roomId });
     socket.emit('joinRoom', { roomId });
   };
 
