@@ -154,7 +154,6 @@ function Lobby() {
               <button type="submit" className="lobby-button">Raum erstellen</button>
             </form>
           </div>
-        </div>
 
         <div className="lobby-section">
           <h3>Verfügbare Räume</h3>
