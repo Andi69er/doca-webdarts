@@ -40,6 +40,9 @@ function Lobby() {
     });
 
     // Wenn ein Raum erstellt wurde UND wir darin sind, leiten wir zum Spiel weiter
+    socket.on('roomCreationError', (error) => {
+      alert(`Raum-Erstellung fehlgeschlagen: ${error.message}`);
+    });
     socket.on('joinedRoom', (data) => {
         if(data.success) {
             navigate(`/game/${data.room.id}`);
@@ -70,6 +73,8 @@ function Lobby() {
     e.preventDefault();
     if (!formData.roomName.trim()) return;
 
+    console.log('Creating room with data:', formData);
+
     const roomData = {
       name: formData.roomName,
       gameMode: formData.gameMode,
@@ -83,6 +88,7 @@ function Lobby() {
         startingPlayer: formData.startingPlayer
       }
     };
+    console.log('Emitting createRoom:', roomData);
     socket.emit('createRoom', roomData);
   };
 

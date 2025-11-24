@@ -349,6 +349,25 @@ app.post('/api/games', (req, res) => { res.json({ message: 'Start game endpoint 
 app.post('/api/games/:gameId/throw', (req, res) => { res.json({ message: 'Record throw endpoint placeholder' }); });
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => { console.log('User connected:', socket.id); socket.on('sendMessage', (data) => { socket.to(data.roomId).emit('receiveMessage', data); }); socket.on('createRoom', (data) => { const room = gameManager.createRoom(data); socket.join(room.id); socket.emit('roomCreated', room); io.emit('roomsUpdated', gameManager.getRooms()); }); socket.on('joinRoom', (data) => { const result = gameManager.joinRoom(data.roomId, socket.id, data.password); if (result.success) { socket.join(data.roomId); io.to(data.roomId).emit('roomUpdated', gameManager.getRoom(data.roomId)); socket.emit('joinedRoom', result); } else { socket.emit('joinRoomError', result); } }); socket.on('startGame', (data) => { const result = gameManager.startGame(data.roomId, socket.id); if (result.success) { io.to(data.roomId).emit('gameStarted', result.gameState); } else { socket.emit('startGameError', result); } }); socket.on('startActualGame', (data) => { const result = gameManager.startActualGame(data.roomId, socket.id, data.bullOffWinner); if (result.success) { io.to(data.roomId).emit('gameStarted', result.gameState); } else { socket.emit('startGameError', result); } }); socket.on('throwDart', (data) => { const result = gameManager.processThrow(data.roomId, socket.id, data.throw); io.to(data.roomId).emit('throwResult', result); const room = gameManager.getRoom(data.roomId); if (room && room.gameEnded) { io.to(data.roomId).emit('gameEnded', { winner: room.gameWinner, gameState: room.gameState }); } }); socket.on('setCheckoutDarts', (data) => { const result = gameManager.setCheckoutDarts(data.roomId, data.darts); if (result.success) { io.to(data.roomId).emit('checkoutConfirmed', data.darts); } }); socket.on('rematch', (data) => { const result = gameManager.rematch(data.roomId, socket.id); if (result.success) { io.to(data.roomId).emit('rematchStarted', result.players); } else { socket.emit('rematchError', result); } }); socket.on('auth:login', (data) => { const user = verifyJWT(data.token); if (user) { socket.emit('auth:validated', user); } else { socket.emit('auth:error', { message: 'Invalid token' }); } }); socket.on('camera-offer', (data) => { socket.to(data.roomId).emit('camera-offer', data); }); socket.on('camera-answer', (data) => { socket.to(data.roomId).emit('camera-answer', data); }); socket.on('camera-ice', (data) => { socket.to(data.roomId).emit('camera-ice', data); }); socket.on('leaveRoom', (data) => { socket.leave(data.roomId); gameManager.leaveRoom(data.roomId, socket.id); io.to(data.roomId).emit('roomUpdated', gameManager.getRoom(data.roomId)); io.emit('roomsUpdated', gameManager.getRooms()); }); socket.on('disconnect', () => { console.log('User disconnected:', socket.id); if (gameManager && gameManager.roomManager && gameManager.roomManager.rooms) { gameManager.roomManager.rooms.forEach((room, roomId) => { if (room.players.includes(socket.id)) { gameManager.leaveRoom(roomId, socket.id); io.to(roomId).emit('roomUpdated', room); } }); io.emit('roomsUpdated', gameManager.getRooms()); } }); });
+  socket.on('createRoom', (data) => {
+    try {
+      const room = gameManager.createRoom(data);
+      // Automatically add the creator to the room
+      const joinResult = gameManager.joinRoom(room.id, socket.id);
+      if (!joinResult.success) {
+        console.error('Failed to auto-join room creator:', joinResult.message);
+        socket.emit('roomCreationError', { message: 'Failed to join created room' });
+        return;
+      }
+      socket.join(room.id);
+      socket.emit('roomCreated', room);
+      socket.emit('joinedRoom', joinResult); // Emit joinedRoom for auto-navigation
+      io.emit('roomsUpdated', gameManager.getRooms());
+    } catch (error) {
+      console.error('Error creating room:', error);
+      socket.emit('roomCreationError', { message: 'Failed to create room' });
+    }
+  });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
