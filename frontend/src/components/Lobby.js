@@ -33,7 +33,12 @@ function Lobby() {
 
     socket.on('receiveMessage', (message) => {
       console.log('DEBUG: Received receiveMessage event:', message);
-      setChatMessages(prev => [...prev, message]);
+      console.log('DEBUG: Current chatMessages before update:', chatMessages);
+      setChatMessages(prev => {
+        const newMessages = [...prev, message];
+        console.log('DEBUG: Updated chatMessages:', newMessages);
+        return newMessages;
+      });
     });
 
     socket.on('onlineUsers', (users) => {
@@ -118,14 +123,20 @@ function Lobby() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    console.log('DEBUG: handleSendMessage called, newMessage:', newMessage);
+    if (!newMessage.trim()) {
+      console.log('DEBUG: Message is empty, returning');
+      return;
+    }
 
     const messageData = {
       message: newMessage,
       timestamp: new Date().toISOString()
     };
+    console.log('DEBUG: Emitting sendMessage with data:', messageData);
     socket.emit('sendMessage', messageData);
     setNewMessage('');
+    console.log('DEBUG: Message sent and input cleared');
   };
 
   // Hilfsfunktionen bleiben gleich
