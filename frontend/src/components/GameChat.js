@@ -1,0 +1,57 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+function GameChat({ socket, roomId, user, messages }) {
+  const [message, setMessage] = useState('');
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(scrollToBottom, [messages]);
+
+  const sendMessage = () => {
+    if (message.trim()) {
+      socket.emit('sendMessage', {
+        roomId,
+        message: message.trim(),
+        userId: user.id,
+        userName: user.name,
+        timestamp: Date.now()
+      });
+      setMessage('');
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  };
+
+  return (
+    <div className="game-chat">
+      <div className="chat-messages">
+        {messages.map((msg, index) => (
+          <div key={index} className="chat-message">
+            <span className="message-sender">{msg.userName}:</span> {msg.message}
+            <span className="message-time">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="chat-input">
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Type a message..."
+        />
+        <button onClick={sendMessage}>Send</button>
+      </div>
+    </div>
+  );
+}
+
+export default GameChat;
