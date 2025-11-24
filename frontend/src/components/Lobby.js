@@ -46,9 +46,14 @@ function Lobby() {
       console.log('DEBUG: Received roomCreationError event:', error);
       alert(`Raum-Erstellung fehlgeschlagen: ${error.message}`);
     });
+    socket.on('roomCreated', (room) => {
+      console.log('DEBUG: Received roomCreated event:', room);
+      // Navigation handled by joinedRoom event
+    });
     socket.on('joinedRoom', (data) => {
         console.log('DEBUG: Received joinedRoom event:', data);
         if(data.success) {
+            console.log('DEBUG: Navigation to game page:', `/game/${data.room.id}`);
             navigate(`/game/${data.room.id}`);
         } else {
             alert(`Beitritt fehlgeschlagen: ${data.message}`);
@@ -128,61 +133,54 @@ function Lobby() {
   const getDistanceLabel = (distance = 'leg', length = {type: 'firstTo', value: 1}) => { /*...*/ return distance; };
 
   return (
-    <div className="lobby">
+    <div className="lobby-container">
       <header className="lobby-header">
-        <h1>DOCA Webdarts Lobby</h1>
+        <h1 className="lobby-title">DOCA Webdarts Lobby</h1>
       </header>
 
-      <div className="lobby-main">
-        <div className="lobby-left">
-          <div className="create-room-form">
-            <h2>Raum erstellen</h2>
+      <div className="lobby-content">
+        <div className="lobby-section">
+          <h3>Raum erstellen</h3>
             <form onSubmit={handleCreateRoom}>
               {/* Das Formular bleibt unverändert */}
-              <div className="form-group"><label>Raumname:</label><input type="text" name="roomName" value={formData.roomName} onChange={handleFormChange} required /></div>
-              <div className="form-group"><label>Spielmodus:</label><select name="gameMode" value={formData.gameMode} onChange={handleFormChange}><option value="x01">x01</option><option value="cricket">Cricket</option></select></div>
-              {formData.gameMode === 'x01' && (<div className="form-group"><label>Startpunktzahl:</label><select name="startingScore" value={formData.startingScore} onChange={handleFormChange}><option value="301">301</option><option value="501">501</option><option value="701">701</option><option value="1001">1001</option></select></div>)}
-              <div className="form-group"><label>Einwurf:</label><select name="inMode" value={formData.inMode} onChange={handleFormChange}><option value="single">Single In</option><option value="double">Double In</option></select></div>
-              <div className="form-group"><label>Auswurf:</label><select name="outMode" value={formData.outMode} onChange={handleFormChange}><option value="single">Single Out</option><option value="double">Double Out</option><option value="master">Master Out</option></select></div>
-              <div className="form-group"><label>Distanz:</label><select name="distance" value={formData.distance} onChange={handleFormChange}><option value="leg">Leg</option><option value="set">Set</option></select></div>
-              <div className="form-group"><label>Länge:</label><select name="lengthType" value={formData.lengthType} onChange={handleFormChange}><option value="firstTo">First to</option><option value="bestOf">Best of</option></select><input type="number" name="lengthValue" value={formData.lengthValue} onChange={handleFormChange} min="1" max="10"/></div>
-              <div className="form-group"><label>Anfangspieler:</label><select name="startingPlayer" value={formData.startingPlayer} onChange={handleFormChange}><option value="ich">Ich</option><option value="gegner">Gegner</option><option value="ausbullen">Ausbullen</option></select></div>
-              <button type="submit" className="create-room-btn">Raum erstellen</button>
+              <div className="form-group"><label>Raumname:</label><input type="text" className="lobby-input" name="roomName" value={formData.roomName} onChange={handleFormChange} required /></div>
+              <div className="form-group"><label>Spielmodus:</label><select className="lobby-input" name="gameMode" value={formData.gameMode} onChange={handleFormChange}><option value="x01">x01</option><option value="cricket">Cricket</option></select></div>
+              {formData.gameMode === 'x01' && (<div className="form-group"><label>Startpunktzahl:</label><select className="lobby-input" name="startingScore" value={formData.startingScore} onChange={handleFormChange}><option value="301">301</option><option value="501">501</option><option value="701">701</option><option value="1001">1001</option></select></div>)}
+              <div className="form-group"><label>Einwurf:</label><select className="lobby-input" name="inMode" value={formData.inMode} onChange={handleFormChange}><option value="single">Single In</option><option value="double">Double In</option></select></div>
+              <div className="form-group"><label>Auswurf:</label><select className="lobby-input" name="outMode" value={formData.outMode} onChange={handleFormChange}><option value="single">Single Out</option><option value="double">Double Out</option><option value="master">Master Out</option></select></div>
+              <div className="form-group"><label>Distanz:</label><select className="lobby-input" name="distance" value={formData.distance} onChange={handleFormChange}><option value="leg">Leg</option><option value="set">Set</option></select></div>
+              <div className="form-group"><label>Länge:</label><select className="lobby-input" name="lengthType" value={formData.lengthType} onChange={handleFormChange}><option value="firstTo">First to</option><option value="bestOf">Best of</option></select><input type="number" className="lobby-input" name="lengthValue" value={formData.lengthValue} onChange={handleFormChange} min="1" max="10"/></div>
+              <div className="form-group"><label>Anfangspieler:</label><select className="lobby-input" name="startingPlayer" value={formData.startingPlayer} onChange={handleFormChange}><option value="ich">Ich</option><option value="gegner">Gegner</option><option value="ausbullen">Ausbullen</option></select></div>
+              <button type="submit" className="lobby-button">Raum erstellen</button>
             </form>
           </div>
         </div>
 
-        <div className="lobby-center">
-          <div className="room-list">
-            <h2>Verfügbare Räume</h2>
-            <div className="rooms-container">
-              {rooms.length === 0 ? (<p>Keine Räume verfügbar</p>) : (rooms.map(room => (
-                  <div key={room.id} className="room-item">
-                    <div className="room-info">
-                      <h3>{room.name}</h3>
-                      <p>{getGameModeLabel(room.gameMode, room.gameOptions)} - {getDistanceLabel(room.gameOptions?.distance, room.gameOptions?.length)}</p>
-                      <p>Spieler: {room.players.length}/{room.maxPlayers || 2}</p>
-                    </div>
-                    {/* Link statt Button für bessere Navigation */}
-                    <Link to={`/game/${room.id}`} className="join-room-btn" onClick={() => handleJoinRoom(room.id)}>Beitreten</Link>
+        <div className="lobby-section">
+          <h3>Verfügbare Räume</h3>
+          <ul className="lobby-list">
+            {rooms.length === 0 ? (<li className="lobby-list-item">Keine Räume verfügbar</li>) : (rooms.map(room => (
+                <li key={room.id} className="lobby-list-item">
+                  <div className="room-info">
+                    <span className="player-name">{room.name}</span>
+                    <span className="player-status">{getGameModeLabel(room.gameMode, room.gameOptions)} - {getDistanceLabel(room.gameOptions?.distance, room.gameOptions?.length)} | Spieler: {room.players.length}/{room.maxPlayers || 2}</span>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
+                  <Link to={`/game/${room.id}`} className="lobby-button" onClick={() => handleJoinRoom(room.id)}>Beitreten</Link>
+                </li>
+              ))
+            )}
+          </ul>
         </div>
 
-        <div className="lobby-right">
-          <div className="general-chat">
-            <h3>Allgemeiner Chat</h3>
-            <div className="chat-messages">{chatMessages.map((msg, index) => (<div key={index} className="chat-message"><span>{msg.message}</span></div>))}</div>
-            <form onSubmit={handleSendMessage} className="chat-form"><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Nachricht..."/><button type="submit">Senden</button></form>
-          </div>
+        <div className="lobby-section">
+          <h3>Allgemeiner Chat</h3>
+          <div className="chat-messages">{chatMessages.map((msg, index) => (<div key={index} className="chat-message"><span>{msg.message}</span></div>))}</div>
+          <form onSubmit={handleSendMessage} className="chat-form"><input type="text" className="lobby-input" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Nachricht..."/><button type="submit" className="lobby-button">Senden</button></form>
+        </div>
 
-          <div className="online-list">
-            <h3>Online-Benutzer</h3>
-            <ul>{onlineUsers.map(user => (<li key={user.id}>{user.name}</li>))}</ul>
-          </div>
+        <div className="lobby-section">
+          <h3>Online-Benutzer</h3>
+          <ul className="lobby-list">{onlineUsers.map(user => (<li key={user.id} className="lobby-list-item"><span className="player-name">{user.name}</span></li>))}</ul>
         </div>
       </div>
     </div>

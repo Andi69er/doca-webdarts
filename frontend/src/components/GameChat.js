@@ -12,6 +12,13 @@ function GameChat({ socket, roomId, user, messages }) {
 
   const sendMessage = () => {
     if (message.trim()) {
+      console.log('DEBUG GameChat: Emitting sendMessage event:', {
+        roomId,
+        message: message.trim(),
+        userId: user.id,
+        userName: user.name,
+        timestamp: Date.now()
+      });
       socket.emit('sendMessage', {
         roomId,
         message: message.trim(),

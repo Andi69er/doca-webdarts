@@ -1,18 +1,23 @@
 // Room management module
 const db = require('./index').db;
 
+// Room management module
+const db = require('./index').db;
+
 class RoomManager {
   constructor() {
     this.rooms = new Map(); // roomId -> roomData
   }
 
-  createRoom(roomData) {
+  createRoom(socket, io, roomData) {
+    console.log('RoomManager.createRoom called with roomData:', roomData);
     const roomId = `room_${Date.now()}`;
+    const userId = socket.id; // Use socket.id as user identifier
     const room = {
       id: roomId,
       name: roomData.name,
-      host: roomData.host,
-      players: [roomData.host],
+      host: userId,
+      players: [],
       spectators: [],
       maxPlayers: roomData.maxPlayers || 4,
       gameMode: roomData.gameMode || 'x01',
@@ -26,7 +31,69 @@ class RoomManager {
       gameState: null
     };
     this.rooms.set(roomId, room);
+    console.log('Room created:', room);
+
+    // Join the creator to the room
+    const joinResult = this.joinRoomInternal(roomId, userId);
+    if (joinResult.success) {
+      console.log('Creator joined room successfully');
+      // Emit joinedRoom to the creator
+      socket.emit('joinedRoom', { success: true, room: room, role: joinResult.role });
+      // Emit roomsUpdated to all clients
+      io.emit('roomsUpdated', this.getRooms());
+    } else {
+      console.log('Failed to join creator to room:', joinResult.message);
+      socket.emit('roomCreationError', { message: joinResult.message });
+    }
     return room;
+  }
+
+  joinRoom(socket, io, data) {
+    console.log('RoomManager.joinRoom called with data:', data);
+    const roomId = data.roomId;
+    const userId = socket.id;
+    const password = data.password;
+    const result = this.joinRoomInternal(roomId, userId, password);
+    if (result.success) {
+      console.log('User joined room successfully');
+      socket.emit('joinedRoom', { success: true, room: this.getRoom(roomId), role: result.role });
+      io.emit('roomsUpdated', this.getRooms());
+    } else {
+      console.log('Failed to join room:', result.message);
+      socket.emit('joinedRoom', { success: false, message: result.message });
+    }
+  }
+
+  getRooms(socket, io) {
+    console.log('RoomManager.getRooms called');
+    const rooms = this.getRoomsInternal();
+    socket.emit('roomsUpdated', rooms);
+  }
+
+  joinRoomInternal(roomId, userId, password = null) {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: 'Room not found' };
+
+    if (room.isPrivate && room.password !== password) {
+      return { success: false, message: 'Invalid password' };
+    }
+
+    if (room.players.length >= room.maxPlayers) {
+      // Add as spectator
+      if (!room.spectators.includes(userId)) {
+        room.spectators.push(userId);
+      }
+      return { success: true, role: 'spectator' };
+    }
+
+    if (!room.players.includes(userId)) {
+      room.players.push(userId);
+    }
+    return { success: true, role: 'player' };
+  }
+
+  getRoomsInternal() {
+    return Array.from(this.rooms.values()).filter(room => !room.isPrivate);
   }
 
   getRooms() {

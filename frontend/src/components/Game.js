@@ -80,7 +80,13 @@ function Game() {
 
     // Listener für Chat-Nachrichten
     socket.on('receiveMessage', (data) => {
-      setGameState(prev => ({ ...prev, chatMessages: [...prev.chatMessages, data] }));
+      console.log('DEBUG Game: Received receiveMessage event:', data);
+      console.log('DEBUG Game: Before updating chatMessages:', gameState.chatMessages);
+      setGameState(prev => {
+        const newMessages = { ...prev, chatMessages: [...prev.chatMessages, data] };
+        console.log('DEBUG Game: After updating chatMessages:', newMessages.chatMessages);
+        return newMessages;
+      });
     });
 
     // Cleanup-Funktion: Alle Listener entfernen und Timer stoppen, wenn die Komponente verlassen wird
