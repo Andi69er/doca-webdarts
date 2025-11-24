@@ -179,18 +179,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
     }
   }, [gameState.isGameStarted, gameState.currentPlayer, localStream, remoteStream, user.id, gameState.players]);
 
-  // Ensure camera permissions are handled properly
-  const requestCameraPermissions = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      stream.getTracks().forEach(track => track.stop()); // Stop the test stream
-      return true;
-    } catch (err) {
-      console.error('Camera permissions denied:', err);
-      setError('Camera permissions are required for video chat');
-      return false;
-    }
-  };
 
   // Set up socket listeners
   useEffect(() => {
@@ -203,7 +191,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
       socket.off('camera-answer', handleAnswer);
       socket.off('camera-ice', handleIceCandidate);
     };
-  }, [socket]);
+  }, [socket, handleOffer, handleAnswer, handleIceCandidate]);
 
   // Initialize camera on component mount and show device selection on room entry
   useEffect(() => {
