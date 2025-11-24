@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 function CameraArea({ gameState, user, roomId, socket }) {
   const [localStream, setLocalStream] = useState(null);
@@ -115,7 +115,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
   };
 
   // Handle incoming offer
-  const handleOffer = async (data) => {
+  const handleOffer = useCallback(async (data) => {
     if (data.fromUserId === user.id) return; // Ignore own offers
 
     const pc = createPeerConnection();
@@ -139,10 +139,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
       console.error('Error handling offer:', err);
       setError('Failed to establish camera connection');
     }
-  };
+  }, [localStream, socket, roomId, user.id]);
 
   // Handle incoming answer
-  const handleAnswer = async (data) => {
+  const handleAnswer = useCallback(async (data) => {
     if (data.fromUserId === user.id) return; // Ignore own answers
 
     try {
@@ -152,7 +152,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
     } catch (err) {
       console.error('Error handling answer:', err);
     }
-  };
+  }, [peerConnection, user.id]);
 
   // Handle ICE candidates
   const handleIceCandidate = async (data) => {
@@ -219,7 +219,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
         peerConnection.close();
       }
     };
-  }, [availableDevices.length, gameState.players.length, hasEnteredRoom, showDeviceSelection]);
+  }, [availableDevices.length, gameState.players.length, hasEnteredRoom, showDeviceSelection, localStream, peerConnection, startWebRTC]);
 
   // Update full screen video when active player changes
   useEffect(() => {

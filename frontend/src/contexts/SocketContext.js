@@ -1,4 +1,4 @@
-import React, { createContext } from 'react';
+import { createContext } from 'react';
 import io from 'socket.io-client';
 
 // Erstelle die Verbindung zum Live-Server

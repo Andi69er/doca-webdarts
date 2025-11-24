@@ -18,6 +18,7 @@ function Game() {
   // Für Testzwecke könnten wir ihn hier vorübergehend setzen, aber er darf nicht für alle gleich sein.
   // Beispiel: const { user } = useContext(AuthContext);
   const [user, setUser] = useState({ id: `user_${Date.now()}`, name: 'Guest Player' }); // Temporäre Lösung für einen einzigartigen User
+  // eslint-disable-next-line no-unused-vars
 
   const [gameState, setGameState] = useState({
     players: [],
@@ -107,6 +108,7 @@ function Game() {
     socket.emit('score-input', { roomId, score, userId: user.id });
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleCheckoutSelection = (dartCount) => {
     socket.emit('checkout-selection', { roomId, dartCount, userId: user.id });
     setGameState(prev => ({ ...prev, checkoutQuery: false }));
@@ -120,6 +122,7 @@ function Game() {
     socket.emit('start-game', { roomId, userId: user.id });
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleStartActualGame = (bullOffWinner) => {
     socket.emit('startActualGame', { roomId, bullOffWinner, userId: user.id });
   };

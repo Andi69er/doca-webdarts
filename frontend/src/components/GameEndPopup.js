@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './GameEndPopup.css';
 
 function GameEndPopup({ winner, countdown, onRematch }) {
@@ -16,9 +16,9 @@ function GameEndPopup({ winner, countdown, onRematch }) {
     }
   }, [countdownTime]);
 
-  const handleRematch = () => {
+  const handleRematch = useCallback(() => {
     onRematch();
-  };
+  }, [onRematch]);
 
   const winnerName = winner ? winner.name || winner : 'Unknown';
 
