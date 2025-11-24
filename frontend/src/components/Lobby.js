@@ -96,6 +96,7 @@ function Lobby() {
     console.log('DEBUG: Form data:', formData);
     console.log('DEBUG: Socket connected:', socket.connected);
     console.log('DEBUG: Socket ID:', socket.id);
+    console.log('DEBUG: Socket readyState:', socket.readyState);
 
     const roomData = {
       name: formData.roomName,

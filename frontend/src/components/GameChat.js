@@ -12,6 +12,11 @@ function GameChat({ socket, roomId, user, messages }) {
 
   const sendMessage = () => {
     if (message.trim()) {
+      if (!socket || !socket.connected) {
+        console.error('DEBUG GameChat: Socket not connected or not available');
+        return;
+      }
+      console.log('DEBUG GameChat: sendMessage called, socket connected:', socket.connected);
       console.log('DEBUG GameChat: Emitting sendMessage event:', {
         roomId,
         message: message.trim(),
@@ -26,7 +31,10 @@ function GameChat({ socket, roomId, user, messages }) {
         userName: user.name,
         timestamp: Date.now()
       });
+      console.log('DEBUG GameChat: Message emitted, clearing input');
       setMessage('');
+    } else {
+      console.log('DEBUG GameChat: Message is empty, not sending');
     }
   };
 

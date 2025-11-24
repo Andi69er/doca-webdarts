@@ -343,3 +343,133 @@ class BullOffGame {
 }
 
 module.exports = { X01Game, CricketGame, BullOffGame };
+}
+
+class GameManager {
+  constructor() {
+    this.roomManager = require('./rooms');
+    this.activeGames = new Map(); // roomId -> { game, players, gameState }
+  }
+
+  createRoom(data) {
+    console.log('GameManager.createRoom called with data:', data);
+    return this.roomManager.createRoom(null, null, data); // Pass socket and io as null for now, adjust later
+  }
+
+  joinRoom(roomId, userId, password) {
+    console.log('GameManager.joinRoom called with roomId:', roomId, 'userId:', userId);
+    return this.roomManager.joinRoom(null, null, { roomId, password }); // Pass socket and io as null for now
+  }
+
+  leaveRoom(roomId, userId) {
+    console.log('GameManager.leaveRoom called with roomId:', roomId, 'userId:', userId);
+    this.roomManager.leaveRoom(roomId, userId);
+  }
+
+  getRooms() {
+    return this.roomManager.getRooms();
+  }
+
+  getRoom(roomId) {
+    return this.roomManager.getRoom(roomId);
+  }
+
+  startGame(roomId, userId) {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return { success: false, message: 'Room not found' };
+    if (room.host !== userId) return { success: false, message: 'Only host can start game' };
+    if (room.players.length < 2) return { success: false, message: 'Not enough players' };
+    if (room.gameStarted) return { success: false, message: 'Game already started' };
+
+    const gameType = room.gameMode;
+    let gameInstance;
+    if (gameType === 'x01') {
+      gameInstance = new X01Game(room.gameOptions);
+    } else if (gameType === 'cricket') {
+      gameInstance = new CricketGame(room.gameOptions);
+    } else {
+      return { success: false, message: 'Unsupported game mode' };
+    }
+
+    // Initialize players
+    gameInstance.initializePlayers(room.players.map(id => ({ id })));
+
+    room.gameStarted = true;
+    room.gameState = gameInstance.getGameState();
+    this.activeGames.set(roomId, { game: gameInstance, players: room.players, gameState: room.gameState });
+
+    return { success: true, gameState: room.gameState };
+  }
+
+  startActualGame(roomId, userId, bullOffWinner) {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return { success: false, message: 'Room not found' };
+    if (room.host !== userId) return { success: false, message: 'Only host can start game' };
+    if (room.players.length < 2) return { success: false, message: 'Not enough players' };
+    if (room.gameStarted) return { success: false, message: 'Game already started' };
+
+    const gameType = room.gameMode;
+    let gameInstance;
+    if (gameType === 'x01') {
+      gameInstance = new X01Game(room.gameOptions);
+    } else if (gameType === 'cricket') {
+      gameInstance = new CricketGame(room.gameOptions);
+    } else {
+      return { success: false, message: 'Unsupported game mode' };
+    }
+
+    // Initialize players
+    gameInstance.initializePlayers(room.players.map(id => ({ id })));
+
+    room.gameStarted = true;
+    room.gameState = gameInstance.getGameState();
+    this.activeGames.set(roomId, { game: gameInstance, players: room.players, gameState: room.gameState });
+
+    return { success: true, gameState: room.gameState };
+  }
+
+  processThrow(roomId, userId, throwData) {
+    const gameData = this.activeGames.get(roomId);
+    if (!gameData) return { success: false, message: 'Game not found' };
+    const result = gameData.game.processThrow(userId, throwData);
+    if (result.valid) {
+      gameData.gameState = gameData.game.getGameState();
+      const room = this.roomManager.getRoom(roomId);
+      if (room) room.gameState = gameData.gameState;
+      if (gameData.game.gameWinner) {
+        const room = this.roomManager.getRoom(roomId);
+        if (room) {
+          room.gameEnded = true;
+          room.gameWinner = gameData.game.gameWinner;
+        }
+      }
+    }
+    return result;
+  }
+
+  setCheckoutDarts(roomId, darts) {
+    const gameData = this.activeGames.get(roomId);
+    if (!gameData) return { success: false, message: 'Game not found' };
+    const result = gameData.game.selectCheckoutDarts(gameData.game.checkoutPlayer, darts);
+    if (result.success) {
+    }
+    return result;
+  }
+
+  rematch(roomId, userId) {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return { success: false, message: 'Room not found' };
+    if (!room.gameEnded) return { success: false, message: 'Game not ended' };
+
+    // Reset room for rematch
+    room.gameStarted = false;
+    room.gameEnded = false;
+    room.gameWinner = null;
+    room.gameState = null;
+    this.activeGames.delete(roomId);
+
+    return { success: true, players: room.players };
+  }
+}
+
+module.exports = { X01Game, CricketGame, BullOffGame, GameManager };
