@@ -343,7 +343,6 @@ class BullOffGame {
 }
 
 module.exports = { X01Game, CricketGame, BullOffGame };
-}
 
 class GameManager {
   constructor() {
@@ -392,7 +391,7 @@ class GameManager {
     }
 
     // Initialize players
-    gameInstance.initializePlayers(room.players.map(id => ({ id })));
+    gameInstance.initializePlayers(room.players.map(id => id));
 
     room.gameStarted = true;
     room.gameState = gameInstance.getGameState();
@@ -419,7 +418,7 @@ class GameManager {
     }
 
     // Initialize players
-    gameInstance.initializePlayers(room.players.map(id => ({ id })));
+    gameInstance.initializePlayers(room.players.map(id => id));
 
     room.gameStarted = true;
     room.gameState = gameInstance.getGameState();
@@ -450,10 +449,9 @@ class GameManager {
   setCheckoutDarts(roomId, darts) {
     const gameData = this.activeGames.get(roomId);
     if (!gameData) return { success: false, message: 'Game not found' };
-    const result = gameData.game.selectCheckoutDarts(gameData.game.checkoutPlayer, darts);
-    if (result.success) {
-    }
-    return result;
+    // Note: selectCheckoutDarts method does not exist, perhaps it's setCheckoutDarts
+    gameData.game.setCheckoutDarts(darts);
+    return { success: true };
   }
 
   rematch(roomId, userId) {

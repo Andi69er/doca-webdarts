@@ -2,7 +2,7 @@ import { createContext } from 'react';
 import io from 'socket.io-client';
 
 // Erstelle die Verbindung zum Live-Server
-export const socket = io('https://projekt.doca.at/www.doca.at/', {
+export const socket = io(process.env.REACT_APP_API_URL, {
   transports: ['websocket', 'polling']
 });
 
