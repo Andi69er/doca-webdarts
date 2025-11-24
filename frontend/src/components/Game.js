@@ -17,8 +17,8 @@ function Game() {
   // HINWEIS: Der Benutzer sollte idealerweise aus einem Authentifizierungs-Kontext kommen.
   // Für Testzwecke könnten wir ihn hier vorübergehend setzen, aber er darf nicht für alle gleich sein.
   // Beispiel: const { user } = useContext(AuthContext);
-  const [user, setUser] = useState({ id: `user_${Date.now()}`, name: 'Guest Player' }); // Temporäre Lösung für einen einzigartigen User
   // eslint-disable-next-line no-unused-vars
+  const [user, setUser] = useState({ id: `user_${Date.now()}`, name: 'Guest Player' }); // Temporäre Lösung für einen einzigartigen User
 
   const [gameState, setGameState] = useState({
     players: [],
@@ -114,6 +114,7 @@ function Game() {
     setGameState(prev => ({ ...prev, checkoutQuery: false }));
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleBullOffThrow = (score) => {
     socket.emit('bull-off-throw', { roomId, score, userId: user.id });
   };

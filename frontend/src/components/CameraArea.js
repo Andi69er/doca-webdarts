@@ -62,7 +62,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
   };
 
   // Initialize WebRTC peer connection
-  const createPeerConnection = () => {
+  const createPeerConnection = useCallback(() => {
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -88,10 +88,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
     };
 
     return pc;
-  };
+  }, [socket, roomId, user.id]);
 
   // Start WebRTC connection (initiator)
-  const startWebRTC = async () => {
+  const startWebRTC = useCallback(async () => {
     const pc = createPeerConnection();
     setPeerConnection(pc);
 
@@ -112,7 +112,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
       console.error('Error creating offer:', err);
       setError('Failed to start camera connection');
     }
-  };
+  }, [createPeerConnection, localStream, socket, roomId, user.id]);
 
   // Handle incoming offer
   const handleOffer = useCallback(async (data) => {
@@ -139,7 +139,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
       console.error('Error handling offer:', err);
       setError('Failed to establish camera connection');
     }
-  }, [localStream, socket, roomId, user.id]);
+  }, [localStream, socket, roomId, user.id, createPeerConnection]);
 
   // Handle incoming answer
   const handleAnswer = useCallback(async (data) => {
@@ -155,7 +155,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
   }, [peerConnection, user.id]);
 
   // Handle ICE candidates
-  const handleIceCandidate = async (data) => {
+  const handleIceCandidate = useCallback(async (data) => {
     if (data.fromUserId === user.id) return; // Ignore own candidates
 
     try {
@@ -165,7 +165,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
     } catch (err) {
       console.error('Error adding ICE candidate:', err);
     }
-  };
+  }, [peerConnection, user.id]);
 
   // Update display mode based on game state
   useEffect(() => {
