@@ -124,9 +124,11 @@ function Lobby() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    console.log('DEBUG: handleSendMessage called, newMessage:', newMessage);
+    console.log('DEBUG Lobby: handleSendMessage called, newMessage:', newMessage);
+    console.log('DEBUG Lobby: Socket connected:', socket.connected);
+    console.log('DEBUG Lobby: Socket ID:', socket.id);
     if (!newMessage.trim()) {
-      console.log('DEBUG: Message is empty, returning');
+      console.log('DEBUG Lobby: Message is empty, returning');
       return;
     }
 
@@ -134,10 +136,11 @@ function Lobby() {
       message: newMessage,
       timestamp: new Date().toISOString()
     };
-    console.log('DEBUG: Emitting sendMessage with data:', messageData);
+    console.log('DEBUG Lobby: About to emit sendMessage with data:', messageData);
     socket.emit('sendMessage', messageData);
+    console.log('DEBUG Lobby: Emitted sendMessage');
     setNewMessage('');
-    console.log('DEBUG: Message sent and input cleared');
+    console.log('DEBUG Lobby: Message sent and input cleared');
   };
 
   // Hilfsfunktionen bleiben gleich

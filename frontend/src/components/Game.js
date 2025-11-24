@@ -10,6 +10,9 @@ import GameChat from './GameChat';
 import GameEndPopup from './GameEndPopup';
 import './Game.css';
 
+console.log('DEBUG Game: Game component rendering, roomId:', roomId);
+console.log('DEBUG Game: socket:', socket);
+console.log('DEBUG Game: user:', user);
 function Game() {
   const { roomId } = useParams();
   const socket = useContext(SocketContext);

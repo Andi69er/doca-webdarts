@@ -8,6 +8,7 @@ import { SocketContext, socket } from './contexts/SocketContext';
 import './App.css';
 
 function App() {
+  console.log('DEBUG App: App component rendering');
   return (
     // Die gesamte App wird mit dem SocketContext "umwickelt",
     // damit alle Komponenten Zugriff auf den Socket haben.
