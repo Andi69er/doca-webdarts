@@ -1,0 +1,28 @@
+.player-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.player-score {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.player-score.active-player {
+  background-color: #e0f7fa;
+  border-color: #00bcd4;
+}
+
+.player-score h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.2em;
+}
+
+.player-score p {
+  margin: 0;
+  font-size: 1em;
+}
