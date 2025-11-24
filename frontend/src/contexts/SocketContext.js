@@ -1,31 +1,59 @@
-import { createContext } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-// Erstelle die Verbindung zum Live-Server
-export const socket = io(process.env.REACT_APP_API_URL, {
-  transports: ['websocket', 'polling']
-});
+const SocketContext = createContext();
 
-// Add logging for connection status
-socket.on('connect', () => {
-  console.log('Connected to server:', socket.id);
-});
+export const useSocket = () => {
+    return useContext(SocketContext);
+};
 
-socket.on('disconnect', (reason) => {
-  console.log('Disconnected from server:', reason);
-});
+export const SocketProvider = ({ children }) => {
+    const [socket, setSocket] = useState(null);
+    // NEU: State, um den Verbindungsstatus zu speichern
+    const [socketConnected, setSocketConnected] = useState(false);
 
-socket.on('connect_error', (error) => {
-  console.error('Connection error:', error);
-});
+    useEffect(() => {
+        const URL = process.env.REACT_APP_API_URL || 'https://doca-webdarts.onrender.com';
+        const newSocket = io(URL, {
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 10000,
+        });
 
-socket.on('reconnect', (attempt) => {
-  console.log('Reconnected after', attempt, 'attempts');
-});
+        newSocket.on('connect', () => {
+            console.log('Connected to server:', newSocket.id);
+            // NEU: Status auf 'verbunden' setzen
+            setSocketConnected(true);
+        });
 
-socket.on('reconnect_error', (error) => {
-  console.error('Reconnection error:', error);
-});
+        newSocket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            // NEU: Status auf 'nicht verbunden' setzen
+            setSocketConnected(false);
+        });
 
-// Erstelle den Context, den andere Teile der App benutzen können
-export const SocketContext = createContext(socket);
+        newSocket.on('disconnect', (reason) => {
+            console.log('Disconnected from server:', reason);
+            // NEU: Status auf 'nicht verbunden' setzen
+            setSocketConnected(false);
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, []);
+
+    // Wichtig: socket und den neuen Status 'socketConnected' bereitstellen
+    const value = {
+        socket,
+        socketConnected
+    };
+
+    return (
+        <SocketContext.Provider value={value}>
+            {children}
+        </SocketContext.Provider>
+    );
+};
