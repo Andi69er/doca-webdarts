@@ -1,0 +1,16 @@
+.throw-history-container {
+    margin: 20px;
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.throw-history-list {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    padding: 5px;
+    background: #f9f9f9;
+    margin-bottom: 5px;
+}
