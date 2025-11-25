@@ -78,8 +78,8 @@ function initializeSocket(io) {
             console.log(`!!! getGameState EVENT VOM CLIENT ${socket.id} EMPFANGEN für Raum ${roomId} !!!`);
             const room = rooms.find(r => r.id === roomId);
             if(room) {
-                console.log(`Raum ${roomId} gefunden. Sende gameStateUpdate an ${socket.id}.`);
-                socket.emit('gameStateUpdate', room);
+                console.log(`Raum ${roomId} gefunden. Sende gameState an ${socket.id}.`);
+                socket.emit('gameState', room.gameState);
             } else {
                 console.log(`WARNUNG: Raum ${roomId} wurde angefragt, aber nicht gefunden.`);
             }
