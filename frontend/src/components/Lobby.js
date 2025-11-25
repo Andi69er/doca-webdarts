@@ -101,12 +101,32 @@ const Lobby = () => {
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
-        const selectedVariant = gameModes[gameMode].variants[variantIndex];
+        let gameOptions = {};
+        if (gameMode === 'X01Game') {
+            gameOptions = {
+                startingScore: parseInt(startingScore),
+                sets: parseInt(sets),
+                legs: legs === 'unlimited' ? -1 : parseInt(legs),
+                outMode,
+                inMode,
+                winType,
+                winNumber: parseInt(winNumber),
+            };
+        } else if (gameMode === 'CricketGame') {
+            gameOptions = {
+                sets: parseInt(sets),
+                legs: legs === 'unlimited' ? -1 : parseInt(legs),
+                winType,
+                winNumber: parseInt(winNumber),
+            };
+        } else if (gameMode === 'BullOffGame') {
+            gameOptions = {};
+        }
         const roomData = {
             roomName,
             gameMode,
-            whoStarts,
-            gameOptions: selectedVariant
+            whoStarts: whoStartsUI,
+            gameOptions
         };
         console.log('DEBUG: Raum-Erstellungs-Button wurde geklickt');
         console.log('DEBUG: Form data:', roomData);
