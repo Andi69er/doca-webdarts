@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { SocketContext } from '../contexts/SocketContext';
+import { useSocket } from '../contexts/SocketContext';
 import CameraArea from './CameraArea';
 import PlayerScores from './PlayerScores';
 import LiveStatistics from './LiveStatistics';
@@ -12,7 +12,7 @@ import './Game.css';
 
 function Game() {
   const { roomId } = useParams();
-  const socket = useContext(SocketContext);
+  const socket = useSocket();
 
   // HINWEIS: Der Benutzer sollte idealerweise aus einem Authentifizierungs-Kontext kommen.
   // Temporäre Lösung für einen einzigartigen User pro Session.
