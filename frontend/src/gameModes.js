@@ -342,8 +342,6 @@ class BullOffGame {
   }
 }
 
-module.exports = { X01Game, CricketGame, BullOffGame };
-
 class GameManager {
   constructor() {
     this.activeGames = new Map(); // roomId -> { game, players, gameState }
@@ -469,4 +467,5 @@ class GameManager {
   }
 }
 
-module.exports = { X01Game, CricketGame, BullOffGame, GameManager };
+const gameModes = { X01Game, CricketGame, BullOffGame, GameManager };
+export default gameModes;
