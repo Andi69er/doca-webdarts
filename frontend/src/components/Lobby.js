@@ -13,7 +13,6 @@ const Lobby = () => {
     const [variant, setVariant] = useState('');
     const [distance, setDistance] = useState('');
     const [whoStarts, setWhoStarts] = useState('');
-    const [maxPlayers, setMaxPlayers] = useState(2);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const navigate = useNavigate();
@@ -73,7 +72,7 @@ const Lobby = () => {
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
-        const roomData = { roomName, gameMode, variant, distance, whoStarts, maxPlayers };
+        const roomData = { roomName, gameMode, variant, distance, whoStarts };
         console.log('DEBUG: Raum-Erstellungs-Button wurde geklickt');
         console.log('DEBUG: Form data:', roomData);
         console.log('DEBUG: Socket connected:', socketConnected); // Loggt den neuen Status
@@ -147,11 +146,6 @@ const Lobby = () => {
                         <select className="lobby-input" value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
                             {Object.keys(gameModes).map(mode => (
                                 <option key={mode} value={mode}>{gameModes[mode].name}</option>
-                            ))}
-                        </select>
-                        <select className="lobby-input" value={maxPlayers} onChange={(e) => setMaxPlayers(parseInt(e.target.value))}>
-                            {[2, 3, 4].map(num => (
-                                <option key={num} value={num}>{num} Spieler</option>
                             ))}
                         </select>
                         {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
