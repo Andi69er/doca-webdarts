@@ -5,8 +5,7 @@ const cors = require('cors');
 
 const { gameModes, GameManager } = require('./gameModes');
 
-// VERRÄTERISCHE LOG-NACHRICHT FÜR DEN FINALEN TEST
-console.log('SERVER STARTET JETZT WIRKLICH - FINALE VERSION');
+console.log('FINALE SERVER VERSION WIRD GESTARTET');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,8 +23,6 @@ const io = new Server(server, {
 let onlineUsers = 0;
 let rooms = [];
 
-// Die problematische GameManager-Initialisierung ist hier definitiv entfernt.
-
 io.on('connection', (socket) => {
     onlineUsers++;
     io.emit('updateOnlineUsers', onlineUsers);
@@ -40,6 +37,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('createRoom', (roomData) => {
+        // DAS FINALE RAUCHZEICHEN
+        console.log('!!! createRoom EVENT VOM CLIENT EMPFANGEN !!! Daten:', roomData);
+
         const newRoom = {
             id: (Math.random().toString(36).substring(2, 8)),
             name: roomData.roomName,
@@ -55,7 +55,7 @@ io.on('connection', (socket) => {
         socket.join(newRoom.id);
         socket.emit('roomCreated', { roomId: newRoom.id });
         io.emit('updateRooms', rooms);
-        console.log(`Room created: ${newRoom.name} (${newRoom.id})`);
+        console.log(`Raum erfolgreich erstellt: ${newRoom.name} (${newRoom.id})`);
     });
 
     socket.on('joinRoom', (data) => {
@@ -71,6 +71,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('sendMessage', (message) => {
+        // RAUCHZEICHEN FÜR CHAT
+        console.log('!!! sendMessage EVENT VOM CLIENT EMPFANGEN !!! Nachricht:', message);
         io.emit('receiveMessage', { user: socket.id, text: message.text });
     });
 
