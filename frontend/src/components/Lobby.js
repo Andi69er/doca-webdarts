@@ -10,6 +10,9 @@ const Lobby = () => {
     const [onlineUsers, setOnlineUsers] = useState(0);
     const [roomName, setRoomName] = useState('');
     const [gameMode, setGameMode] = useState(Object.keys(gameModes)[0]);
+    const [variant, setVariant] = useState('');
+    const [distance, setDistance] = useState('');
+    const [whoStarts, setWhoStarts] = useState('');
     const [maxPlayers, setMaxPlayers] = useState(2);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -29,25 +32,25 @@ const Lobby = () => {
             socket.on('updateRooms', (updatedRooms) => {
                 setRooms(updatedRooms);
             });
-
+    
             socket.on('updateOnlineUsers', (count) => {
                 setOnlineUsers(count);
             });
-
+    
             socket.on('receiveMessage', (message) => {
                 setMessages(prevMessages => [...prevMessages, message]);
             });
-
+    
             socket.on('roomCreated', ({ roomId }) => {
                 console.log('DEBUG: Received roomCreated event:', { roomId });
                 navigate(`/game/${roomId}`);
             });
-
+    
             console.log('DEBUG: Emitting getRooms event');
             socket.emit('getRooms');
             console.log('DEBUG: Emitting getOnlineUsers event');
             socket.emit('getOnlineUsers');
-
+    
             return () => {
                 socket.off('updateRooms');
                 socket.off('updateOnlineUsers');
@@ -56,16 +59,27 @@ const Lobby = () => {
             };
         }
     }, [socket, navigate]);
+    
+    useEffect(() => {
+        if (gameMode) {
+            const currentMode = gameModes[gameMode];
+            if (currentMode) {
+                setVariant(currentMode.variants[0] || '');
+                setDistance(currentMode.distances[0] || '');
+                setWhoStarts(currentMode.whoStarts[0] || '');
+            }
+        }
+    }, [gameMode]);
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
-        const roomData = { roomName, gameMode, maxPlayers };
+        const roomData = { roomName, gameMode, variant, distance, whoStarts, maxPlayers };
         console.log('DEBUG: Raum-Erstellungs-Button wurde geklickt');
         console.log('DEBUG: Form data:', roomData);
         console.log('DEBUG: Socket connected:', socketConnected); // Loggt den neuen Status
         console.log('DEBUG: Socket ID:', socket ? socket.id : 'undefined');
         if (socket && socketConnected) {
-             console.log('DEBUG: Emitting createRoom event with data:', roomData);
+              console.log('DEBUG: Emitting createRoom event with data:', roomData);
             socket.emit('createRoom', roomData);
         } else {
             console.error('Socket not connected, cannot create room.');
