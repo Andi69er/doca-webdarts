@@ -62,8 +62,7 @@ const Lobby = () => {
         if (gameMode) {
             const currentMode = gameModes[gameMode];
             if (currentMode) {
-                setVariant(currentMode.variants[0] || '');
-                setDistance(currentMode.distances[0] || '');
+                setVariantIndex(0);
                 setWhoStarts(currentMode.whoStarts[0] || '');
             }
         }
