@@ -102,54 +102,62 @@ const Lobby = () => {
         }
     };
 
+    console.log('DEBUG: Lobby component rendering');
+    console.log('DEBUG: Current rooms:', rooms.length);
+    console.log('DEBUG: Online users:', onlineUsers);
+    console.log('DEBUG: Lobby component rendering');
+    console.log('DEBUG: Current rooms:', rooms.length);
+    console.log('DEBUG: Online users:', onlineUsers);
+
     return (
         <div className="lobby-container">
             <header className="lobby-header">
-                <h1>Willkommen in der Lobby</h1>
-                <p>Online: {onlineUsers}</p>
-                 {/* NEU: Visueller Indikator für Verbindungsstatus */}
+                <h1 className="lobby-title">Willkommen in der Lobby</h1>
+                <p className="lobby-subtitle">Online: {onlineUsers}</p>
+                  {/* NEU: Visueller Indikator für Verbindungsstatus */}
                 <p>Server-Status: <span className={socketConnected ? 'status-connected' : 'status-disconnected'}>{socketConnected ? 'Verbunden' : 'Verbinde...'}</span></p>
             </header>
 
-            <main className="lobby-main">
-                <div className="room-creation">
-                    <h2>Neuen Spielraum erstellen</h2>
+            <div className="lobby-content">
+                <section className="lobby-section">
+                    <h3>Neuen Spielraum erstellen</h3>
                     <form onSubmit={handleCreateRoom}>
                         <input
                             type="text"
+                            className="lobby-input"
                             value={roomName}
                             onChange={(e) => setRoomName(e.target.value)}
                             placeholder="Name des Raums"
                             required
                         />
-                        <select value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
+                        <select className="lobby-input" value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
                             {Object.keys(gameModes).map(mode => (
                                 <option key={mode} value={mode}>{gameModes[mode].name}</option>
                             ))}
                         </select>
-                        <select value={maxPlayers} onChange={(e) => setMaxPlayers(parseInt(e.target.value))}>
+                        <select className="lobby-input" value={maxPlayers} onChange={(e) => setMaxPlayers(parseInt(e.target.value))}>
                             {[2, 3, 4].map(num => (
                                 <option key={num} value={num}>{num} Spieler</option>
                             ))}
                         </select>
                         {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
-                        <button type="submit" disabled={!socketConnected}>Raum erstellen</button>
+                        <button type="submit" className="lobby-button" disabled={!socketConnected}>Raum erstellen</button>
                     </form>
-                </div>
+                </section>
 
-                <div className="room-list-container">
-                    <h2>Verfügbare Räume</h2>
-                    <ul className="room-list">
+                <section className="lobby-section">
+                    <h3>Verfügbare Räume</h3>
+                    <ul className="lobby-list">
                         {rooms.map(room => (
-                            <li key={room.id} className="room-item">
-                                <span>{room.name} ({room.players.length}/{room.maxPlayers}) - {gameModes[room.gameMode]?.name || 'Unbekannt'}</span>
+                            <li key={room.id} className="lobby-list-item">
+                                <span className="player-name">{room.name} ({room.players.length}/{room.maxPlayers}) - {gameModes[room.gameMode]?.name || 'Unbekannt'}</span>
                                 {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
-                                <button onClick={() => handleJoinRoom(room.id)} disabled={!socketConnected}>Beitreten</button>
+                                <button onClick={() => handleJoinRoom(room.id)} className="lobby-button" disabled={!socketConnected}>Beitreten</button>
                             </li>
                         ))}
                     </ul>
-                </div>
-            </main>
+                </section>
+            </div>
 
             <div className="chat-container">
                 <h2>Lobby Chat</h2>
@@ -164,12 +172,13 @@ const Lobby = () => {
                 <form onSubmit={handleSendMessage} className="message-form">
                     <input
                         type="text"
+                        className="lobby-input"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Nachricht eingeben..."
                     />
-                     {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
-                    <button type="submit" disabled={!socketConnected}>Senden</button>
+                      {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
+                    <button type="submit" className="lobby-button" disabled={!socketConnected}>Senden</button>
                 </form>
             </div>
         </div>
