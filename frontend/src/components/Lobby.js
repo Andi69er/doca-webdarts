@@ -10,8 +10,14 @@ const Lobby = () => {
     const [onlineUsers, setOnlineUsers] = useState(0);
     const [roomName, setRoomName] = useState('');
     const [gameMode, setGameMode] = useState(Object.keys(gameModes)[0]);
-    const [variantIndex, setVariantIndex] = useState(0);
-    const [whoStarts, setWhoStarts] = useState('');
+    const [startingScore, setStartingScore] = useState('501');
+    const [sets, setSets] = useState('0');
+    const [legs, setLegs] = useState('1');
+    const [outMode, setOutMode] = useState('double');
+    const [inMode, setInMode] = useState('single');
+    const [winType, setWinType] = useState('firstTo');
+    const [winNumber, setWinNumber] = useState('1');
+    const [whoStartsUI, setWhoStartsUI] = useState('random');
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const navigate = useNavigate();
@@ -62,8 +68,33 @@ const Lobby = () => {
         if (gameMode) {
             const currentMode = gameModes[gameMode];
             if (currentMode) {
-                setVariantIndex(0);
-                setWhoStarts(currentMode.whoStarts[0] || '');
+                // Set defaults based on game mode
+                if (gameMode === 'X01Game') {
+                    setStartingScore('501');
+                    setSets('0');
+                    setLegs('1');
+                    setOutMode('double');
+                    setInMode('single');
+                    setWinType('firstTo');
+                    setWinNumber('1');
+                } else if (gameMode === 'CricketGame') {
+                    setStartingScore(''); // Cricket doesn't have starting score
+                    setSets('0');
+                    setLegs('1');
+                    setOutMode('double');
+                    setInMode('single');
+                    setWinType('firstTo');
+                    setWinNumber('1');
+                } else if (gameMode === 'BullOffGame') {
+                    setStartingScore(''); // BullOff doesn't have these
+                    setSets('');
+                    setLegs('');
+                    setOutMode('');
+                    setInMode('');
+                    setWinType('');
+                    setWinNumber('');
+                }
+                setWhoStartsUI(currentMode.whoStarts[0] || 'random');
             }
         }
     }, [gameMode]);
@@ -152,15 +183,58 @@ const Lobby = () => {
                                 <option key={mode} value={mode}>{gameModes[mode].name}</option>
                             ))}
                         </select>
-                        <select className="lobby-input" value={variantIndex} onChange={(e) => setVariantIndex(parseInt(e.target.value))}>
-                            {gameModes[gameMode].variants.map((variant, index) => (
-                                <option key={index} value={index}>{variant.label}</option>
-                            ))}
-                        </select>
-                        <select className="lobby-input" value={whoStarts} onChange={(e) => setWhoStarts(e.target.value)}>
-                            {gameModes[gameMode].whoStarts.map(who => (
-                                <option key={who} value={who}>{who.charAt(0).toUpperCase() + who.slice(1)}</option>
-                            ))}
+                        {gameMode === 'X01Game' && (
+                            <>
+                                <select className="lobby-input" value={startingScore} onChange={(e) => setStartingScore(e.target.value)}>
+                                    <option value="301">301</option>
+                                    <option value="401">401</option>
+                                    <option value="501">501</option>
+                                    <option value="601">601</option>
+                                    <option value="701">701</option>
+                                    <option value="801">801</option>
+                                    <option value="901">901</option>
+                                    <option value="1001">1001</option>
+                                </select>
+                                <select className="lobby-input" value={sets} onChange={(e) => setSets(e.target.value)}>
+                                    {Array.from({ length: 11 }, (_, i) => (
+                                        <option key={i} value={i.toString()}>{i}</option>
+                                    ))}
+                                </select>
+                                <select className="lobby-input" value={legs} onChange={(e) => setLegs(e.target.value)}>
+                                    {Array.from({ length: 20 }, (_, i) => (
+                                        <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
+                                    ))}
+                                    <option value="unlimited">Unlimited</option>
+                                </select>
+                                <select className="lobby-input" value={outMode} onChange={(e) => setOutMode(e.target.value)}>
+                                    <option value="single">Single Out</option>
+                                    <option value="double">Double Out</option>
+                                    <option value="master">Master Out</option>
+                                </select>
+                                <select className="lobby-input" value={inMode} onChange={(e) => setInMode(e.target.value)}>
+                                    <option value="single">Single In</option>
+                                    <option value="double">Double In</option>
+                                    <option value="master">Master In</option>
+                                </select>
+                            </>
+                        )}
+                        {(gameMode === 'X01Game' || gameMode === 'CricketGame') && (
+                            <>
+                                <select className="lobby-input" value={winType} onChange={(e) => setWinType(e.target.value)}>
+                                    <option value="bestOf">Best of</option>
+                                    <option value="firstTo">First to</option>
+                                </select>
+                                <select className="lobby-input" value={winNumber} onChange={(e) => setWinNumber(e.target.value)}>
+                                    {Array.from({ length: 20 }, (_, i) => (
+                                        <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
+                        <select className="lobby-input" value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
+                            <option value="Player">Player</option>
+                            <option value="Opponent">Opponent</option>
+                            <option value="Bull off">Bull off</option>
                         </select>
                         {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
                         <button type="submit" className="lobby-button" disabled={!socketConnected}>Raum erstellen</button>
