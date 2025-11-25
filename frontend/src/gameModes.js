@@ -346,7 +346,6 @@ module.exports = { X01Game, CricketGame, BullOffGame };
 
 class GameManager {
   constructor() {
-    this.roomManager = require('./rooms');
     this.activeGames = new Map(); // roomId -> { game, players, gameState }
   }
 
