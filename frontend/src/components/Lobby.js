@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
-import gameModes from '../../../backend/gameModes';
+import gameModes from '../gameModes';
 import './Lobby.css';
 
 const Lobby = () => {
