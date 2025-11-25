@@ -308,6 +308,7 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "https://heroic-banoffee-4c3f4f.netlify.app", // Deine Live-Frontend-URL
   "https://doca-webdarts.onrender.com", // Für lokale Entwicklung
+  "https://doca-webdarts-1.onrender.com", // Frontend deployed URL
   "https://projekt.doca.at" // Production frontend URL
 ];
 

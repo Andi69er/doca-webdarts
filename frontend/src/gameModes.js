@@ -1,3 +1,25 @@
+// Game mode metadata for UI
+const gameModesMetadata = {
+  X01Game: {
+    name: 'X01',
+    variants: ['501', '301'],
+    distances: ['leg', 'set'],
+    whoStarts: ['random', 'host']
+  },
+  CricketGame: {
+    name: 'Cricket',
+    variants: ['standard'],
+    distances: ['leg', 'set'],
+    whoStarts: ['random', 'host']
+  },
+  BullOffGame: {
+    name: 'Bull-Off',
+    variants: ['standard'],
+    distances: ['leg'],
+    whoStarts: ['random']
+  }
+};
+
 // Game mode implementations with placeholders
 
 class X01Game {
@@ -468,4 +490,7 @@ class GameManager {
 }
 
 const gameModes = { X01Game, CricketGame, BullOffGame, GameManager };
-export default gameModes;
+
+// Export metadata as default, classes as named exports
+export { X01Game, CricketGame, BullOffGame, GameManager };
+export default gameModesMetadata;
