@@ -4,7 +4,7 @@ import Lobby from './components/Lobby';
 import Game from './components/Game';
 import Login from './components/Login';
 // Der Pfad wurde korrigiert, um auf den Unterordner /contexts zu verweisen
-import { SocketContext, socket } from './contexts/SocketContext';
+import { SocketProvider } from './contexts/SocketContext';
 import './App.css';
 
 function App() {
@@ -12,7 +12,7 @@ function App() {
   return (
     // Die gesamte App wird mit dem SocketContext "umwickelt",
     // damit alle Komponenten Zugriff auf den Socket haben.
-    <SocketContext.Provider value={socket}>
+    <SocketProvider>
       <BrowserRouter>
         <div className="App">
           <Routes>
@@ -22,7 +22,7 @@ function App() {
           </Routes>
         </div>
       </BrowserRouter>
-    </SocketContext.Provider>
+    </SocketProvider>
   );
 }
 
