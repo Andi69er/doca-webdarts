@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 function CameraArea({ gameState, user, roomId, socket }) {
   const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);git add .; git commit -m "Roo-Fix"; git push origin main
   const [peerConnection, setPeerConnection] = useState(null);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
