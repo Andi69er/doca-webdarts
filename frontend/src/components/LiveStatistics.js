@@ -1,23 +1,29 @@
 import React from 'react';
 
 function LiveStatistics({ statistics, gameState }) {
-  // Assuming statistics is an object with player IDs as keys
+  // DIE FINALE, KORREKTE WACHE, DIE DEN ABSTURZ VERHINDERT
+  if (!gameState) {
+    return <div>Lade Statistiken...</div>;
+  }
+
+  // DEINE KORREKTE LOGIK BLEIBT ERHALTEN
   const players = gameState.players || [];
   const currentStats = statistics || {};
 
   const calculateFirstNineAvg = (firstNineDarts) => {
-    if (firstNineDarts.length === 0) return 0;
+    if (!firstNineDarts || firstNineDarts.length === 0) return 0;
     const sum = firstNineDarts.reduce((a, b) => a + b, 0);
     return (sum / firstNineDarts.length).toFixed(2);
   };
 
   const getShortLeg = (legsPlayed) => {
-    if (legsPlayed.length === 0) return 'N/A';
+    if (!legsPlayed || legsPlayed.length === 0) return 'N/A';
     return Math.min(...legsPlayed);
   };
 
   const getScoreDistribution = (dist) => {
-    return `19-: ${dist['19-']}, 20-39: ${dist['20-39']}, 40-59: ${dist['40-59']}, 60-79: ${dist['60-79']}, 80-99: ${dist['80-99']}, 100-119: ${dist['100-119']}, 120-139: ${dist['120-139']}, 140-159: ${dist['140-159']}, 160-180: ${dist['160-180']}, 180+: ${dist['180+']}`;
+    if (!dist) return '';
+    return `19-: ${dist['19-'] || 0}, 20-39: ${dist['20-39'] || 0}, 40-59: ${dist['40-59'] || 0}, 60-79: ${dist['60-79'] || 0}, 80-99: ${dist['80-99'] || 0}, 100-119: ${dist['100-119'] || 0}, 120-139: ${dist['120-139'] || 0}, 140-159: ${dist['140-159'] || 0}, 160-180: ${dist['160-180'] || 0}, 180+: ${dist['180+'] || 0}`;
   };
 
   return (
@@ -43,11 +49,11 @@ function LiveStatistics({ statistics, gameState }) {
               </div>
               <div className="stat-item">
                 <span className="stat-label">First 9 Ø:</span>
-                <span className="stat-value">{calculateFirstNineAvg(stats.firstNineDarts || [])}</span>
+                <span className="stat-value">{calculateFirstNineAvg(stats.firstNineDarts)}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Short Leg:</span>
-                <span className="stat-value">{getShortLeg(stats.legsPlayed || [])}</span>
+                <span className="stat-value">{getShortLeg(stats.legsPlayed)}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Doubles:</span>
@@ -71,7 +77,7 @@ function LiveStatistics({ statistics, gameState }) {
               </div>
               <div className="stat-item">
                 <span className="stat-label">Score Distribution:</span>
-                <span className="stat-value">{getScoreDistribution(stats.scoreDistribution || {})}</span>
+                <span className="stat-value">{getScoreDistribution(stats.scoreDistribution)}</span>
               </div>
             </div>
           </div>
