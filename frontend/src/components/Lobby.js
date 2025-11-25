@@ -178,6 +178,7 @@ const Lobby = () => {
                             placeholder="Name des Raums"
                             required
                         />
+                        <label>Game Mode:</label>
                         <select className="lobby-input" value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
                             {Object.keys(gameModes).map(mode => (
                                 <option key={mode} value={mode}>{gameModes[mode].name}</option>
@@ -185,6 +186,7 @@ const Lobby = () => {
                         </select>
                         {gameMode === 'X01Game' && (
                             <>
+                                <label>Starting Score:</label>
                                 <select className="lobby-input" value={startingScore} onChange={(e) => setStartingScore(e.target.value)}>
                                     <option value="301">301</option>
                                     <option value="401">401</option>
@@ -195,22 +197,26 @@ const Lobby = () => {
                                     <option value="901">901</option>
                                     <option value="1001">1001</option>
                                 </select>
+                                <label>Sets:</label>
                                 <select className="lobby-input" value={sets} onChange={(e) => setSets(e.target.value)}>
                                     {Array.from({ length: 11 }, (_, i) => (
                                         <option key={i} value={i.toString()}>{i}</option>
                                     ))}
                                 </select>
+                                <label>Legs:</label>
                                 <select className="lobby-input" value={legs} onChange={(e) => setLegs(e.target.value)}>
                                     {Array.from({ length: 20 }, (_, i) => (
                                         <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
                                     ))}
                                     <option value="unlimited">Unlimited</option>
                                 </select>
+                                <label>Out Mode:</label>
                                 <select className="lobby-input" value={outMode} onChange={(e) => setOutMode(e.target.value)}>
                                     <option value="single">Single Out</option>
                                     <option value="double">Double Out</option>
                                     <option value="master">Master Out</option>
                                 </select>
+                                <label>In Mode:</label>
                                 <select className="lobby-input" value={inMode} onChange={(e) => setInMode(e.target.value)}>
                                     <option value="single">Single In</option>
                                     <option value="double">Double In</option>
@@ -220,10 +226,12 @@ const Lobby = () => {
                         )}
                         {(gameMode === 'X01Game' || gameMode === 'CricketGame') && (
                             <>
+                                <label>Win Type:</label>
                                 <select className="lobby-input" value={winType} onChange={(e) => setWinType(e.target.value)}>
                                     <option value="bestOf">Best of</option>
                                     <option value="firstTo">First to</option>
                                 </select>
+                                <label>Win Number:</label>
                                 <select className="lobby-input" value={winNumber} onChange={(e) => setWinNumber(e.target.value)}>
                                     {Array.from({ length: 20 }, (_, i) => (
                                         <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
@@ -231,13 +239,13 @@ const Lobby = () => {
                                 </select>
                             </>
                         )}
+                        <label>Who Starts:</label>
                         <select className="lobby-input" value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
                             <option value="Player">Player</option>
                             <option value="Opponent">Opponent</option>
                             <option value="Bull off">Bull off</option>
                         </select>
-                        {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
-                        <button type="submit" className="lobby-button" disabled={!socketConnected}>Raum erstellen</button>
+                        <button type="submit" className="lobby-button">Raum erstellen</button>
                     </form>
                 </section>
 
