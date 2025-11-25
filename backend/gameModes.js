@@ -1,3 +1,88 @@
+// Game mode metadata for UI
+const gameModesMetadata = {
+  X01Game: {
+    name: 'X01',
+    variants: [
+      { label: '501 Double Out - 1 Leg', startingScore: 501, inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Double Out - Best of 3 Legs', startingScore: 501, inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Double Out - Best of 5 Legs', startingScore: 501, inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '501 Double Out - 1 Set', startingScore: 501, inMode: 'single', outMode: 'double', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Double Out - Best of 3 Sets', startingScore: 501, inMode: 'single', outMode: 'double', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Master Out - 1 Leg', startingScore: 501, inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Master Out - Best of 3 Legs', startingScore: 501, inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Master Out - Best of 5 Legs', startingScore: 501, inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '501 Master Out - 1 Set', startingScore: 501, inMode: 'single', outMode: 'master', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Master Out - Best of 3 Sets', startingScore: 501, inMode: 'single', outMode: 'master', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Double In Double Out - 1 Leg', startingScore: 501, inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Double In Double Out - Best of 3 Legs', startingScore: 501, inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Double In Double Out - Best of 5 Legs', startingScore: 501, inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '501 Double In Double Out - 1 Set', startingScore: 501, inMode: 'double', outMode: 'double', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Double In Double Out - Best of 3 Sets', startingScore: 501, inMode: 'double', outMode: 'double', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Master In Master Out - 1 Leg', startingScore: 501, inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Master In Master Out - Best of 3 Legs', startingScore: 501, inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '501 Master In Master Out - Best of 5 Legs', startingScore: 501, inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '501 Master In Master Out - 1 Set', startingScore: 501, inMode: 'master', outMode: 'master', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '501 Master In Master Out - Best of 3 Sets', startingScore: 501, inMode: 'master', outMode: 'master', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Double Out - 1 Leg', startingScore: 301, inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Double Out - Best of 3 Legs', startingScore: 301, inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Double Out - Best of 5 Legs', startingScore: 301, inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '301 Double Out - 1 Set', startingScore: 301, inMode: 'single', outMode: 'double', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Double Out - Best of 3 Sets', startingScore: 301, inMode: 'single', outMode: 'double', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Master Out - 1 Leg', startingScore: 301, inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Master Out - Best of 3 Legs', startingScore: 301, inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Master Out - Best of 5 Legs', startingScore: 301, inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '301 Master Out - 1 Set', startingScore: 301, inMode: 'single', outMode: 'master', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Master Out - Best of 3 Sets', startingScore: 301, inMode: 'single', outMode: 'master', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Double In Double Out - 1 Leg', startingScore: 301, inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Double In Double Out - Best of 3 Legs', startingScore: 301, inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Double In Double Out - Best of 5 Legs', startingScore: 301, inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '301 Double In Double Out - 1 Set', startingScore: 301, inMode: 'double', outMode: 'double', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Double In Double Out - Best of 3 Sets', startingScore: 301, inMode: 'double', outMode: 'double', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Master In Master Out - 1 Leg', startingScore: 301, inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Master In Master Out - Best of 3 Legs', startingScore: 301, inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: '301 Master In Master Out - Best of 5 Legs', startingScore: 301, inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: '301 Master In Master Out - 1 Set', startingScore: 301, inMode: 'master', outMode: 'master', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: '301 Master In Master Out - Best of 3 Sets', startingScore: 301, inMode: 'master', outMode: 'master', distance: 'set', length: { type: 'bestOf', value: 3 } }
+    ],
+    whoStarts: ['random', 'host']
+  },
+  CricketGame: {
+    name: 'Cricket',
+    variants: [
+      { label: 'Standard - 1 Leg', inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: 'Standard - Best of 3 Legs', inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: 'Standard - Best of 5 Legs', inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: 'Standard - 1 Set', inMode: 'single', outMode: 'double', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: 'Standard - Best of 3 Sets', inMode: 'single', outMode: 'double', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: 'Master Out - 1 Leg', inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: 'Master Out - Best of 3 Legs', inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: 'Master Out - Best of 5 Legs', inMode: 'single', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: 'Master Out - 1 Set', inMode: 'single', outMode: 'master', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: 'Master Out - Best of 3 Sets', inMode: 'single', outMode: 'master', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: 'Double In Double Out - 1 Leg', inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: 'Double In Double Out - Best of 3 Legs', inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: 'Double In Double Out - Best of 5 Legs', inMode: 'double', outMode: 'double', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: 'Double In Double Out - 1 Set', inMode: 'double', outMode: 'double', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: 'Double In Double Out - Best of 3 Sets', inMode: 'double', outMode: 'double', distance: 'set', length: { type: 'bestOf', value: 3 } },
+      { label: 'Master In Master Out - 1 Leg', inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'firstTo', value: 1 } },
+      { label: 'Master In Master Out - Best of 3 Legs', inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 3 } },
+      { label: 'Master In Master Out - Best of 5 Legs', inMode: 'master', outMode: 'master', distance: 'leg', length: { type: 'bestOf', value: 5 } },
+      { label: 'Master In Master Out - 1 Set', inMode: 'master', outMode: 'master', distance: 'set', length: { type: 'firstTo', value: 1 } },
+      { label: 'Master In Master Out - Best of 3 Sets', inMode: 'master', outMode: 'master', distance: 'set', length: { type: 'bestOf', value: 3 } }
+    ],
+    whoStarts: ['random', 'host']
+  },
+  BullOffGame: {
+    name: 'Bull-Off',
+    variants: [
+      { label: 'Standard Bull-Off', inMode: 'single', outMode: 'double', distance: 'leg', length: { type: 'firstTo', value: 1 } }
+    ],
+    whoStarts: ['random']
+  }
+};
+
+// Game mode implementations with placeholders
+
 // Game mode implementations with placeholders
 
 class X01Game {

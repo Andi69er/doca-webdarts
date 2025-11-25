@@ -10,8 +10,7 @@ const Lobby = () => {
     const [onlineUsers, setOnlineUsers] = useState(0);
     const [roomName, setRoomName] = useState('');
     const [gameMode, setGameMode] = useState(Object.keys(gameModes)[0]);
-    const [variant, setVariant] = useState('');
-    const [distance, setDistance] = useState('');
+    const [variantIndex, setVariantIndex] = useState(0);
     const [whoStarts, setWhoStarts] = useState('');
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -72,7 +71,13 @@ const Lobby = () => {
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
-        const roomData = { roomName, gameMode, variant, distance, whoStarts };
+        const selectedVariant = gameModes[gameMode].variants[variantIndex];
+        const roomData = {
+            roomName,
+            gameMode,
+            whoStarts,
+            gameOptions: selectedVariant
+        };
         console.log('DEBUG: Raum-Erstellungs-Button wurde geklickt');
         console.log('DEBUG: Form data:', roomData);
         console.log('DEBUG: Socket connected:', socketConnected); // Loggt den neuen Status
@@ -146,6 +151,16 @@ const Lobby = () => {
                         <select className="lobby-input" value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
                             {Object.keys(gameModes).map(mode => (
                                 <option key={mode} value={mode}>{gameModes[mode].name}</option>
+                            ))}
+                        </select>
+                        <select className="lobby-input" value={variantIndex} onChange={(e) => setVariantIndex(parseInt(e.target.value))}>
+                            {gameModes[gameMode].variants.map((variant, index) => (
+                                <option key={index} value={index}>{variant.label}</option>
+                            ))}
+                        </select>
+                        <select className="lobby-input" value={whoStarts} onChange={(e) => setWhoStarts(e.target.value)}>
+                            {gameModes[gameMode].whoStarts.map(who => (
+                                <option key={who} value={who}>{who.charAt(0).toUpperCase() + who.slice(1)}</option>
                             ))}
                         </select>
                         {/* NEU: Button wird deaktiviert, wenn keine Verbindung besteht */}
