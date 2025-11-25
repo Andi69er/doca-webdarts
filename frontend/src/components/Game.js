@@ -94,7 +94,8 @@ function Game() {
   }, [socket]);
 
   useEffect(() => {
-    if (socket && user && roomId) {
+    if (!socket) return;
+    if (user && roomId) {
         socket.emit('join-room', { roomId, user });
     }
   }, [socket, roomId, user]);
@@ -134,6 +135,8 @@ function Game() {
     }
     return gameState.players[gameState.currentPlayer].id === user.id;
   };
+
+  if (!socket) return <div>Loading...</div>;
 
   return (
     <div className="game-container">
