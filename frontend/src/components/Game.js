@@ -13,7 +13,7 @@ import './Game.css';
 function Game() {
     const { roomId } = useParams();
     const { socket } = useSocket();
-    const { user } = useSocket(); // User ebenfalls aus dem Context holen
+    const [user, setUser] = useState({ id: `user_${Date.now()}`, name: 'Guest Player' });
 
     const [gameState, setGameState] = useState(null); // Initialer State ist null
 
