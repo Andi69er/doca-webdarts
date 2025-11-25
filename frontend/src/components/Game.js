@@ -12,7 +12,8 @@ import './Game.css';
 
 function Game() {
   const { roomId } = useParams();
-  const socket = useSocket();
+  // FIX: Destructure the socket from the object returned by useSocket()
+  const { socket } = useSocket();
 
   // HINWEIS: Der Benutzer sollte idealerweise aus einem Authentifizierungs-Kontext kommen.
   // Temporäre Lösung für einen einzigartigen User pro Session.
