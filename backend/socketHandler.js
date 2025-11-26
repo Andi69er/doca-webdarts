@@ -237,18 +237,50 @@ function initializeSocket(io) {
             console.log(`Rematch in Raum ${roomId} gestartet. Spieler getauscht, Einstellungen übernommen.`);
         });
 
-        // WebRTC signaling for camera streams
+        // WebRTC Camera Signaling
         socket.on('camera-offer', (data) => {
-            socket.to(data.roomId).emit('camera-offer', data);
+            const { roomId, from, to, offer } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room) {
+                return console.error("Camera-Offer: Room not found");
+            }
+
+            console.log(`!!! camera-offer EVENT in Raum ${roomId} von ${from} zu ${to} !!!`);
+
+            // Send offer to the target player
+            io.to(to).emit('camera-offer', data);
         });
 
         socket.on('camera-answer', (data) => {
-            socket.to(data.roomId).emit('camera-answer', data);
+            const { roomId, from, to, answer } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room) {
+                return console.error("Camera-Answer: Room not found");
+            }
+
+            console.log(`!!! camera-answer EVENT in Raum ${roomId} von ${from} zu ${to} !!!`);
+
+            // Send answer to the target player
+            io.to(to).emit('camera-answer', data);
         });
 
         socket.on('camera-ice', (data) => {
-            socket.to(data.roomId).emit('camera-ice', data);
+            const { roomId, from, to, candidate } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room) {
+                return console.error("Camera-ICE: Room not found");
+            }
+
+            console.log(`!!! camera-ice EVENT in Raum ${roomId} von ${from} zu ${to} !!!`);
+
+            // Send ICE candidate to the target player
+            io.to(to).emit('camera-ice', data);
         });
+
+
 
         socket.on('disconnect', () => {
             // Remove user from connected users list
