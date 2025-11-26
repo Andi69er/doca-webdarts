@@ -13,7 +13,7 @@ import './Game.css';
 function Game() {
     const { roomId } = useParams();
     const { socket } = useSocket();
-    const [user, setUser] = useState({ id: `user_${Date.now()}`, name: 'Guest Player' });
+    const [user, setUser] = useState({ id: null, name: 'Guest Player' });
 
     const [gameState, setGameState] = useState(null); // Initialer State ist null
 
@@ -78,26 +78,33 @@ function Game() {
         };
     }, [socket, roomId]); // Abhängigkeiten korrigiert
 
+    // Set user ID to socket ID when available
+    useEffect(() => {
+        if (socket && socket.id) {
+            setUser(prev => ({ ...prev, id: socket.id }));
+        }
+    }, [socket]);
+
     // HINWEIS: Die 'user' Logik ist hier vereinfacht, da sie aus dem Context kommt.
     // Die folgenden Funktionen bleiben für die Interaktion mit dem Backend.
 
     const handleScoreInput = (score) => {
-        if (socket) socket.emit('score-input', { roomId, score, userId: user.id });
+        if (socket && user.id) socket.emit('score-input', { roomId, score, userId: user.id });
     };
 
     const handleCheckoutSelection = (dartCount) => {
-        if (socket) socket.emit('checkout-selection', { roomId, dartCount, userId: user.id });
+        if (socket && user.id) socket.emit('checkout-selection', { roomId, dartCount, userId: user.id });
     };
-    
+
     // ... weitere handler (handleBullOffThrow, handleStartGame, etc.) bleiben unverändert ...
     const handleBullOffThrow = (score) => {
-        if (socket) socket.emit('bull-off-throw', { roomId, score, userId: user.id });
+        if (socket && user.id) socket.emit('bull-off-throw', { roomId, score, userId: user.id });
     };
     const handleStartGame = () => {
-        if (socket) socket.emit('start-game', { roomId, userId: user.id });
+        if (socket && user.id) socket.emit('start-game', { roomId, userId: user.id });
     };
     const handleRematch = () => {
-        if (socket) socket.emit('rematch', { roomId, userId: user.id });
+        if (socket && user.id) socket.emit('rematch', { roomId, userId: user.id });
     };
 
     const isCurrentUserActive = () => {
@@ -120,7 +127,7 @@ function Game() {
     }
 
     // Check if user is the host
-    const isHost = gameState.hostId === user.id;
+    const isHost = user && user.id && gameState.hostId === user.id;
     // Check if game has started
     const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
 
