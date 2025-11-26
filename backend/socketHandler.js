@@ -87,13 +87,15 @@ function initializeSocket(io) {
                     room.players.push(newPlayer);
                     socket.join(room.id);
 
-                    console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten.`);
-                    
-                    // Send the entire room object to the new player
-                    socket.emit('gameState', room); 
-                    // Inform others in the room about the new player
-                    io.to(room.id).emit('gameStateUpdate', room); 
+                    console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten. Raum hat jetzt ${room.players.length} Spieler:`, room.players.map(p => p.id));
+
+                    // CRITICAL: Send the updated room to EVERYONE in the room (including existing players)
+                    io.to(room.id).emit('gameStateUpdate', room);
+                    // Also send to the new player individually
+                    socket.emit('gameState', room);
                     io.emit('updateRooms', rooms);
+
+                    console.log(`!!! SENT gameStateUpdate to ALL players in room ${room.id} !!!`);
                 } else {
                     socket.emit('gameError', { error: 'Room is full' });
                     console.log(`Beitritt zu Raum ${data.roomId} fehlgeschlagen: Raum ist voll.`);
