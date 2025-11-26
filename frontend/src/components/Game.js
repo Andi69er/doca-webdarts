@@ -17,7 +17,11 @@ function Game() {
 
     const [gameState, setGameState] = useState(null); // Initialer State ist null
 
+    const [inputLockout, setInputLockout] = useState(false); // 5-sec lockout after score input
+    const [lockoutTimer, setLockoutTimer] = useState(0);
+
     const waitingTimerRef = useRef(null);
+    const lockoutTimerRef = useRef(null);
 
     useEffect(() => {
 
@@ -89,7 +93,28 @@ function Game() {
     // Die folgenden Funktionen bleiben für die Interaktion mit dem Backend.
 
     const handleScoreInput = (score) => {
-        if (socket && user.id) socket.emit('score-input', { roomId, score, userId: user.id });
+        if (socket && user.id && !inputLockout) {
+            socket.emit('score-input', { roomId, score, userId: user.id });
+
+            // Start 5-second lockout
+            setInputLockout(true);
+            setLockoutTimer(5);
+
+            // Clear any existing lockout timer
+            if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
+
+            // Start countdown
+            lockoutTimerRef.current = setInterval(() => {
+                setLockoutTimer(prev => {
+                    if (prev <= 1) {
+                        setInputLockout(false);
+                        clearInterval(lockoutTimerRef.current);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
     };
 
     const handleCheckoutSelection = (dartCount) => {
@@ -162,6 +187,8 @@ function Game() {
                         checkoutSuggestions={gameState.checkoutSuggestions}
                         waitingTimer={gameState.waitingTimer}
                         isActive={isCurrentUserActive()}
+                        isLocked={inputLockout}
+                        lockoutTimer={lockoutTimer}
                         gameState={gameState}
                     />
                 )}

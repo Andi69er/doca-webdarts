@@ -84,6 +84,9 @@ function CameraArea({ gameState, user, roomId, socket }) {
   // Check if user is in current room
   const userInRoom = gameState.players?.find(p => p.id === user?.id);
 
+  // Check if game has started
+  const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
+
   return (
     <div className="camera-area">
       <h4>Live Kameras</h4>
@@ -112,13 +115,14 @@ function CameraArea({ gameState, user, roomId, socket }) {
         </div>
       )}
 
-      <div className="video-container">
-        {gameState.players.map((player) => (
-          <div key={player.id} className="video-wrapper">
-            <div className="video-placeholder">
+      {!gameStarted ? (
+        // PRE-GAME: Vertical splitscreen for all players
+        <div className="splitscreen-container">
+          {gameState.players.map((player) => (
+            <div key={player.id} className="splitscreen-player">
               {player.id === user?.id ? (
-                // Local camera
-                <>
+                // Local player camera
+                <div className="video-placeholder">
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -140,27 +144,79 @@ function CameraArea({ gameState, user, roomId, socket }) {
                       </button>
                     </div>
                   )}
-                </>
-              ) : (
-                // Remote player camera (placeholder for future WebRTC)
-                <div className="remote-placeholder">
-                  <video
-                    autoPlay
-                    playsInline
-                    className="video-element"
-                  />
-                  <div className="video-overlay">
-                    <span>Warten auf {player.name}'s Kamera</span>
+                  <div className="video-label">
+                    {player.name} (Du)
                   </div>
                 </div>
+              ) : (
+                // Other players - placeholders
+                <div className="video-placeholder">
+                  <div className="remote-placeholder">
+                    <div className="video-overlay">
+                      <span>Warten auf {player.name}</span>
+                    </div>
+                  </div>
+                  <div className="video-label">{player.name}</div>
+                </div>
               )}
-              <div className="video-label">
-                {player.name} {player.id === user?.id && isCameraEnabled && '(Du)'}
-              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        // DURING-GAME: Show only current player's full screen
+        <div className="full-camera-container">
+          {gameState.players.map((player) => {
+            const isCurrentPlayer = player.id === gameState.players[gameState.gameState.currentPlayerIndex]?.id;
+            return (
+              <div key={player.id} className="video-wrapper" style={{ display: isCurrentPlayer ? 'block' : 'none' }}>
+                <div className="video-placeholder">
+                  {player.id === user?.id ? (
+                    // Local camera if current player is user
+                    <>
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="video-element"
+                      />
+                      {!isCameraEnabled && (
+                        <div className="video-overlay">
+                          <button onClick={startCamera}>
+                            Kamera einschalten
+                          </button>
+                        </div>
+                      )}
+                      {isCameraEnabled && (
+                        <div className="video-controls">
+                          <button onClick={stopCamera} className="stop-camera-btn">
+                            Kamerastopp
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Remote player camera (current player)
+                    <div className="remote-placeholder">
+                      <video
+                        autoPlay
+                        playsInline
+                        className="video-element"
+                      />
+                      <div className="video-overlay">
+                        <span>{player.name} wirft...</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="video-label">
+                    {player.name}'s Zug
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
