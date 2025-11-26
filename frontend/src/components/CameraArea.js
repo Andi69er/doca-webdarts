@@ -194,21 +194,36 @@ function CameraArea({ gameState, user, roomId, socket }) {
     const handleCameraOffer = (data) => {
       if (data.to !== user.id) return;
 
-      console.log('Received offer from', data.from);
+      console.log('Received offer from', data.from, 'current user:', user.id);
 
       const pc = createPeerConnection(data.from);
+
+      console.log('Created peer connection for', data.from);
+      console.log('Local stream available:', !!localStream);
 
       // Add local stream tracks BEFORE setting remote description
       if (localStream) {
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        console.log('Added', localStream.getTracks().length, 'tracks to peer connection');
+      } else {
+        console.warn('No local stream available when handling offer!');
       }
 
       pc.setRemoteDescription(new RTCSessionDescription(data.offer))
-        .then(() => pc.createAnswer())
-        .then(answer => pc.setLocalDescription(answer))
+        .then(() => {
+          console.log('Set remote description successfully');
+          return pc.createAnswer();
+        })
+        .then(answer => {
+          console.log('Created answer successfully');
+          return pc.setLocalDescription(answer);
+        })
         .then(() => {
           // Now set the peer connection in state
-          setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+          setPeerConnections(prev => {
+            console.log('Setting peer connection for', data.from, 'in state');
+            return { ...prev, [data.from]: pc };
+          });
 
           console.log('Sending answer to', data.from);
           socket.emit('camera-answer', {
@@ -218,7 +233,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
             answer: pc.localDescription
           });
         })
-        .catch(error => console.error('Error handling offer:', error));
+        .catch(error => {
+          console.error('Error handling offer:', error);
+          console.error('Stack:', error.stack);
+        });
     };
 
     const handleCameraAnswer = (data) => {
