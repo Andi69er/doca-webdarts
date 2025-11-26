@@ -101,11 +101,17 @@ function Game() {
     };
 
     const isCurrentUserActive = () => {
-        const { players = [], currentPlayer, gameMode = {} } = gameState || {};
-        if (!gameState || !user || currentPlayer === null || !players[currentPlayer]) {
+        if (!gameState || !gameState.gameState || !user) {
             return false;
         }
-        return players[currentPlayer].id === user.id;
+        const { players } = gameState;
+        const { currentPlayerIndex } = gameState.gameState;
+        const currentPlayer = players[currentPlayerIndex];
+
+        if (!currentPlayer) {
+            return false;
+        }
+        return currentPlayer.id === user.id;
     };
     
     // Verbesserte Ladeanzeige
@@ -139,9 +145,9 @@ function Game() {
             </div>
 
             {/* Die restliche JSX-Logik bleibt gleich */}
-            {gameState.winner && (
+            {gameState.gameState && gameState.gameState.gameWinner && (
                 <GameEndPopup
-                    winner={gameState.players.find(p => p.id === gameState.winner)}
+                    winner={gameState.players.find(p => p.id === gameState.gameState.gameWinner)}
                     onRematch={handleRematch}
                 />
             )}
