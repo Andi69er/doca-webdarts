@@ -1,6 +1,6 @@
 import React from 'react';
 
-function LiveStatistics({ statistics, gameState }) {
+function LiveStatistics({ gameState }) {
   // DIE FINALE, KORREKTE WACHE, DIE DEN ABSTURZ VERHINDERT
   if (!gameState) {
     return <div>Lade Statistiken...</div>;
@@ -8,7 +8,7 @@ function LiveStatistics({ statistics, gameState }) {
 
   // DEINE KORREKTE LOGIK BLEIBT ERHALTEN
   const players = gameState.players || [];
-  const currentStats = statistics || {};
+  const currentStats = gameState.statistics || {};
 
   const calculateFirstNineAvg = (firstNineDarts) => {
     if (!firstNineDarts || firstNineDarts.length === 0) return 0;

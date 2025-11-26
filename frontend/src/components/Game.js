@@ -121,7 +121,7 @@ function Game() {
 
             <div className="right-panel">
                 <PlayerScores gameState={gameState} user={user} />
-                <LiveStatistics statistics={gameState.statistics} />
+                <LiveStatistics gameState={gameState} />
                 <NumberPad
                     onScoreInput={handleScoreInput}
                     checkoutSuggestions={gameState.checkoutSuggestions}
@@ -129,7 +129,7 @@ function Game() {
                     isActive={isCurrentUserActive()}
                     gameState={gameState}
                 />
-                <ThrowHistory throws={gameState.throws} />
+                <ThrowHistory gameState={gameState} />
                 <GameChat
                     socket={socket}
                     roomId={roomId}
