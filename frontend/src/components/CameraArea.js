@@ -327,25 +327,29 @@ function CameraArea({ gameState, user, roomId, socket }) {
                     // Other players - placeholders or videos
                     <div className="video-placeholder">
                       <div className="remote-placeholder">
-                        {remoteStreams[player.id] ? (
-                          <video
-                            ref={el => {
-                              console.log('Setting video srcObject for player', player.name, ':', remoteStreams[player.id]);
-                              if (el) {
-                                el.srcObject = remoteStreams[player.id];
-                                console.log('Video element srcObject set for', player.name);
-                              }
-                            }}
-                            autoPlay
-                            playsInline
-                            className="video-element"
-                          />
-                        ) : (
-                          <div className="video-overlay">
-                            <span>Warten auf {player.name} (ID: {player.id})</span>
-                            <small>Remote streams: {Object.keys(remoteStreams).join(', ')}</small>
-                          </div>
-                        )}
+                    <video
+                      ref={el => {
+                        if (remoteStreams[player.id] && el) {
+                          console.log('Setting video srcObject for player', player.name, ':', remoteStreams[player.id]);
+                          el.srcObject = remoteStreams[player.id];
+                          console.log('Video element srcObject set for', player.name);
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      className="video-element"
+                      style={{
+                        opacity: remoteStreams[player.id] ? 1 : 0,
+                        width: remoteStreams[player.id] ? '100%' : '0',
+                        height: remoteStreams[player.id] ? '100%' : '0'
+                      }}
+                    />
+                    {!remoteStreams[player.id] && (
+                      <div className="video-overlay">
+                        <span>Warten auf {player.name} (ID: {player.id})</span>
+                        <small>Remote streams: {Object.keys(remoteStreams).join(', ')}</small>
+                      </div>
+                    )}
                       </div>
                       <div className="video-label">{player.name}</div>
                     </div>
@@ -389,16 +393,22 @@ function CameraArea({ gameState, user, roomId, socket }) {
                   ) : (
                     // Remote player camera
                     <div className="remote-placeholder">
-                      {remoteStreams[player.id] ? (
-                        <video
-                          ref={el => {
-                            if (el) el.srcObject = remoteStreams[player.id];
-                          }}
-                          autoPlay
-                          playsInline
-                          className="video-element"
-                        />
-                      ) : (
+                      <video
+                        ref={el => {
+                          if (remoteStreams[player.id] && el) {
+                            el.srcObject = remoteStreams[player.id];
+                          }
+                        }}
+                        autoPlay
+                        playsInline
+                        className="video-element"
+                        style={{
+                          opacity: remoteStreams[player.id] ? 1 : 0,
+                          width: remoteStreams[player.id] ? '100%' : '0',
+                          height: remoteStreams[player.id] ? '100%' : '0'
+                        }}
+                      />
+                      {!remoteStreams[player.id] && (
                         <div className="video-overlay">
                           <span>Warten auf {player.name}</span>
                         </div>
