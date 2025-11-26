@@ -155,8 +155,17 @@ function initializeSocket(io) {
 
         socket.on('sendMessage', (message) => {
             console.log('!!! sendMessage EVENT VOM CLIENT EMPFANGEN !!! Nachricht:', message);
-            // FIX: Broadcast to the specific room and send the original message object
-            io.to(message.roomId).emit('receiveMessage', message);
+            if (message.roomId) {
+                // In-game message
+                io.to(message.roomId).emit('receiveMessage', message);
+            } else {
+                // Lobby message, needs user name
+                const lobbyMessage = {
+                    ...message,
+                    user: `User_${socket.id.substring(0, 4)}` // Add a generic user name
+                };
+                io.emit('receiveMessage', lobbyMessage);
+            }
         });
 
         socket.on('disconnect', () => {

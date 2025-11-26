@@ -1,13 +1,14 @@
 import React from 'react';
 import './PlayerScores.css';
 
-const PlayerScores = ({ gameState }) => {
-  // Guard clause to prevent crashes if gameState or its properties are not yet loaded.
-  if (!gameState || !Array.isArray(gameState.players) || !gameState.scores) {
+const PlayerScores = ({ gameState: room }) => { // Rename for clarity
+  // Guard clause to prevent crashes if the room or its nested properties are not yet loaded.
+  if (!room || !Array.isArray(room.players) || !room.gameState || !room.gameState.scores) {
     return <div>Lade Spielerinformationen...</div>;
   }
 
-  const { players, currentPlayerIndex, scores } = gameState;
+  const { players } = room;
+  const { scores, currentPlayerIndex } = room.gameState;
   const currentPlayerId = players[currentPlayerIndex]?.id;
 
   return (

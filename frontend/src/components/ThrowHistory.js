@@ -1,21 +1,36 @@
 import React from 'react';
 import './styles/ThrowHistory.css';
 
-const ThrowHistory = ({ gameState }) => {
-  // GUARD CLAUSE: Do not render if gameState or the specific player data is not yet defined.
-  if (!gameState || !gameState.players || !gameState.players[gameState.currentPlayerIndex]) {
-    return null; // Render nothing until the data is ready
+const ThrowHistory = ({ gameState: room }) => {
+  // Guard clause for missing data
+  if (!room || !room.gameState || !Array.isArray(room.players)) {
+    return null; 
   }
 
-  const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+  const { players } = room;
+  const { currentPlayerIndex, turns } = room.gameState;
+  
+  const currentPlayer = players[currentPlayerIndex];
+  if (!currentPlayer) {
+      return null;
+  }
+  
+  const playerTurns = turns ? turns[currentPlayer.id] : [];
 
-  // Additional Guard Clause: Ensure the 'throws' array exists before trying to slice it.
-  if (!currentPlayer.throws) {
-    return null;
+  // Additional Guard Clause: Ensure the 'turns' array for the player exists.
+  if (!playerTurns || playerTurns.length === 0) {
+    return (
+        <div className="throw-history-container">
+            <h3>Last 3 Throws</h3>
+            <ul className="throw-history-list">
+                <li>-</li>
+            </ul>
+        </div>
+    );
   }
 
   // Get the last 3 throws for display
-  const recentThrows = currentPlayer.throws.slice(-3);
+  const recentThrows = playerTurns.slice(-3);
 
   return (
     <div className="throw-history-container">

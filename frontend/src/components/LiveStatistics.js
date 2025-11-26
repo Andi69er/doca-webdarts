@@ -1,14 +1,14 @@
 import React from 'react';
 
-function LiveStatistics({ gameState }) {
-  // DIE FINALE, KORREKTE WACHE, DIE DEN ABSTURZ VERHINDERT
-  if (!gameState) {
+function LiveStatistics({ gameState: room }) {
+  // Guard against missing data
+  if (!room || !Array.isArray(room.players) || !room.gameState) {
     return <div>Lade Statistiken...</div>;
   }
 
-  // DEINE KORREKTE LOGIK BLEIBT ERHALTEN
-  const players = gameState.players || [];
-  const currentStats = gameState.statistics || {};
+  const players = room.players;
+  // Statistics are not yet fully implemented in the backend gameState, so this provides a graceful fallback.
+  const currentStats = room.gameState.statistics || {};
 
   const calculateFirstNineAvg = (firstNineDarts) => {
     if (!firstNineDarts || firstNineDarts.length === 0) return 0;

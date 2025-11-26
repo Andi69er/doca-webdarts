@@ -37,7 +37,7 @@ const styles = {
   }
 };
 
-function NumberPad({ onScoreInput, isActive, gameState }) {
+function NumberPad({ onScoreInput, isActive, gameState: room }) {
   const [input, setInput] = useState('');
 
   const handleNumberClick = (number) => {
@@ -59,7 +59,7 @@ function NumberPad({ onScoreInput, isActive, gameState }) {
     setInput('');
   };
   
-  const waitingTimer = gameState?.waitingTimer;
+  const waitingTimer = room?.gameState?.waitingTimer;
 
 
   return (
