@@ -72,10 +72,7 @@ function Game() {
         const handleConnect = () => {
             console.log('Socket reconnected, fetching game state for room:', roomId);
             socket.emit('getGameState', roomId);
-            // Rejoin room if user ID is available
-            if (user.id) {
-                socket.emit('joinRoom', { roomId: roomId });
-            }
+            // Note: Rejoining room happens in the separate useEffect when user.id is available
         };
 
         const handleDisconnect = () => {
@@ -107,6 +104,23 @@ function Game() {
             setUser(prev => ({ ...prev, id: socket.id }));
         }
     }, [socket]);
+
+    // Handle socket reconnection after user ID is available
+    useEffect(() => {
+        if (!socket || !user.id) return;
+
+        const handleConnect = () => {
+            console.log('Socket reconnected, user ID available, restoring room state for:', user.id);
+            socket.emit('getGameState', roomId);
+            socket.emit('joinRoom', { roomId: roomId });
+        };
+
+        socket.on('connect', handleConnect);
+
+        return () => {
+            socket.off('connect', handleConnect);
+        };
+    }, [socket, user.id, roomId]);
 
     // HINWEIS: Die 'user' Logik ist hier vereinfacht, da sie aus dem Context kommt.
     // Die folgenden Funktionen bleiben für die Interaktion mit dem Backend.
