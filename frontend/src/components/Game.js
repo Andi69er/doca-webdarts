@@ -140,7 +140,7 @@ function Game() {
                     socket={socket}
                     roomId={roomId}
                     user={user}
-                    messages={gameState.chatMessages}
+                    messages={gameState.chatMessages || []}
                 />
             </div>
 

@@ -23,13 +23,15 @@ function initializeSocket(io) {
         socket.on('createRoom', (roomData) => {
             console.log('!!! createRoom EVENT VOM CLIENT EMPFANGEN !!! Daten:', roomData);
 
-            const startScore = parseInt(roomData.gameOptions.startingScore, 10) || 501;
+            // Safely handle gameOptions to prevent server crash
+            const gameOptions = roomData.gameOptions || {};
+            const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
             const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
                 name: roomData.roomName,
                 gameMode: roomData.gameMode,
-                gameOptions: roomData.gameOptions, // Store game options
+                gameOptions: gameOptions, // Store sanitized game options
                 hostId: socket.id, // Store host ID
                 maxPlayers: 2,
                 players: [{ id: socket.id, name: `Player ${Math.floor(Math.random() * 1000)}`}],
@@ -53,7 +55,9 @@ function initializeSocket(io) {
 
             if (room) {
                 if (room.players.length < room.maxPlayers) {
-                    const startScore = room.gameOptions.startingScore || 501;
+                    // Safely handle gameOptions to prevent server crash
+                    const gameOptions = room.gameOptions || {};
+                    const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
                     const newPlayer = {
                         id: socket.id,
