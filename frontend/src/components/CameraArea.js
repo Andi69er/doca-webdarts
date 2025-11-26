@@ -330,7 +330,11 @@ function CameraArea({ gameState, user, roomId, socket }) {
                         {remoteStreams[player.id] ? (
                           <video
                             ref={el => {
-                              if (el) el.srcObject = remoteStreams[player.id];
+                              console.log('Setting video srcObject for player', player.name, ':', remoteStreams[player.id]);
+                              if (el) {
+                                el.srcObject = remoteStreams[player.id];
+                                console.log('Video element srcObject set for', player.name);
+                              }
                             }}
                             autoPlay
                             playsInline
@@ -338,7 +342,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
                           />
                         ) : (
                           <div className="video-overlay">
-                            <span>Warten auf {player.name}</span>
+                            <span>Warten auf {player.name} (ID: {player.id})</span>
+                            <small>Remote streams: {Object.keys(remoteStreams).join(', ')}</small>
                           </div>
                         )}
                       </div>
