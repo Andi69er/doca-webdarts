@@ -44,16 +44,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
     return pc;
   };
 
-  const startWebRTCConnection = (targetUserId) => {
+  const startWebRTCConnection = (targetUserId, streamToUse) => {
     // Check if connection already exists
     if (peerConnections[targetUserId]) {
       console.log('Connection already exists for', targetUserId);
-      return;
-    }
-
-    // Only initiate if this user has lower ID (to avoid both sides trying to connect)
-    if (user.id >= targetUserId) {
-      console.log('Not initiating connection, target has lower/equal ID:', targetUserId);
       return;
     }
 
@@ -63,8 +57,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
     setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
 
     // Add local stream tracks to the connection
-    if (localStream) {
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    if (streamToUse) {
+      streamToUse.getTracks().forEach(track => pc.addTrack(track, streamToUse));
     }
 
     // Create offer
@@ -125,13 +119,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
         localVideoRef.current.srcObject = stream;
       }
 
-      // Initiate WebRTC connections with all opponents
-      gameState.players.forEach(player => {
-        if (player.id !== user?.id) {
-          startWebRTCConnection(player.id);
-        }
-      });
-
       console.log('Camera started successfully');
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -161,23 +148,24 @@ function CameraArea({ gameState, user, roomId, socket }) {
     };
   }, [localStream]);
 
+  // Initiate WebRTC connections when localStream is ready or players change
+  useEffect(() => {
+    if (localStream && gameState.players) {
+      console.log('Local stream available or players changed, initiating WebRTC connections');
+      gameState.players.forEach(player => {
+        if (player.id !== user?.id && !peerConnections[player.id]) {
+          console.log('Initiating connection to:', player.name);
+          startWebRTCConnection(player.id, localStream);
+        }
+      });
+    }
+  }, [localStream, gameState.players]);
+
   // Check if user is in current room
   const userInRoom = gameState.players?.find(p => p.id === user?.id);
 
   // Check if game has started
   const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
-
-  // Auto-initiate connections when players join and camera is active
-  useEffect(() => {
-    if (isCameraEnabled && gameState.players) {
-      gameState.players.forEach(player => {
-        if (player.id !== user?.id && !peerConnections[player.id]) {
-          console.log('Auto-initiating connection to newly joined player:', player.name);
-          startWebRTCConnection(player.id);
-        }
-      });
-    }
-  }, [gameState.players, isCameraEnabled]);
 
   // WebRTC socket listeners
   useEffect(() => {
