@@ -237,6 +237,19 @@ function initializeSocket(io) {
             console.log(`Rematch in Raum ${roomId} gestartet. Spieler getauscht, Einstellungen übernommen.`);
         });
 
+        // WebRTC signaling for camera streams
+        socket.on('camera-offer', (data) => {
+            socket.to(data.roomId).emit('camera-offer', data);
+        });
+
+        socket.on('camera-answer', (data) => {
+            socket.to(data.roomId).emit('camera-answer', data);
+        });
+
+        socket.on('camera-ice', (data) => {
+            socket.to(data.roomId).emit('camera-ice', data);
+        });
+
         socket.on('disconnect', () => {
             // Remove user from connected users list
             connectedUsers = connectedUsers.filter(user => user.id !== socket.id);

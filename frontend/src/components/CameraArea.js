@@ -7,7 +7,65 @@ function CameraArea({ gameState, user, roomId, socket }) {
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
+  // WebRTC state
+  const [peerConnections, setPeerConnections] = useState({});
+  const [remoteStreams, setRemoteStreams] = useState({});
+
   const localVideoRef = useRef(null);
+
+  // WebRTC helper functions
+  const createPeerConnection = (targetUserId) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit('camera-ice', {
+          roomId,
+          from: user.id,
+          to: targetUserId,
+          candidate: event.candidate
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      const remoteStream = event.streams[0];
+      setRemoteStreams(prev => ({
+        ...prev,
+        [targetUserId]: remoteStream
+      }));
+    };
+
+    return pc;
+  };
+
+  const startWebRTCConnection = (targetUserId) => {
+    const pc = createPeerConnection(targetUserId);
+    setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
+
+    // Add local stream tracks to the connection
+    if (localStream) {
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+
+    // Create offer
+    pc.createOffer()
+      .then(offer => pc.setLocalDescription(offer))
+      .then(() => {
+        socket.emit('camera-offer', {
+          roomId,
+          from: user.id,
+          to: targetUserId,
+          offer: pc.localDescription
+        });
+      })
+      .catch(error => console.error('Error creating offer:', error));
+  };
 
   // Get available camera devices
   useEffect(() => {
@@ -52,6 +110,13 @@ function CameraArea({ gameState, user, roomId, socket }) {
         localVideoRef.current.srcObject = stream;
       }
 
+      // Initiate WebRTC connections with all opponents
+      gameState.players.forEach(player => {
+        if (player.id !== user?.id) {
+          startWebRTCConnection(player.id);
+        }
+      });
+
       console.log('Camera started successfully');
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -86,6 +151,66 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Check if game has started
   const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
+
+  // WebRTC socket listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCameraOffer = (data) => {
+      if (data.to !== user.id) return;
+
+      const pc = createPeerConnection(data.from);
+      setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+
+      // Add local stream tracks if available
+      if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      }
+
+      pc.setRemoteDescription(new RTCSessionDescription(data.offer))
+        .then(() => pc.createAnswer())
+        .then(answer => pc.setLocalDescription(answer))
+        .then(() => {
+          socket.emit('camera-answer', {
+            roomId,
+            from: user.id,
+            to: data.from,
+            answer: pc.localDescription
+          });
+        })
+        .catch(error => console.error('Error handling offer:', error));
+    };
+
+    const handleCameraAnswer = (data) => {
+      if (data.to !== user.id) return;
+
+      const pc = peerConnections[data.from];
+      if (pc) {
+        pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+          .catch(error => console.error('Error setting remote description:', error));
+      }
+    };
+
+    const handleCameraIce = (data) => {
+      if (data.to !== user.id) return;
+
+      const pc = peerConnections[data.from];
+      if (pc) {
+        pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+          .catch(error => console.error('Error adding ICE candidate:', error));
+      }
+    };
+
+    socket.on('camera-offer', handleCameraOffer);
+    socket.on('camera-answer', handleCameraAnswer);
+    socket.on('camera-ice', handleCameraIce);
+
+    return () => {
+      socket.off('camera-offer', handleCameraOffer);
+      socket.off('camera-answer', handleCameraAnswer);
+      socket.off('camera-ice', handleCameraIce);
+    };
+  }, [socket, user.id, localStream, peerConnections]);
 
   return (
     <div className="camera-area">
@@ -148,17 +273,28 @@ function CameraArea({ gameState, user, roomId, socket }) {
                     {player.name} (Du)
                   </div>
                 </div>
-              ) : (
-                // Other players - placeholders
-                <div className="video-placeholder">
-                  <div className="remote-placeholder">
-                    <div className="video-overlay">
-                      <span>Warten auf {player.name}</span>
+                  ) : (
+                    // Other players - placeholders or videos
+                    <div className="video-placeholder">
+                      <div className="remote-placeholder">
+                        {remoteStreams[player.id] ? (
+                          <video
+                            ref={el => {
+                              if (el) el.srcObject = remoteStreams[player.id];
+                            }}
+                            autoPlay
+                            playsInline
+                            className="video-element"
+                          />
+                        ) : (
+                          <div className="video-overlay">
+                            <span>Warten auf {player.name}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="video-label">{player.name}</div>
                     </div>
-                  </div>
-                  <div className="video-label">{player.name}</div>
-                </div>
-              )}
+                  )}
             </div>
           ))}
         </div>
@@ -198,14 +334,20 @@ function CameraArea({ gameState, user, roomId, socket }) {
                   ) : (
                     // Remote player camera
                     <div className="remote-placeholder">
-                      <video
-                        autoPlay
-                        playsInline
-                        className="video-element"
-                      />
-                      <div className="video-overlay">
-                        <span>Warten auf {player.name}</span>
-                      </div>
+                      {remoteStreams[player.id] ? (
+                        <video
+                          ref={el => {
+                            if (el) el.srcObject = remoteStreams[player.id];
+                          }}
+                          autoPlay
+                          playsInline
+                          className="video-element"
+                        />
+                      ) : (
+                        <div className="video-overlay">
+                          <span>Warten auf {player.name}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="video-label">
