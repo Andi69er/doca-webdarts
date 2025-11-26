@@ -55,8 +55,9 @@
   width: 33.33%;
   background-color: #222;
   padding: 1rem;
-  border-right: 1px solid #555;
+  border-left: 1px solid #555;
   overflow-y: auto;
+  order: 3; /* Move to the right */
 }
 
 .video-container {
@@ -268,6 +269,7 @@
   flex-direction: column;
   padding: 1rem;
   overflow-y: auto;
+  order: 2;
 }
 
 .right-panel {
@@ -278,6 +280,7 @@
   border-left: 1px solid #555;
   padding: 1rem;
   overflow-y: auto;
+  order: 1;
 }
 
 .player-scores {

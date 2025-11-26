@@ -182,6 +182,51 @@ function initializeSocket(io) {
             }
         });
 
+        socket.on('checkout-selection', (data) => {
+            const { roomId, dartCount, userId } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room || !room.game) {
+                return console.error("Checkout-Selection: Game not running in this room.");
+            }
+
+            console.log(`!!! checkout-selection EVENT in Raum ${roomId} von ${userId} mit ${dartCount} Darts !!!`);
+
+            // Store the checkout darts in the game state
+            if (room.game.setCheckoutDarts) {
+                room.game.setCheckoutDarts(dartCount);
+            }
+
+            room.gameState = room.game.getGameState();
+
+            io.to(room.id).emit('game-state-update', room);
+            console.log(`Checkout selection saved for Raum ${roomId}.`);
+        });
+
+        socket.on('rematch', (data) => {
+            const { roomId, userId } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room) {
+                return console.error("Rematch: Room not found");
+            }
+
+            console.log(`!!! rematch EVENT für Raum ${roomId} von ${userId} !!!`);
+
+            // Reverse players (switch starter)
+            room.players.reverse();
+
+            // Keep same game options for automatic takeover
+            // The game settings are preserved
+
+            // Reset game state
+            room.gameState = null;
+            room.game = null;
+
+            io.to(room.id).emit('game-state-update', room);
+            console.log(`Rematch in Raum ${roomId} gestartet. Spieler getauscht, Einstellungen übernommen.`);
+        });
+
         socket.on('disconnect', () => {
             onlineUsers--;
             io.emit('updateOnlineUsers', onlineUsers);

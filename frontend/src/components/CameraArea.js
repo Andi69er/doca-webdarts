@@ -163,15 +163,15 @@ function CameraArea({ gameState, user, roomId, socket }) {
           ))}
         </div>
       ) : (
-        // DURING-GAME: Show only current player's full screen
-        <div className="full-camera-container">
+        // DURING-GAME: Show all players' cameras in splitscreen
+        <div className="splitscreen-container">
           {gameState.players.map((player) => {
             const isCurrentPlayer = player.id === gameState.players[gameState.gameState.currentPlayerIndex]?.id;
             return (
-              <div key={player.id} className="video-wrapper" style={{ display: isCurrentPlayer ? 'block' : 'none' }}>
+              <div key={player.id} className="splitscreen-player">
                 <div className="video-placeholder">
                   {player.id === user?.id ? (
-                    // Local camera if current player is user
+                    // Local camera
                     <>
                       <video
                         ref={localVideoRef}
@@ -196,7 +196,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
                       )}
                     </>
                   ) : (
-                    // Remote player camera (current player)
+                    // Remote player camera
                     <div className="remote-placeholder">
                       <video
                         autoPlay
@@ -204,12 +204,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
                         className="video-element"
                       />
                       <div className="video-overlay">
-                        <span>{player.name} wirft...</span>
+                        <span>Warten auf {player.name}</span>
                       </div>
                     </div>
                   )}
                   <div className="video-label">
-                    {player.name}'s Zug
+                    {player.name} {isCurrentPlayer ? '(wirft)' : ''}
                   </div>
                 </div>
               </div>

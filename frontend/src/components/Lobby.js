@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import gameModes from '../gameModes';
+import OnlineUsers from './OnlineUsers';
 import './Lobby.css';
 
 const Lobby = memo(() => {
@@ -171,6 +172,8 @@ const Lobby = memo(() => {
             </header>
 
             <div className="lobby-content">
+                <OnlineUsers />
+
                 <section className="lobby-section">
                     <h3>Neuen Spielraum erstellen</h3>
                     <form onSubmit={handleCreateRoom}>

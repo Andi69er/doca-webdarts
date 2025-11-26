@@ -145,7 +145,71 @@ class CricketGame {
 }
 
 class BullOffGame {
-  // ... (Keeping the class structure but implementation can be added later)
+  constructor(options = {}) {
+    this.players = [];
+    this.currentPlayerIndex = 0;
+    this.dartsThrownInTurn = 0;
+    this.gameWinner = null;
+    this.throwHistory = {}; // playerId -> array of throws [{score, multiplier, hitBull}]
+  }
+
+  initializePlayers(players) {
+    this.players = players;
+    players.forEach(player => {
+      this.throwHistory[player.id] = [];
+    });
+  }
+
+  // Simple validation for Bull-Off: only allow bull (25) and double bull (50) scores
+  validateThrow(throwData) {
+    const score = throwData;
+    return score === 25 || score === 50; // Only bull hits count
+  }
+
+  processThrow(playerId, throwData) {
+    const currentPlayer = this.players[this.currentPlayerIndex];
+    if (playerId !== currentPlayer.id) return { valid: false, reason: 'Not your turn' };
+    if (this.dartsThrownInTurn >= 3) return { valid: false, reason: 'Turn over' };
+
+    const score = throwData; // Assuming throwData is just the score for now
+
+    if (!this.validateThrow(score)) {
+      // Non-bull throw: just consume the dart, no win
+      this.throwHistory[playerId].push({ score, hitBull: false });
+      this.dartsThrownInTurn++;
+      if (this.dartsThrownInTurn >= 3) {
+        this.nextTurn();
+      }
+      return { valid: true, hitBull: false, dartsThrown: this.dartsThrownInTurn };
+    }
+
+    // Bull hit! Win immediately
+    this.throwHistory[playerId].push({ score, hitBull: true });
+    this.gameWinner = playerId;
+    this.dartsThrownInTurn++;
+
+    return { valid: true, hitBull: true, winner: this.gameWinner, dartsThrown: this.dartsThrownInTurn };
+  }
+
+  nextTurn() {
+    this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+    this.dartsThrownInTurn = 0;
+  }
+
+  getGameState() {
+    return {
+      mode: 'BullOff',
+      players: this.players,
+      currentPlayerIndex: this.currentPlayerIndex,
+      dartsThrownInTurn: this.dartsThrownInTurn,
+      gameWinner: this.gameWinner,
+      throwHistory: this.throwHistory
+    };
+  }
+
+  setCheckoutDarts(darts) {
+    // Not applicable for Bull-Off
+  }
 }
 
 
