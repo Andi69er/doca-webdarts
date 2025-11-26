@@ -28,7 +28,13 @@ function Game() {
 
         // Event Listeners aufsetzen
         const handleGameStateUpdate = (newGameState) => {
+            console.log('Debug: Received game-state-update event:', newGameState);
             setGameState(newGameState);
+        };
+
+        const handleGameState = (receivedGameState) => {
+            console.log('Debug: Received gameState event:', receivedGameState);
+            setGameState(receivedGameState);
         };
 
         const handleCheckoutSuggestions = (suggestions) => {
@@ -54,6 +60,7 @@ function Game() {
         };
 
         socket.on('game-state-update', handleGameStateUpdate);
+        socket.on('gameState', handleGameState);
         socket.on('checkout-suggestions', handleCheckoutSuggestions);
         socket.on('waiting-timer-start', handleWaitingTimerStart);
         socket.on('receiveMessage', handleReceiveMessage);
@@ -64,8 +71,10 @@ function Game() {
         // Cleanup-Funktion
         return () => {
             socket.off('game-state-update', handleGameStateUpdate);
+            socket.off('gameState', handleGameState);
             socket.off('checkout-suggestions', handleCheckoutSuggestions);
-            socket.off('waiting-timer-start', handleReceiveMessage);
+            socket.off('waiting-timer-start', handleWaitingTimerStart);
+            socket.off('receiveMessage', handleReceiveMessage);
             if (waitingTimerRef.current) clearInterval(waitingTimerRef.current);
         };
     }, [socket, roomId]); // Abhängigkeiten korrigiert
