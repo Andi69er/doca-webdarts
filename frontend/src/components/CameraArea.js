@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 function CameraArea({ gameState, user, roomId, socket }) {
+  console.log('CameraArea render:', { user, roomId, socket, players: gameState.players });
+
   const [localStream, setLocalStream] = useState(null);
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
@@ -10,6 +12,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
   // WebRTC state
   const [peerConnections, setPeerConnections] = useState({});
   const [remoteStreams, setRemoteStreams] = useState({});
+
+  console.log('CameraArea state:', { localStream, remoteStreams, peerConnections });
 
   const localVideoRef = useRef(null);
 
@@ -22,26 +26,35 @@ function CameraArea({ gameState, user, roomId, socket }) {
       ]
     });
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit('camera-ice', {
-          roomId,
-          from: user.id,
-          to: targetUserId,
-          candidate: event.candidate
-        });
-      }
-    };
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      console.log('Sending ICE candidate to', targetUserId);
+      socket.emit('camera-ice', {
+        roomId,
+        from: user.id,
+        to: targetUserId,
+        candidate: event.candidate
+      });
+    }
+  };
 
-    pc.ontrack = (event) => {
-      const remoteStream = event.streams[0];
-      setRemoteStreams(prev => ({
+  pc.ontrack = (event) => {
+    const remoteStream = event.streams[0];
+    console.log('Received remote stream from:', targetUserId, remoteStream);
+    setRemoteStreams(prev => {
+      console.log('Updating remoteStreams with:', { [targetUserId]: remoteStream });
+      return {
         ...prev,
         [targetUserId]: remoteStream
-      }));
-    };
+      };
+    });
+  };
 
-    return pc;
+  pc.onconnectionstatechange = () => {
+    console.log('WebRTC connection state for', targetUserId, ':', pc.connectionState);
+  };
+
+  return pc;
   };
 
   const startWebRTCConnection = (targetUserId, streamToUse) => {
