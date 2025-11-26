@@ -59,7 +59,6 @@ function Game() {
         socket.on('receiveMessage', handleReceiveMessage);
 
         // KORREKTUR: aktiv den GameState anfordern, sobald die Komponente geladen wird.
-        console.log(`!!! DEBUG Game: Emitting getGameState for room ${roomId} !!!`);
         socket.emit('getGameState', roomId);
 
         // Cleanup-Funktion

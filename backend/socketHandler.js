@@ -16,6 +16,7 @@ function initializeSocket(io) {
         });
 
         socket.on('getOnlineUsers', () => {
+            console.log(`[GET_ONLINE_USERS] User ${socket.id} requested online users count: ${onlineUsers}, Timestamp: ${new Date().toISOString()}`);
             socket.emit('updateOnlineUsers', onlineUsers);
         });
 
@@ -104,7 +105,7 @@ function initializeSocket(io) {
                 }
             });
             io.emit('updateRooms', rooms);
-            console.log(`User disconnected: ${socket.id}, Online Users: ${onlineUsers}`);
+            console.log(`[DISCONNECT] User disconnected: ${socket.id}, Online Users: ${onlineUsers}, Timestamp: ${new Date().toISOString()}`);
         });
     });
 }

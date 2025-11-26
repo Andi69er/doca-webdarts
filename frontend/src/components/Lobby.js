@@ -21,9 +21,6 @@ const Lobby = memo(() => {
     const [winType, setWinType] = useState('firstTo');
     const [winNumber, setWinNumber] = useState('1');
     const [whoStartsUI, setWhoStartsUI] = useState('random');
-    // Add debugging for gameMode initialization
-    console.log('DEBUG: gameModes imported:', gameModes);
-    console.log('DEBUG: Object.keys(gameModes):', Object.keys(gameModes));
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const navigate = useNavigate();
@@ -52,7 +49,6 @@ const Lobby = memo(() => {
             });
     
             socket.on('roomCreated', ({ roomId }) => {
-                console.log('DEBUG: Received roomCreated event:', { roomId });
                 navigate(`/game/${roomId}`);
             });
     
@@ -105,11 +101,6 @@ const Lobby = memo(() => {
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
-        console.log('DEBUG: handleCreateRoom called');
-        console.log('DEBUG: gameMode:', gameMode);
-        console.log('DEBUG: whoStartsUI:', whoStartsUI);
-        console.log('DEBUG: socketConnected:', socketConnected);
-        console.log('DEBUG: socket id:', socket ? socket.id : 'no socket');
         let gameOptions = {};
         if (gameMode === 'X01Game') {
             const parsedStartingScore = parseInt(startingScore);
@@ -163,18 +154,12 @@ const Lobby = memo(() => {
 
     const handleSendMessage = (e) => {
         e.preventDefault();
-        console.log('DEBUG Lobby: handleSendMessage called, newMessage:', newMessage);
-        console.log('DEBUG Lobby: Socket connected:', socketConnected); // Loggt den neuen Status
-        console.log('DEBUG Lobby: Socket ID:', socket ? socket.id : 'undefined');
         if (newMessage.trim() && socket && socketConnected) {
             const messageData = { text: newMessage };
-            console.log('DEBUG Lobby: About to emit sendMessage with data:', messageData);
             socket.emit('sendMessage', messageData);
-            console.log('DEBUG Lobby: Emitted sendMessage');
             setNewMessage('');
-            console.log('DEBUG Lobby: Message sent and input cleared');
         } else {
-             console.error('Socket not connected or message empty, cannot send message.');
+              console.error('Socket not connected or message empty, cannot send message.');
         }
     };
 

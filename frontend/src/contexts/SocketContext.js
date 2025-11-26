@@ -21,7 +21,7 @@ export const SocketProvider = ({ children }) => {
         });
 
         newSocket.on('connect', () => {
-            console.log('Connected to server:', newSocket.id);
+            console.log(`[FRONTEND_CONNECT] Connected to server: ${newSocket.id}, Timestamp: ${new Date().toISOString()}`);
             // NEU: Status auf 'verbunden' setzen
             setSocketConnected(true);
         });
