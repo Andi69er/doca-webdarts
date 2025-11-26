@@ -64,7 +64,14 @@ function CameraArea({ gameState, user, roomId, socket }) {
       return;
     }
 
-    console.log('Initiating WebRTC connection to', targetUserId);
+    // Use lexicographic comparison of IDs to ensure only one player initiates
+    // This prevents both players from trying to initiate simultaneously
+    if (user.id < targetUserId) {
+      console.log('We have lower ID, initiating WebRTC connection to', targetUserId);
+    } else {
+      console.log('We have higher ID, waiting for connection from', targetUserId);
+      return; // Don't initiate, let the other player initiate
+    }
 
     const pc = createPeerConnection(targetUserId);
     setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
