@@ -22,9 +22,9 @@ function initializeSocket(io) {
 
         socket.on('createRoom', (roomData) => {
             console.log('!!! createRoom EVENT VOM CLIENT EMPFANGEN !!! Daten:', roomData);
-
+            
             // Safely handle gameOptions to prevent server crash
-            const gameOptions = roomData.gameOptions || {};
+            const gameOptions = (roomData && roomData.gameOptions) ? roomData.gameOptions : {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
             const newRoom = {
@@ -38,13 +38,23 @@ function initializeSocket(io) {
                 gameState: null, // Game state is null until game starts
                 game: null // No game instance until game starts
             };
+            console.log(`[CREATE_ROOM] New room object created:`, newRoom);
             
             // Manually set initial score for the first player
             newRoom.players[0].score = startScore;
 
+            console.log(`[CREATE_ROOM] Before pushing room to array. Current rooms: ${rooms.length}`);
             rooms.push(newRoom);
+            console.log(`[CREATE_ROOM] After pushing room to array. Current rooms: ${rooms.length}`);
+            
+            console.log(`[CREATE_ROOM] Before joining socket to room ${newRoom.id}`);
             socket.join(newRoom.id);
+            console.log(`[CREATE_ROOM] After joining socket to room ${newRoom.id}`);
+
+            console.log(`[CREATE_ROOM] Before emitting 'roomCreated' for roomId: ${newRoom.id}`);
             socket.emit('roomCreated', { roomId: newRoom.id });
+            console.log(`[CREATE_ROOM] After emitting 'roomCreated' for roomId: ${newRoom.id}`);
+
             io.emit('updateRooms', rooms);
             console.log(`Raum erfolgreich erstellt: ${newRoom.name} (${newRoom.id})`);
         });
@@ -153,7 +163,7 @@ function initializeSocket(io) {
                 console.log(`Raum ${roomId} gefunden. Sende gameState an ${socket.id}.`);
                 socket.emit('gameState', room); // FIX: Send the full room object
             } else {
-                console.log(`WARNUNG: Raum ${roomId} wurde angefragt, aber nicht gefunden.`);
+                console.log(`WARNUNG: Raum ${roomId} wurde anfragt, aber nicht gefunden.`);
             }
         });
 
