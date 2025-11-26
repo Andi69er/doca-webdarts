@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import gameModes from '../gameModes';
 import './Lobby.css';
 
-const Lobby = () => {
+const Lobby = memo(() => {
+    console.log('DEBUG: Lobby component rendered');
+    console.log('DEBUG: gameModes imported:', gameModes);
+    console.log('DEBUG: Object.keys(gameModes):', Object.keys(gameModes));
     const { socket, socketConnected } = useSocket(); // NEU: socketConnected hier abrufen
     const [rooms, setRooms] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState(0);
@@ -18,6 +21,9 @@ const Lobby = () => {
     const [winType, setWinType] = useState('firstTo');
     const [winNumber, setWinNumber] = useState('1');
     const [whoStartsUI, setWhoStartsUI] = useState('random');
+    // Add debugging for gameMode initialization
+    console.log('DEBUG: gameModes imported:', gameModes);
+    console.log('DEBUG: Object.keys(gameModes):', Object.keys(gameModes));
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const navigate = useNavigate();
@@ -50,9 +56,7 @@ const Lobby = () => {
                 navigate(`/game/${roomId}`);
             });
     
-            console.log('DEBUG: Emitting getRooms event');
             socket.emit('getRooms');
-            console.log('DEBUG: Emitting getOnlineUsers event');
             socket.emit('getOnlineUsers');
     
             return () => {
@@ -101,10 +105,20 @@ const Lobby = () => {
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
+        console.log('DEBUG: handleCreateRoom called');
+        console.log('DEBUG: gameMode:', gameMode);
+        console.log('DEBUG: whoStartsUI:', whoStartsUI);
+        console.log('DEBUG: socketConnected:', socketConnected);
+        console.log('DEBUG: socket id:', socket ? socket.id : 'no socket');
         let gameOptions = {};
         if (gameMode === 'X01Game') {
+            const parsedStartingScore = parseInt(startingScore);
+            if (isNaN(parsedStartingScore)) {
+                alert("Ungültiger Starting Score");
+                return;
+            }
             gameOptions = {
-                startingScore: parseInt(startingScore),
+                startingScore: parsedStartingScore,
                 sets: parseInt(sets),
                 legs: legs === 'unlimited' ? -1 : parseInt(legs),
                 outMode,
@@ -128,12 +142,8 @@ const Lobby = () => {
             whoStarts: whoStartsUI,
             gameOptions
         };
-        console.log('DEBUG: Raum-Erstellungs-Button wurde geklickt');
-        console.log('DEBUG: Form data:', roomData);
-        console.log('DEBUG: Socket connected:', socketConnected); // Loggt den neuen Status
-        console.log('DEBUG: Socket ID:', socket ? socket.id : 'undefined');
+        console.log('DEBUG: roomData to emit:', roomData);
         if (socket && socketConnected) {
-              console.log('DEBUG: Emitting createRoom event with data:', roomData);
             socket.emit('createRoom', roomData);
         } else {
             console.error('Socket not connected, cannot create room.');
@@ -141,17 +151,15 @@ const Lobby = () => {
         }
     };
 
-    const handleJoinRoom = (roomId) => {
-        console.log(`DEBUG: Handle join room clicked for roomId: ${roomId}`);
+    const handleJoinRoom = useCallback((roomId) => {
         if (socket && socketConnected) {
-            console.log('DEBUG: Emitting joinRoom event:', { roomId });
             socket.emit('joinRoom', { roomId });
             navigate(`/game/${roomId}`);
         } else {
             console.error('Socket not connected, cannot join room.');
             alert('Verbindung zum Server wird hergestellt, bitte kurz warten.');
         }
-    };
+    }, [socket, socketConnected, navigate]);
 
     const handleSendMessage = (e) => {
         e.preventDefault();
@@ -170,12 +178,7 @@ const Lobby = () => {
         }
     };
 
-    console.log('DEBUG: Lobby component rendering');
-    console.log('DEBUG: Current rooms:', rooms.length);
-    console.log('DEBUG: Online users:', onlineUsers);
-    console.log('DEBUG: Lobby component rendering');
-    console.log('DEBUG: Current rooms:', rooms.length);
-    console.log('DEBUG: Online users:', onlineUsers);
+    // Component renders
 
     return (
         <div className="lobby-container">
@@ -307,6 +310,6 @@ const Lobby = () => {
             </div>
         </div>
     );
-};
+});
 
 export default Lobby;

@@ -20,17 +20,14 @@ function Game() {
     const waitingTimerRef = useRef(null);
 
     useEffect(() => {
-        console.log('DEBUG Game: Component mounted. roomId:', roomId);
-        console.log('DEBUG Game: Socket instance:', socket);
 
         if (!socket) {
-            console.error("DEBUG Game: Socket ist beim Mounten nicht verfügbar.");
+            console.error("Socket not available on mount.");
             return;
         }
 
         // Event Listeners aufsetzen
         const handleGameStateUpdate = (newGameState) => {
-            console.log("!!! DEBUG Game: Received game-state-update !!!", newGameState);
             setGameState(newGameState);
         };
 
