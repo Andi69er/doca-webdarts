@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 function CameraArea({ gameState, user, roomId, socket }) {
-  console.log('CameraArea render:', { user, roomId, socket, players: gameState.players });
+  console.log('🎥 CameraArea loaded for user:', user?.id, 'Room:', roomId);
 
   const [localStream, setLocalStream] = useState(null);
   const [devices, setDevices] = useState([]);
@@ -12,8 +12,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
   // WebRTC state
   const [peerConnections, setPeerConnections] = useState({});
   const [remoteStreams, setRemoteStreams] = useState({});
-
-  console.log('CameraArea state:', { localStream, remoteStreams, peerConnections });
 
   const localVideoRef = useRef(null);
 
@@ -64,14 +62,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
       return;
     }
 
-    // Use lexicographic comparison of IDs to ensure only one player initiates
-    // This prevents both players from trying to initiate simultaneously
-    if (user.id < targetUserId) {
-      console.log('We have lower ID, initiating WebRTC connection to', targetUserId);
-    } else {
-      console.log('We have higher ID, waiting for connection from', targetUserId);
-      return; // Don't initiate, let the other player initiate
-    }
+    console.log('Initiating WebRTC connection to', targetUserId);
 
     const pc = createPeerConnection(targetUserId);
     setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
@@ -81,6 +72,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
       streamToUse.getTracks().forEach(track => pc.addTrack(track, streamToUse));
     }
 
+    // Both players will try to initiate - WebRTC handles the collision
     // Create offer
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
