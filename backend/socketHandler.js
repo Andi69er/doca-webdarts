@@ -90,7 +90,7 @@ function initializeSocket(io) {
                     console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten. Raum hat jetzt ${room.players.length} Spieler:`, room.players.map(p => p.id));
 
                     // CRITICAL: Send the updated room to EVERYONE in the room (including existing players)
-                    io.to(room.id).emit('gameStateUpdate', room);
+                    io.to(room.id).emit('game-state-update', room);
                     // Also send to the new player individually
                     socket.emit('gameState', room);
                     io.emit('updateRooms', rooms);
@@ -299,7 +299,7 @@ function initializeSocket(io) {
                     if (room.players.length === 0) {
                         rooms = rooms.filter(r => r.id !== room.id);
                     }
-                    io.to(room.id).emit('gameStateUpdate', room);
+                    io.to(room.id).emit('game-state-update', room);
                 }
             });
             io.emit('updateRooms', rooms);
