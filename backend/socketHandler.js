@@ -81,7 +81,7 @@ function initializeSocket(io) {
             const room = rooms.find(r => r.id === roomId);
             if(room) {
                 console.log(`Raum ${roomId} gefunden. Sende gameState an ${socket.id}.`);
-                socket.emit('gameState', room.gameState);
+                socket.emit('gameState', room); // FIX: Send the full room object
             } else {
                 console.log(`WARNUNG: Raum ${roomId} wurde angefragt, aber nicht gefunden.`);
             }
@@ -89,7 +89,8 @@ function initializeSocket(io) {
 
         socket.on('sendMessage', (message) => {
             console.log('!!! sendMessage EVENT VOM CLIENT EMPFANGEN !!! Nachricht:', message);
-            io.emit('receiveMessage', { user: socket.id, text: message.text });
+            // FIX: Broadcast to the specific room and send the original message object
+            io.to(message.roomId).emit('receiveMessage', message);
         });
 
         socket.on('disconnect', () => {
