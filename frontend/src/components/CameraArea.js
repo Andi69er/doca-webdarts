@@ -204,18 +204,20 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
       console.log('Received offer from', data.from, 'current user:', user.id);
 
-      const pc = createPeerConnection(data.from);
+      // CRITICAL: Only accept WebRTC offers if we have a local stream ready!
+      if (!localStream) {
+        console.warn('❌ REJECTING WebRTC offer - no local stream available yet!');
+        console.warn('Waiting for local camera to be enabled before accepting offers...');
+        return; // Don't create peer connection without local stream
+      }
 
+      console.log('✅ ACCEPTING WebRTC offer - local stream ready!');
+      const pc = createPeerConnection(data.from);
       console.log('Created peer connection for', data.from);
-      console.log('Local stream available:', !!localStream);
 
       // Add local stream tracks BEFORE setting remote description
-      if (localStream) {
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-        console.log('Added', localStream.getTracks().length, 'tracks to peer connection');
-      } else {
-        console.warn('No local stream available when handling offer!');
-      }
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      console.log('✅ Added', localStream.getTracks().length, 'tracks to peer connection');
 
       pc.setRemoteDescription(new RTCSessionDescription(data.offer))
         .then(() => {
