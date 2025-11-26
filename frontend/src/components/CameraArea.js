@@ -163,10 +163,23 @@ function CameraArea({ gameState, user, roomId, socket }) {
     };
   }, [localStream]);
 
-  // Initiate WebRTC connections when localStream is ready or players change
+  // Initiate WebRTC connections when players change (separate from localStream setup)
   useEffect(() => {
-    if (localStream && gameState.players) {
-      console.log('Local stream available or players changed, initiating WebRTC connections');
+    if (localStream && gameState.players && gameState.players.length > 1) {
+      console.log('Players list changed, checking for missing WebRTC connections');
+      gameState.players.forEach(player => {
+        if (player.id !== user?.id && !peerConnections[player.id]) {
+          console.log('Initiating MISSING connection to:', player.name, '(ID:', player.id, ')');
+          startWebRTCConnection(player.id, localStream);
+        }
+      });
+    }
+  }, [localStream, gameState.players]); // This should trigger when players array changes
+
+  // Also try to connect when local stream becomes available
+  useEffect(() => {
+    if (localStream && gameState.players && gameState.players.length > 1) {
+      console.log('Local stream became available, initiating connections to other players');
       gameState.players.forEach(player => {
         if (player.id !== user?.id && !peerConnections[player.id]) {
           console.log('Initiating connection to:', player.name);
@@ -174,7 +187,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
         }
       });
     }
-  }, [localStream, gameState.players]);
+  }, [localStream, gameState.players, user?.id]);
 
   // Check if user is in current room
   const userInRoom = gameState.players?.find(p => p.id === user?.id);
