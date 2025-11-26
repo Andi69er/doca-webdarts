@@ -45,6 +45,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
   };
 
   const startWebRTCConnection = (targetUserId) => {
+    // Check if connection already exists
+    if (peerConnections[targetUserId]) {
+      console.log('Connection already exists for', targetUserId);
+      return;
+    }
+
     const pc = createPeerConnection(targetUserId);
     setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
 
@@ -57,6 +63,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
       .then(() => {
+        console.log('Sending offer to', targetUserId);
         socket.emit('camera-offer', {
           roomId,
           from: user.id,
@@ -152,6 +159,18 @@ function CameraArea({ gameState, user, roomId, socket }) {
   // Check if game has started
   const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
 
+  // Auto-initiate connections when players join and camera is active
+  useEffect(() => {
+    if (isCameraEnabled && gameState.players) {
+      gameState.players.forEach(player => {
+        if (player.id !== user?.id && !peerConnections[player.id]) {
+          console.log('Auto-initiating connection to newly joined player:', player.name);
+          startWebRTCConnection(player.id);
+        }
+      });
+    }
+  }, [gameState.players, isCameraEnabled]);
+
   // WebRTC socket listeners
   useEffect(() => {
     if (!socket) return;
@@ -159,10 +178,11 @@ function CameraArea({ gameState, user, roomId, socket }) {
     const handleCameraOffer = (data) => {
       if (data.to !== user.id) return;
 
-      const pc = createPeerConnection(data.from);
-      setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+      console.log('Received offer from', data.from);
 
-      // Add local stream tracks if available
+      const pc = createPeerConnection(data.from);
+
+      // Add local stream tracks BEFORE setting remote description
       if (localStream) {
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
       }
@@ -171,6 +191,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
         .then(() => pc.createAnswer())
         .then(answer => pc.setLocalDescription(answer))
         .then(() => {
+          // Now set the peer connection in state
+          setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+
+          console.log('Sending answer to', data.from);
           socket.emit('camera-answer', {
             roomId,
             from: user.id,
