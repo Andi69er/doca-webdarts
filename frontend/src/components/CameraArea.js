@@ -15,6 +15,9 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   const localVideoRef = useRef(null);
 
+  // Track connection status
+  // const [isConnected, setIsConnected] = useState(true);
+
   // WebRTC helper functions
   const createPeerConnection = (targetUserId) => {
     const pc = new RTCPeerConnection({

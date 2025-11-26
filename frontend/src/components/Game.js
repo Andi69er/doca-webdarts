@@ -68,7 +68,24 @@ function Game() {
         socket.on('waiting-timer-start', handleWaitingTimerStart);
         socket.on('receiveMessage', handleReceiveMessage);
 
-        // KORREKTUR: aktiv den GameState anfordern, sobald die Komponente geladen wird.
+        // Handle socket reconnection to restore game state
+        const handleConnect = () => {
+            console.log('Socket reconnected, fetching game state for room:', roomId);
+            socket.emit('getGameState', roomId);
+            // Rejoin room if user ID is available
+            if (user.id) {
+                socket.emit('joinRoom', { roomId: roomId });
+            }
+        };
+
+        const handleDisconnect = () => {
+            console.log('Socket disconnected from room:', roomId);
+        };
+
+        socket.on('connect', handleConnect);
+        socket.on('disconnect', handleDisconnect);
+
+        // Initial game state request
         socket.emit('getGameState', roomId);
 
         // Cleanup-Funktion
@@ -78,6 +95,8 @@ function Game() {
             socket.off('checkout-suggestions', handleCheckoutSuggestions);
             socket.off('waiting-timer-start', handleWaitingTimerStart);
             socket.off('receiveMessage', handleReceiveMessage);
+            socket.off('connect', handleConnect);
+            socket.off('disconnect', handleDisconnect);
             if (waitingTimerRef.current) clearInterval(waitingTimerRef.current);
         };
     }, [socket, roomId]); // Abhängigkeiten korrigiert
