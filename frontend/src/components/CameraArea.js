@@ -178,11 +178,13 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Also try to connect when local stream becomes available
   useEffect(() => {
+    console.log('🔄 DEPENDENCY CHECK: localStream:', !!localStream, 'players:', gameState.players?.length, 'user.id:', user?.id);
     if (localStream && gameState.players && gameState.players.length > 1) {
-      console.log('Local stream became available, initiating connections to other players');
+      console.log('✅ Local stream became available, initiating connections to other players');
       gameState.players.forEach(player => {
+        console.log('🧐 Checking player:', player.name, '(ID:', player.id, ') vs user:', user?.id);
         if (player.id !== user?.id && !peerConnections[player.id]) {
-          console.log('Initiating connection to:', player.name);
+          console.log('🎯 INITIATING connection to:', player.name);
           startWebRTCConnection(player.id, localStream);
         }
       });
