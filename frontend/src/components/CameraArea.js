@@ -392,23 +392,33 @@ function CameraArea({ gameState, user, roomId, socket }) {
                     // Other players - placeholders or videos
                     <div className="video-placeholder">
                       <div className="remote-placeholder">
-                    <video
-                      ref={el => {
-                        if (remoteStreams[player.id] && el) {
-                          console.log('Setting video srcObject for player', player.name, ':', remoteStreams[player.id]);
-                          el.srcObject = remoteStreams[player.id];
-                          console.log('Video element srcObject set for', player.name);
-                        }
-                      }}
-                      autoPlay
-                      playsInline
-                      className="video-element"
-                      style={{
-                        opacity: remoteStreams[player.id] ? 1 : 0,
-                        width: remoteStreams[player.id] ? '100%' : '0',
-                        height: remoteStreams[player.id] ? '100%' : '0'
-                      }}
-                    />
+                      <video
+                        ref={el => {
+                          if (remoteStreams[player.id] && el) {
+                            console.log('Setting video srcObject for player', player.name, ':', remoteStreams[player.id]);
+                            el.srcObject = remoteStreams[player.id];
+                            console.log('Video element srcObject set for', player.name);
+                            // Force play to override autoplay restrictions
+                            el.play().catch(e => {
+                              console.warn('Autoplay blocked for remote video, user interaction required:', e);
+                            });
+                          }
+                        }}
+                        autoPlay
+                        playsInline
+                        muted // Add muted attribute to help autoplay
+                        className="video-element"
+                        style={{
+                          opacity: remoteStreams[player.id] ? 1 : 0,
+                          width: remoteStreams[player.id] ? '100%' : '0',
+                          height: remoteStreams[player.id] ? '100%' : '0'
+                        }}
+                        onError={(e) => console.error('Remote video error:', e)}
+                        onLoadedData={() => console.log('Remote video loaded for', player.name)}
+                        onCanPlay={() => console.log('Remote video can play for', player.name)}
+                        onPlay={() => console.log('Remote video started playing for', player.name)}
+                        onPause={() => console.log('Remote video paused for', player.name)}
+                      />
                     {!remoteStreams[player.id] && (
                       <div className="video-overlay">
                         <span>Warten auf {player.name} (ID: {player.id})</span>
@@ -462,16 +472,26 @@ function CameraArea({ gameState, user, roomId, socket }) {
                         ref={el => {
                           if (remoteStreams[player.id] && el) {
                             el.srcObject = remoteStreams[player.id];
+                            // Force play to override autoplay restrictions
+                            el.play().catch(e => {
+                              console.warn('Autoplay blocked for remote video during game,', player.name, 'user interaction required:', e);
+                            });
                           }
                         }}
                         autoPlay
                         playsInline
+                        muted // Add muted attribute to help autoplay
                         className="video-element"
                         style={{
                           opacity: remoteStreams[player.id] ? 1 : 0,
                           width: remoteStreams[player.id] ? '100%' : '0',
                           height: remoteStreams[player.id] ? '100%' : '0'
                         }}
+                        onError={(e) => console.error('Remote video error during game:', e)}
+                        onLoadedData={() => console.log('Remote video loaded during game for', player.name)}
+                        onCanPlay={() => console.log('Remote video can play during game for', player.name)}
+                        onPlay={() => console.log('Remote video started playing during game for', player.name)}
+                        onPause={() => console.log('Remote video paused during game for', player.name)}
                       />
                       {!remoteStreams[player.id] && (
                         <div className="video-overlay">
@@ -480,9 +500,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
                       )}
                     </div>
                   )}
-                  <div className="video-label">
-                    {player.name} {isCurrentPlayer ? '(wirft)' : ''}
-                  </div>
                 </div>
               </div>
             );
