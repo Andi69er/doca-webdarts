@@ -174,31 +174,33 @@ function Game() {
                 )}
             </div>
 
-            <div className="camera-area">
-                <CameraArea gameState={gameState} user={user} roomId={roomId} socket={socket} />
-            </div>
-
-            <div className="right-panel">
-                <PlayerScores gameState={gameState} user={user} />
-                <LiveStatistics gameState={gameState} />
-                {gameStarted && (
-                    <NumberPad
-                        onScoreInput={handleScoreInput}
-                        checkoutSuggestions={gameState.checkoutSuggestions}
-                        waitingTimer={gameState.waitingTimer}
-                        isActive={isCurrentUserActive()}
-                        isLocked={inputLockout}
-                        lockoutTimer={lockoutTimer}
-                        gameState={gameState}
+            <div className="game-layout">
+                <div className="center-panel">
+                    <PlayerScores gameState={gameState} user={user} />
+                    <LiveStatistics gameState={gameState} />
+                    {gameStarted && (
+                        <NumberPad
+                            onScoreInput={handleScoreInput}
+                            checkoutSuggestions={gameState.checkoutSuggestions}
+                            waitingTimer={gameState.waitingTimer}
+                            isActive={isCurrentUserActive()}
+                            isLocked={inputLockout}
+                            lockoutTimer={lockoutTimer}
+                            gameState={gameState}
+                        />
+                    )}
+                    <ThrowHistory gameState={gameState} />
+                    <GameChat
+                        socket={socket}
+                        roomId={roomId}
+                        user={user}
+                        messages={gameState.chatMessages || []}
                     />
-                )}
-                <ThrowHistory gameState={gameState} />
-                <GameChat
-                    socket={socket}
-                    roomId={roomId}
-                    user={user}
-                    messages={gameState.chatMessages || []}
-                />
+                </div>
+
+                <div className="camera-area">
+                    <CameraArea gameState={gameState} user={user} roomId={roomId} socket={socket} />
+                </div>
             </div>
 
             {/* Die restliche JSX-Logik bleibt gleich */}

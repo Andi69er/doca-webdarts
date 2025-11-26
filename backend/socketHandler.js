@@ -3,12 +3,18 @@
 const { gameModes, X01Game } = require('./gameModes');
 
 let onlineUsers = 0;
+let connectedUsers = [];
 let rooms = [];
 
 function initializeSocket(io) {
     io.on('connection', (socket) => {
+        // Add user to connected users list
+        const user = { id: socket.id, name: `User_${socket.id.substring(0, 4)}` };
+        connectedUsers.push(user);
+
         onlineUsers++;
         io.emit('updateOnlineUsers', onlineUsers);
+        io.emit('connectedUsers', connectedUsers);
         console.log(`User connected: ${socket.id}, Online Users: ${onlineUsers}`);
 
         socket.on('getRooms', () => {
@@ -18,6 +24,10 @@ function initializeSocket(io) {
         socket.on('getOnlineUsers', () => {
             console.log(`[GET_ONLINE_USERS] User ${socket.id} requested online users count: ${onlineUsers}, Timestamp: ${new Date().toISOString()}`);
             socket.emit('updateOnlineUsers', onlineUsers);
+        });
+
+        socket.on('getConnectedUsers', () => {
+            socket.emit('connectedUsers', connectedUsers);
         });
 
         socket.on('createRoom', (roomData) => {
@@ -228,8 +238,13 @@ function initializeSocket(io) {
         });
 
         socket.on('disconnect', () => {
+            // Remove user from connected users list
+            connectedUsers = connectedUsers.filter(user => user.id !== socket.id);
+
             onlineUsers--;
             io.emit('updateOnlineUsers', onlineUsers);
+            io.emit('connectedUsers', connectedUsers);
+
             rooms.forEach(room => {
                 const playerIndex = room.players.findIndex(p => p.id === socket.id);
                 if (playerIndex !== -1) {

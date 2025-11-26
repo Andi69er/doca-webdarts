@@ -6,6 +6,12 @@
   color: white;
 }
 
+.game-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 .game-info {
   text-align: center;
   padding: 1rem;
