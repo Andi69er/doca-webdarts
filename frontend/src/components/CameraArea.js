@@ -12,6 +12,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
   // WebRTC state
   const [peerConnections, setPeerConnections] = useState({});
   const [remoteStreams, setRemoteStreams] = useState({});
+  const [iceCandidatesQueue, setIceCandidatesQueue] = useState({});
 
   const localVideoRef = useRef(null);
 
@@ -224,6 +225,22 @@ function CameraArea({ gameState, user, roomId, socket }) {
       pc.setRemoteDescription(new RTCSessionDescription(data.offer))
         .then(() => {
           console.log('Set remote description successfully');
+
+          // Process any queued ICE candidates now that remote description is set
+          const queuedCandidates = iceCandidatesQueue[data.from] || [];
+          if (queuedCandidates.length > 0) {
+            console.log(`🚀 Processing ${queuedCandidates.length} queued ICE candidates for ${data.from}`);
+            queuedCandidates.forEach(candidate => {
+              pc.addIceCandidate(new RTCIceCandidate(candidate))
+                .catch(error => console.error('Error adding queued ICE candidate:', error));
+            });
+            // Clear the queue for this player
+            setIceCandidatesQueue(prev => ({
+              ...prev,
+              [data.from]: []
+            }));
+          }
+
           return pc.createAnswer();
         })
         .then(answer => {
@@ -257,7 +274,25 @@ function CameraArea({ gameState, user, roomId, socket }) {
       const pc = peerConnections[data.from];
       if (pc) {
         pc.setRemoteDescription(new RTCSessionDescription(data.answer))
-          .catch(error => console.error('Error setting remote description:', error));
+          .then(() => {
+            console.log('Set remote description (answer) successfully');
+
+            // Process any queued ICE candidates now that remote description is set
+            const queuedCandidates = iceCandidatesQueue[data.from] || [];
+            if (queuedCandidates.length > 0) {
+              console.log(`🚀 Processing ${queuedCandidates.length} queued ICE candidates for ${data.from} (after answer)`);
+              queuedCandidates.forEach(candidate => {
+                pc.addIceCandidate(new RTCIceCandidate(candidate))
+                  .catch(error => console.error('Error adding queued ICE candidate after answer:', error));
+              });
+              // Clear the queue for this player
+              setIceCandidatesQueue(prev => ({
+                ...prev,
+                [data.from]: []
+              }));
+            }
+          })
+          .catch(error => console.error('Error setting remote description (answer):', error));
       }
     };
 
@@ -266,8 +301,18 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
       const pc = peerConnections[data.from];
       if (pc) {
-        pc.addIceCandidate(new RTCIceCandidate(data.candidate))
-          .catch(error => console.error('Error adding ICE candidate:', error));
+        // Check if remote description is set, otherwise queue the candidate
+        if (pc.remoteDescription) {
+          console.log('✅ Adding ICE candidate immediately (remote description set)');
+          pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+            .catch(error => console.error('Error adding ICE candidate:', error));
+        } else {
+          console.log('⏸️ Queuing ICE candidate (remote description not set yet)');
+          setIceCandidatesQueue(prev => ({
+            ...prev,
+            [data.from]: [...(prev[data.from] || []), data.candidate]
+          }));
+        }
       }
     };
 
