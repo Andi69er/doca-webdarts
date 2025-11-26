@@ -5,9 +5,6 @@ import gameModes from '../gameModes';
 import './Lobby.css';
 
 const Lobby = memo(() => {
-    console.log('DEBUG: Lobby component rendered');
-    console.log('DEBUG: gameModes imported:', gameModes);
-    console.log('DEBUG: Object.keys(gameModes):', Object.keys(gameModes));
     const { socket, socketConnected } = useSocket(); // NEU: socketConnected hier abrufen
     const [rooms, setRooms] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState(0);
@@ -133,7 +130,6 @@ const Lobby = memo(() => {
             whoStarts: whoStartsUI,
             gameOptions
         };
-        console.log('DEBUG: roomData to emit:', roomData);
         if (socket && socketConnected) {
             socket.emit('createRoom', roomData);
         } else {

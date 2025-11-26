@@ -31,10 +31,9 @@ function GameChat({ socket, roomId, user, messages }) {
         userName: user.name,
         timestamp: Date.now()
       });
-      console.log('DEBUG GameChat: Message emitted, clearing input');
       setMessage('');
     } else {
-      console.log('DEBUG GameChat: Message is empty, not sending');
+      console.error('DEBUG GameChat: Message is empty, not sending');
     }
   };
 
