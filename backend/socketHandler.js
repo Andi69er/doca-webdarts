@@ -50,7 +50,7 @@ function initializeSocket(io) {
             if (room) {
                 if (room.players.length < room.maxPlayers) {
                     const startScore = room.players.length > 0 ? room.players[0].score : 0;
-                    
+
                     const newPlayer = {
                         id: socket.id,
                         name: `Player ${Math.floor(Math.random() * 1000)}`,
@@ -61,7 +61,8 @@ function initializeSocket(io) {
                     socket.join(room.id);
 
                     console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten.`);
-                    
+
+                    socket.emit('gameState', room.gameState);
                     io.to(room.id).emit('gameStateUpdate', room);
                     io.emit('updateRooms', rooms);
                 } else {
