@@ -33,7 +33,6 @@ function Game() {
         };
 
         const handleGameState = (receivedGameState) => {
-            console.log('Debug: Received gameState event:', receivedGameState);
             setGameState(receivedGameState);
         };
 
@@ -102,10 +101,11 @@ function Game() {
     };
 
     const isCurrentUserActive = () => {
-        if (!gameState || !user || gameState.currentPlayer === null || !gameState.players[gameState.currentPlayer]) {
+        const { players = [], currentPlayer, gameMode = {} } = gameState || {};
+        if (!gameState || !user || currentPlayer === null || !players[currentPlayer]) {
             return false;
         }
-        return gameState.players[gameState.currentPlayer].id === user.id;
+        return players[currentPlayer].id === user.id;
     };
     
     // Verbesserte Ladeanzeige
