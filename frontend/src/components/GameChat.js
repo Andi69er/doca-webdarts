@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-function GameChat({ socket, roomId, user, messages }) {
+function GameChat({ socket, roomId, user, messages = [] }) {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef(null);
 
