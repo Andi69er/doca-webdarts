@@ -58,12 +58,15 @@
 }
 
 .camera-area {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   width: 33.33%;
   background-color: #222;
   padding: 1rem;
   border-left: 1px solid #555;
   overflow-y: auto;
-  order: 3; /* Move to the right */
 }
 
 .video-container {
