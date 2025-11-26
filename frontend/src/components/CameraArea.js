@@ -20,7 +20,29 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   return (
     <div className="camera-area">
-      {/* Video elements can be added here if needed */}
+      <h4>Live Kameras</h4>
+      <div className="video-container">
+        {gameState.players.map((player) => (
+          <div key={player.id} className="video-wrapper">
+            <div className="video-placeholder">
+              <video
+                ref={player.id === user.id ? localVideoRef : remoteVideoRef}
+                autoPlay
+                muted={player.id === user.id}
+                className="video-element"
+              />
+              {!isCameraEnabled && player.id === user.id && (
+                <div className="video-overlay">
+                  <button onClick={() => setIsCameraEnabled(true)}>
+                    Kamera einschalten
+                  </button>
+                </div>
+              )}
+              <div className="video-label">{player.name}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Basic styling for the NumberPad, can be moved to a CSS file
 const styles = {
@@ -61,6 +61,29 @@ function NumberPad({ onScoreInput, isActive, gameState: room }) {
   
   const waitingTimer = room?.gameState?.waitingTimer;
 
+  // Add keyboard event listeners
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyPress = (event) => {
+      if (!isActive) return;
+
+      const key = event.key;
+      if (key >= '0' && key <= '9' && key !== ' ') {
+        setInput(prev => prev + key);
+      } else if (key === 'Enter') {
+        event.preventDefault();
+        handleEnter();
+      } else if (key === 'Backspace' || key === 'Delete' || key.toLowerCase() === 'c') {
+        setInput('');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isActive, input]);
 
   return (
     <div style={styles.numberPad}>

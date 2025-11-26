@@ -119,8 +119,29 @@ function Game() {
         return <div className="loading-screen">Lade Spielzustand... Warten auf Daten vom Server...</div>;
     }
 
+    // Check if user is the host
+    const isHost = gameState.hostId === user.id;
+    // Check if game has started
+    const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
+
     return (
         <div className="game-container">
+            <div className="game-info">
+                <h2>Room: {gameState.name}</h2>
+                <p>Game Mode: {gameModeMap[gameState.gameMode] || gameState.gameMode}</p>
+                {!gameStarted && (
+                    <div className="waiting-for-players">
+                        <p>Warten auf Spieler...</p>
+                        <p>Spieler: {gameState.players?.map(p => p.name).join(', ')}</p>
+                        {isHost && (
+                            <button onClick={handleStartGame} className="start-game-button">
+                                Spiel starten
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
             <div className="camera-area">
                 <CameraArea gameState={gameState} user={user} roomId={roomId} socket={socket} />
             </div>
@@ -128,13 +149,15 @@ function Game() {
             <div className="right-panel">
                 <PlayerScores gameState={gameState} user={user} />
                 <LiveStatistics gameState={gameState} />
-                <NumberPad
-                    onScoreInput={handleScoreInput}
-                    checkoutSuggestions={gameState.checkoutSuggestions}
-                    waitingTimer={gameState.waitingTimer}
-                    isActive={isCurrentUserActive()}
-                    gameState={gameState}
-                />
+                {gameStarted && (
+                    <NumberPad
+                        onScoreInput={handleScoreInput}
+                        checkoutSuggestions={gameState.checkoutSuggestions}
+                        waitingTimer={gameState.waitingTimer}
+                        isActive={isCurrentUserActive()}
+                        gameState={gameState}
+                    />
+                )}
                 <ThrowHistory gameState={gameState} />
                 <GameChat
                     socket={socket}
@@ -156,5 +179,12 @@ function Game() {
         </div>
     );
 }
+
+// Add game mode mapping
+const gameModeMap = {
+    'X01Game': 'X01',
+    'CricketGame': 'Cricket',
+    'BullOffGame': 'Bull Off'
+};
 
 export default Game;
