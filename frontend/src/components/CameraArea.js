@@ -51,6 +51,14 @@ function CameraArea({ gameState, user, roomId, socket }) {
       return;
     }
 
+    // Only initiate if this user has lower ID (to avoid both sides trying to connect)
+    if (user.id >= targetUserId) {
+      console.log('Not initiating connection, target has lower/equal ID:', targetUserId);
+      return;
+    }
+
+    console.log('Initiating WebRTC connection to', targetUserId);
+
     const pc = createPeerConnection(targetUserId);
     setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
 
