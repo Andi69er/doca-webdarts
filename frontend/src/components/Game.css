@@ -67,6 +67,8 @@
   gap: 1rem;
   align-items: stretch;
   height: 100%;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .right-panel {
@@ -301,14 +303,13 @@
   background-color: #222;
   border-left: 1px solid #555;
   padding: 1rem;
-  overflow-y: auto;
+  overflow: hidden;
   order: 1;
   min-width: 400px;
 }
 
 .player-scores {
   margin-bottom: 2rem;
-  flex: 1;
   overflow-y: auto;
 }
 
@@ -342,7 +343,8 @@
 
 .player-score.active {
   opacity: 1;
-  border: 2px solid #ff6b6b;
+  background-color: #ffcc00;
+  color: #050b14;
 }
 
 .player-name {
@@ -355,7 +357,7 @@
 }
 
 .score {
-  font-size: 2rem;
+  font-size: 5rem;
   font-weight: bold;
   color: #ff6b6b;
 }
