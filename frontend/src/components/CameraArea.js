@@ -342,8 +342,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
   }, [socket, user.id, localStream, peerConnections]);
 
   return (
-    <div className="camera-area">
-      <h4>Live Kameras</h4>
+    <div className="right-panel">
+      <h4>DARTBOARD CAM</h4>
 
       {/* Device selector */}
       {devices.length > 1 && userInRoom && (

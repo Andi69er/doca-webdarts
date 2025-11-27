@@ -5,7 +5,6 @@ import CameraArea from './CameraArea';
 import PlayerScores from './PlayerScores';
 import LiveStatistics from './LiveStatistics';
 import NumberPad from './NumberPad';
-import ThrowHistory from './ThrowHistory';
 import GameChat from './GameChat';
 import GameEndPopup from './GameEndPopup';
 import './Game.css';
@@ -191,50 +190,52 @@ function Game() {
 
     return (
         <div className="game-container">
-            <div className="game-info">
-                <h2>Room: {gameState.name}</h2>
-                <p>Game Mode: {gameModeMap[gameState.gameMode] || gameState.gameMode}</p>
-                {!gameStarted && (
-                    <div className="waiting-for-players">
-                        <p>Warten auf Spieler...</p>
-                        <p>Spieler: {gameState.players?.map(p => p.name).join(', ')}</p>
-                        {isHost && (
-                            <button onClick={handleStartGame} className="start-game-button">
-                                Spiel starten
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-
             <div className="game-layout">
-                <div className="center-panel">
+                <div className="left-panel">
                     <PlayerScores gameState={gameState} user={user} />
                     <LiveStatistics gameState={gameState} />
-                    {gameStarted && (
-                        <NumberPad
-                            onScoreInput={handleScoreInput}
-                            checkoutSuggestions={gameState.checkoutSuggestions}
-                            waitingTimer={gameState.waitingTimer}
-                            isActive={isCurrentUserActive()}
-                            isLocked={inputLockout}
-                            lockoutTimer={lockoutTimer}
-                            gameState={gameState}
+                    <div className="bottom-section">
+                        {gameStarted && (
+                            <NumberPad
+                                onScoreInput={handleScoreInput}
+                                checkoutSuggestions={gameState.checkoutSuggestions}
+                                waitingTimer={gameState.waitingTimer}
+                                isActive={isCurrentUserActive()}
+                                isLocked={inputLockout}
+                                lockoutTimer={lockoutTimer}
+                                gameState={gameState}
+                            />
+                        )}
+                        <GameChat
+                            socket={socket}
+                            roomId={roomId}
+                            user={user}
+                            messages={gameState.chatMessages || []}
                         />
-                    )}
-                    <ThrowHistory gameState={gameState} />
-                    <GameChat
-                        socket={socket}
-                        roomId={roomId}
-                        user={user}
-                        messages={gameState.chatMessages || []}
-                    />
+                    </div>
                 </div>
 
-                <div className="camera-area">
+                <div className="right-panel">
                     <CameraArea gameState={gameState} user={user} roomId={roomId} socket={socket} />
                 </div>
             </div>
+
+            {/* Game info overlay for waiting */}
+            {!gameStarted && (
+                <div className="game-info">
+                    <h2>ROOM: {gameState.name}</h2>
+                    <p>GAME MODE: {gameModeMap[gameState.gameMode] || gameState.gameMode}</p>
+                    <div className="waiting-for-players">
+                        <p>WAITING FOR PLAYERS...</p>
+                        <p>PLAYERS: {gameState.players?.map(p => p.name).join(', ')}</p>
+                        {isHost && (
+                            <button onClick={handleStartGame} className="start-game-button">
+                                START GAME
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Die restliche JSX-Logik bleibt gleich */}
             {gameState.gameState && gameState.gameState.gameWinner && (

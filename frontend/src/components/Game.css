@@ -2,70 +2,80 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #111;
-  color: white;
+  background-color: #050b14;
+  color: #ffffff;
+  font-family: 'Roboto', sans-serif;
 }
 
 .game-layout {
-  display: flex;
-  flex: 1;
+  display: grid;
+  grid-template-columns: 60% 40%;
+  height: 100%;
   overflow: hidden;
 }
 
 .game-info {
+  position: absolute;
   text-align: center;
   padding: 1rem;
-  background-color: #333;
-  border-bottom: 1px solid #555;
+  background-color: rgba(5, 11, 20, 0.9);
+  border-radius: 8px;
+  border: 1px solid #ffcc00;
+  margin: 1rem;
+  z-index: 10;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .waiting-for-players {
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #222;
+  background-color: #1a1a1a;
   border-radius: 8px;
+  border: 1px solid #333;
 }
 
 .start-game-button {
   margin-top: 1rem;
   padding: 1rem 2rem;
-  background-color: #4ecdc4;
-  color: white;
+  background-color: #ffcc00;
+  color: #050b14;
   border: none;
   border-radius: 8px;
   font-size: 1.2rem;
   cursor: pointer;
+  font-weight: 700;
   transition: background-color 0.2s;
 }
 
 .start-game-button:hover {
-  background-color: #45b7aa;
+  background-color: #e6b800;
 }
 
-.game-header {
+.left-panel {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   padding: 1rem;
-  background-color: #333;
-  border-bottom: 1px solid #555;
+  overflow-y: auto;
+  border-right: 1px solid #333;
 }
 
-.game-layout {
+.bottom-section {
   display: flex;
-  flex: 1;
-  overflow: hidden;
+  gap: 1rem;
+  align-items: stretch;
+  height: 100%;
 }
 
-.camera-area {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 33.33%;
-  background-color: #222;
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #ffcc00;
+  margin: 1rem;
   padding: 1rem;
-  border-left: 1px solid #555;
   overflow-y: auto;
 }
 
@@ -361,22 +371,54 @@
   margin-bottom: 2rem;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.live-statistics h4 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #ffcc00;
+  font-weight: 700;
 }
 
-.stat-item {
-  display: flex;
-  justify-content: space-between;
+.stats-table {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.stats-header {
+  display: contents;
+}
+
+.player-name-col {
   padding: 0.5rem;
-  background-color: #333;
-  border-radius: 4px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #ffffff;
+  border: 1px solid #333;
+}
+
+.stats-row {
+  display: contents;
+}
+
+.stat-value {
+  padding: 0.5rem;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  text-align: center;
+  color: #ffffff;
+  font-weight: 700;
+  border: 1px solid #333;
 }
 
 .stat-label {
-  font-weight: bold;
+  padding: 0.5rem;
+  text-align: center;
+  color: #ffcc00;
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .throw-history {
