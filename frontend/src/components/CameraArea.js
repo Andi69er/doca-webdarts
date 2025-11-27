@@ -13,6 +13,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
   const [peerConnections, setPeerConnections] = useState({});
   const [remoteStreams, setRemoteStreams] = useState({});
   const [iceCandidatesQueue, setIceCandidatesQueue] = useState({});
+  const [autoplayBlocked, setAutoplayBlocked] = useState({});
 
   const localVideoRef = useRef(null);
 
@@ -399,9 +400,16 @@ function CameraArea({ gameState, user, roomId, socket }) {
                             el.srcObject = remoteStreams[player.id];
                             console.log('Video element srcObject set for', player.name);
                             // Force play to override autoplay restrictions
-                            el.play().catch(e => {
-                              console.warn('Autoplay blocked for remote video, user interaction required:', e);
-                            });
+                            const playPromise = el.play();
+                            if (playPromise !== undefined) {
+                              playPromise.then(() => {
+                                console.log('✅ Remote video started automatically for', player.name);
+                                setAutoplayBlocked(prev => ({ ...prev, [player.id]: false }));
+                              }).catch(error => {
+                                console.warn('🚫 Autoplay blocked for remote video:', player.name, error);
+                                setAutoplayBlocked(prev => ({ ...prev, [player.id]: true }));
+                              });
+                            }
                           }
                         }}
                         autoPlay
@@ -419,6 +427,26 @@ function CameraArea({ gameState, user, roomId, socket }) {
                         onPlay={() => console.log('Remote video started playing for', player.name)}
                         onPause={() => console.log('Remote video paused for', player.name)}
                       />
+                    {(autoplayBlocked[player.id] && remoteStreams[player.id]) && (
+                      <div className="video-overlay">
+                        <button
+                          className="play-remote-video-btn"
+                          onClick={() => {
+                            const videoEl = document.querySelector(`video[style*="opacity: 0"]`);
+                            if (videoEl) {
+                              videoEl.play()
+                                .then(() => {
+                                  console.log('✅ Remote video manually started for', player.name);
+                                  setAutoplayBlocked(prev => ({ ...prev, [player.id]: false }));
+                                })
+                                .catch(e => console.error('Manual play failed:', e));
+                            }
+                          }}
+                        >
+                          🎥 {player.name} - Video starten
+                        </button>
+                      </div>
+                    )}
                     {!remoteStreams[player.id] && (
                       <div className="video-overlay">
                         <span>Warten auf {player.name} (ID: {player.id})</span>
