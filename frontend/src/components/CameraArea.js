@@ -215,9 +215,16 @@ function CameraArea({ gameState, user, roomId, socket }) {
         return; // Don't create peer connection without local stream
       }
 
+      // If we already have a stable connection, ignore this offer
+      const existingPc = peerConnections[data.from];
+      if (existingPc && (existingPc.connectionState === 'connected' || existingPc.connectionState === 'completed' || existingPc.connectionState === 'stable')) {
+        console.log('Ignoring offer from', data.from, '- connection already stable');
+        return;
+      }
+
       console.log('✅ ACCEPTING WebRTC offer - local stream ready!');
-      const pc = createPeerConnection(data.from);
-      console.log('Created peer connection for', data.from);
+      const pc = existingPc || createPeerConnection(data.from);
+      console.log('Created/Using peer connection for', data.from);
 
       // Add local stream tracks BEFORE setting remote description
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
@@ -274,6 +281,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
       const pc = peerConnections[data.from];
       if (pc) {
+        // If we already have a stable connection, ignore this answer
+        if (pc.connectionState === 'connected' || pc.connectionState === 'completed' || pc.connectionState === 'stable') {
+          console.log('Ignoring answer from', data.from, '- connection already stable');
+          return;
+        }
+
         pc.setRemoteDescription(new RTCSessionDescription(data.answer))
           .then(() => {
             console.log('Set remote description (answer) successfully');
