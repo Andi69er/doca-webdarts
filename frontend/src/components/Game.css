@@ -9,13 +9,15 @@
 
 .game-layout {
   display: grid;
-  grid-template-columns: 60% 40%;
-  height: 100%;
+  grid-template-columns: 1fr 40vw;
+  height: 100vh;
   overflow: hidden;
 }
 
 .game-info {
   position: absolute;
+  top: 0;
+  left: 0;
   text-align: center;
   padding: 1rem;
   background-color: rgba(5, 11, 20, 0.9);
@@ -292,7 +294,8 @@
 }
 
 .right-panel {
-  width: 25%;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: #222;
@@ -300,10 +303,13 @@
   padding: 1rem;
   overflow-y: auto;
   order: 1;
+  min-width: 400px;
 }
 
 .player-scores {
   margin-bottom: 2rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .player-score {
@@ -369,6 +375,8 @@
 
 .live-statistics {
   margin-bottom: 2rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .live-statistics h4 {
