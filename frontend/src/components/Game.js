@@ -186,7 +186,7 @@ function Game() {
     // Check if user is the host
     const isHost = user && user.id && gameState.hostId === user.id;
     // Check if game has started
-    const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
+    const gameStarted = true;
 
     return (
         <div className="game-container">

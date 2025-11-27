@@ -93,6 +93,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Start camera
   const startCamera = async () => {
+    console.log("Kamera einschalten button clicked");
     try {
       const constraints = {
         video: {
