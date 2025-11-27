@@ -72,15 +72,11 @@
 }
 
 .right-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: #1a1a1a;
-  border-radius: 8px;
-  border: 1px solid #ffcc00;
-  margin: 1rem;
-  padding: 1rem;
-  overflow-y: auto;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
+  position: relative;
 }
 
 .video-container {
@@ -98,7 +94,7 @@
 
 .splitscreen-player {
   flex: 1;
-  min-height: 150px; /* Ensure minimum height */
+  min-height: 150px;
 }
 
 .full-camera-container {
@@ -114,7 +110,6 @@
   background-color: #000;
   border-radius: 8px;
   overflow: hidden;
-  aspect-ratio: 16/9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,22 +290,11 @@
   order: 2;
 }
 
-.right-panel {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background-color: #222;
-  border-left: 1px solid #555;
-  padding: 1rem;
-  overflow: hidden;
-  order: 1;
-  min-width: 400px;
-}
-
 .player-scores {
   margin-bottom: 2rem;
   overflow-y: auto;
+  background-color: #050b14;
+  flex: 0 0 20%;
 }
 
 .player-score {
@@ -345,6 +329,7 @@
   opacity: 1;
   background-color: #ffcc00;
   color: #050b14;
+  border: 3px solid #ffcc00;
 }
 
 .player-name {
@@ -357,9 +342,9 @@
 }
 
 .score {
-  font-size: 5rem;
+  font-size: 6rem;
   font-weight: bold;
-  color: #ff6b6b;
+  color: white;
 }
 
 .averages {
@@ -401,7 +386,7 @@
 
 .player-name-col {
   padding: 0.5rem;
-  background-color: #1a1a1a;
+  background-color: transparent;
   border-radius: 8px;
   text-align: center;
   font-weight: 700;
@@ -415,7 +400,7 @@
 
 .stat-value {
   padding: 0.5rem;
-  background-color: #1a1a1a;
+  background-color: transparent;
   border-radius: 8px;
   text-align: center;
   color: #ffffff;
@@ -462,7 +447,7 @@
 
 .pad-button {
   padding: 1rem;
-  background-color: #444;
+  background-color: #333;
   color: white;
   border: none;
   border-radius: 8px;
@@ -472,19 +457,20 @@
 }
 
 .pad-button:hover {
-  background-color: #555;
+  background-color: #444;
 }
 
 .pad-button:active {
-  background-color: #666;
+  background-color: #555;
 }
 
 .pad-button.special {
-  background-color: #ff6b6b;
+  background-color: #ffcc00;
+  color: #000;
 }
 
 .pad-button.special:hover {
-  background-color: #ff5252;
+  background-color: #e6b800;
 }
 
 .input-display {
