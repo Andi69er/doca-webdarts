@@ -332,6 +332,10 @@
   border: 3px solid #ffcc00;
 }
 
+.player-score.active .player-name {
+  color: #ffcc00;
+}
+
 .player-name {
   font-weight: bold;
   font-size: 1.2rem;
@@ -405,15 +409,17 @@
   text-align: center;
   color: #ffffff;
   font-weight: 700;
+  font-family: monospace;
   border: 1px solid #333;
 }
 
 .stat-label {
   padding: 0.5rem;
   text-align: center;
-  color: #ffcc00;
+  color: #777;
   font-weight: 700;
   font-size: 0.9rem;
+  font-family: 'Roboto', sans-serif;
 }
 
 .throw-history {
@@ -446,22 +452,22 @@
 }
 
 .pad-button {
-  padding: 1rem;
-  background-color: #333;
+  padding: 0.75rem;
+  background-color: #2a2a2a;
   color: white;
-  border: none;
+  border: 1px solid #444;
   border-radius: 8px;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: border-color 0.2s;
 }
 
 .pad-button:hover {
-  background-color: #444;
+  background-color: #333;
 }
 
 .pad-button:active {
-  background-color: #555;
+  border-color: #ffcc00;
 }
 
 .pad-button.special {
