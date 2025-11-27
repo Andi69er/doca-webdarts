@@ -13,12 +13,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
   const [peerConnections, setPeerConnections] = useState({});
   const [remoteStreams, setRemoteStreams] = useState({});
   const [iceCandidatesQueue, setIceCandidatesQueue] = useState({});
+  // eslint-disable-next-line no-unused-vars
   const [autoplayBlocked, setAutoplayBlocked] = useState({});
 
   const localVideoRef = useRef(null);
-
-  // Track connection status
-  // const [isConnected, setIsConnected] = useState(true);
 
   // WebRTC helper functions
   const createPeerConnection = (targetUserId) => {
@@ -29,60 +27,43 @@ function CameraArea({ gameState, user, roomId, socket }) {
       ]
     });
 
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log('Sending ICE candidate to', targetUserId);
-      socket.emit('camera-ice', {
-        roomId,
-        from: user.id,
-        to: targetUserId,
-        candidate: event.candidate
-      });
-    }
-  };
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit('camera-ice', {
+          roomId,
+          from: user.id,
+          to: targetUserId,
+          candidate: event.candidate
+        });
+      }
+    };
 
-  pc.ontrack = (event) => {
-    const remoteStream = event.streams[0];
-    console.log('Received remote stream from:', targetUserId, remoteStream);
-    setRemoteStreams(prev => {
-      console.log('Updating remoteStreams with:', { [targetUserId]: remoteStream });
-      return {
+    pc.ontrack = (event) => {
+      const remoteStream = event.streams[0];
+      console.log('Received remote stream from:', targetUserId);
+      setRemoteStreams(prev => ({
         ...prev,
         [targetUserId]: remoteStream
-      };
-    });
-  };
+      }));
+    };
 
-  pc.onconnectionstatechange = () => {
-    console.log('WebRTC connection state for', targetUserId, ':', pc.connectionState);
-  };
-
-  return pc;
+    return pc;
   };
 
   const startWebRTCConnection = (targetUserId, streamToUse) => {
-    // Check if connection already exists
-    if (peerConnections[targetUserId]) {
-      console.log('Connection already exists for', targetUserId);
-      return;
-    }
+    if (peerConnections[targetUserId]) return;
 
     console.log('Initiating WebRTC connection to', targetUserId);
-
     const pc = createPeerConnection(targetUserId);
     setPeerConnections(prev => ({ ...prev, [targetUserId]: pc }));
 
-    // Add local stream tracks to the connection
     if (streamToUse) {
       streamToUse.getTracks().forEach(track => pc.addTrack(track, streamToUse));
     }
 
-    // Both players will try to initiate - WebRTC handles the collision
-    // Create offer
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
       .then(() => {
-        console.log('Sending offer to', targetUserId);
         socket.emit('camera-offer', {
           roomId,
           from: user.id,
@@ -100,8 +81,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
         const deviceList = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = deviceList.filter(device => device.kind === 'videoinput');
         setDevices(videoDevices);
-
-        // Set default device if available
         if (videoDevices.length > 0 && !selectedDeviceId) {
           setSelectedDeviceId(videoDevices[0].deviceId);
         }
@@ -109,10 +88,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
         console.error('Error getting devices:', error);
       }
     };
-
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-      getDevices();
-    }
+    if (navigator.mediaDevices?.enumerateDevices) getDevices();
   }, [selectedDeviceId]);
 
   // Start camera
@@ -121,25 +97,18 @@ function CameraArea({ gameState, user, roomId, socket }) {
       const constraints = {
         video: {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          width: { ideal: 640 },
-          height: { ideal: 480 }
+          width: { ideal: 1280 }, // Höhere Auflösung versuchen
+          height: { ideal: 720 }
         },
         audio: false
       };
-
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setLocalStream(stream);
       setIsCameraEnabled(true);
       setShowDeviceSelector(false);
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-
-      console.log('Camera started successfully');
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      alert('Fehler beim Zugriff auf die Kamera: ' + error.message);
+      alert('Kamera-Fehler: ' + error.message);
     }
   };
 
@@ -150,303 +119,190 @@ function CameraArea({ gameState, user, roomId, socket }) {
       setLocalStream(null);
     }
     setIsCameraEnabled(false);
-
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
   };
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
     };
   }, [localStream]);
 
-  // Initiate WebRTC connections when players change (separate from localStream setup)
+  // Connection triggers
   useEffect(() => {
-    if (localStream && gameState.players && gameState.players.length > 1) {
-      console.log('Players list changed, checking for missing WebRTC connections');
+    if (localStream && gameState.players?.length > 1) {
       gameState.players.forEach(player => {
         if (player.id !== user?.id && !peerConnections[player.id]) {
-          console.log('Initiating MISSING connection to:', player.name, '(ID:', player.id, ')');
           startWebRTCConnection(player.id, localStream);
         }
       });
     }
-  }, [localStream, gameState.players]); // This should trigger when players array changes
+  }, [localStream, gameState.players, user?.id, peerConnections]);
 
-  // Also try to connect when local stream becomes available
-  useEffect(() => {
-    console.log('🔄 DEPENDENCY CHECK: localStream:', !!localStream, 'players:', gameState.players?.length, 'user.id:', user?.id);
-    if (localStream && gameState.players && gameState.players.length > 1) {
-      console.log('✅ Local stream became available, initiating connections to other players');
-      gameState.players.forEach(player => {
-        console.log('🧐 Checking player:', player.name, '(ID:', player.id, ') vs user:', user?.id);
-        if (player.id !== user?.id && !peerConnections[player.id]) {
-          console.log('🎯 INITIATING connection to:', player.name);
-          startWebRTCConnection(player.id, localStream);
-        }
-      });
-    }
-  }, [localStream, gameState.players, user?.id]);
-
-  // Check if user is in current room
-  const userInRoom = gameState.players?.find(p => p.id === user?.id);
-
-  // Check if game has started
-  const gameStarted = gameState.gameState && gameState.gameState.currentPlayerIndex !== undefined;
-
-  // WebRTC socket listeners
+  // WebRTC Socket Listeners
   useEffect(() => {
     if (!socket) return;
 
-    const handleCameraOffer = (data) => {
-      if (data.to !== user.id) return;
-
-      console.log('Received offer from', data.from, 'current user:', user.id);
-
-      // CRITICAL: Only accept WebRTC offers if we have a local stream ready!
-      if (!localStream) {
-        console.warn('❌ REJECTING WebRTC offer - no local stream available yet!');
-        console.warn('Waiting for local camera to be enabled before accepting offers...');
-        return; // Don't create peer connection without local stream
-      }
-
-      // If we already have a stable connection, ignore this offer
-      const existingPc = peerConnections[data.from];
-      if (existingPc && (existingPc.connectionState === 'connected' || existingPc.connectionState === 'completed' || existingPc.connectionState === 'stable')) {
-        console.log('Ignoring offer from', data.from, '- connection already stable');
-        return;
-      }
-
-      console.log('✅ ACCEPTING WebRTC offer - local stream ready!');
-      const pc = existingPc || createPeerConnection(data.from);
-      console.log('Created/Using peer connection for', data.from);
-
-      // Add local stream tracks BEFORE setting remote description
+    const handleOffer = (data) => {
+      if (data.to !== user.id || !localStream) return;
+      
+      const pc = peerConnections[data.from] || createPeerConnection(data.from);
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      console.log('✅ Added', localStream.getTracks().length, 'tracks to peer connection');
 
       pc.setRemoteDescription(new RTCSessionDescription(data.offer))
         .then(() => {
-          console.log('Set remote description successfully');
-
-          // Process any queued ICE candidates now that remote description is set
-          const queuedCandidates = iceCandidatesQueue[data.from] || [];
-          if (queuedCandidates.length > 0) {
-            console.log(`🚀 Processing ${queuedCandidates.length} queued ICE candidates for ${data.from}`);
-            queuedCandidates.forEach(candidate => {
-              pc.addIceCandidate(new RTCIceCandidate(candidate))
-                .catch(error => console.error('Error adding queued ICE candidate:', error));
-            });
-            // Clear the queue for this player
-            setIceCandidatesQueue(prev => ({
-              ...prev,
-              [data.from]: []
-            }));
-          }
-
-          return pc.createAnswer();
+            const queued = iceCandidatesQueue[data.from] || [];
+            queued.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)));
+            setIceCandidatesQueue(prev => ({ ...prev, [data.from]: [] }));
+            return pc.createAnswer();
         })
-        .then(answer => {
-          console.log('Created answer successfully');
-          return pc.setLocalDescription(answer);
-        })
+        .then(answer => pc.setLocalDescription(answer))
         .then(() => {
-          // Now set the peer connection in state
-          setPeerConnections(prev => {
-            console.log('Setting peer connection for', data.from, 'in state');
-            return { ...prev, [data.from]: pc };
-          });
-
-          console.log('Sending answer to', data.from);
-          socket.emit('camera-answer', {
-            roomId,
-            from: user.id,
-            to: data.from,
-            answer: pc.localDescription
-          });
-        })
-        .catch(error => {
-          console.error('Error handling offer:', error);
-          console.error('Stack:', error.stack);
+            setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+            socket.emit('camera-answer', { roomId, from: user.id, to: data.from, answer: pc.localDescription });
         });
     };
 
-    const handleCameraAnswer = (data) => {
+    const handleAnswer = (data) => {
       if (data.to !== user.id) return;
-
       const pc = peerConnections[data.from];
       if (pc) {
-        // If we already have a stable connection, ignore this answer
-        if (pc.connectionState === 'connected' || pc.connectionState === 'completed' || pc.connectionState === 'stable') {
-          console.log('Ignoring answer from', data.from, '- connection already stable');
-          return;
-        }
-
-        pc.setRemoteDescription(new RTCSessionDescription(data.answer))
-          .then(() => {
-            console.log('Set remote description (answer) successfully');
-
-            // Process any queued ICE candidates now that remote description is set
-            const queuedCandidates = iceCandidatesQueue[data.from] || [];
-            if (queuedCandidates.length > 0) {
-              console.log(`🚀 Processing ${queuedCandidates.length} queued ICE candidates for ${data.from} (after answer)`);
-              queuedCandidates.forEach(candidate => {
-                pc.addIceCandidate(new RTCIceCandidate(candidate))
-                  .catch(error => console.error('Error adding queued ICE candidate after answer:', error));
-              });
-              // Clear the queue for this player
-              setIceCandidatesQueue(prev => ({
-                ...prev,
-                [data.from]: []
-              }));
-            }
-          })
-          .catch(error => console.error('Error setting remote description (answer):', error));
+        pc.setRemoteDescription(new RTCSessionDescription(data.answer));
       }
     };
 
-    const handleCameraIce = (data) => {
+    const handleIce = (data) => {
       if (data.to !== user.id) return;
-
       const pc = peerConnections[data.from];
-      if (pc) {
-        // Check if remote description is set, otherwise queue the candidate
-        if (pc.remoteDescription) {
-          console.log('✅ Adding ICE candidate immediately (remote description set)');
-          pc.addIceCandidate(new RTCIceCandidate(data.candidate))
-            .catch(error => console.error('Error adding ICE candidate:', error));
-        } else {
-          console.log('⏸️ Queuing ICE candidate (remote description not set yet)');
-          setIceCandidatesQueue(prev => ({
-            ...prev,
-            [data.from]: [...(prev[data.from] || []), data.candidate]
-          }));
-        }
+      if (pc?.remoteDescription) {
+        pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      } else {
+        setIceCandidatesQueue(prev => ({
+          ...prev,
+          [data.from]: [...(prev[data.from] || []), data.candidate]
+        }));
       }
     };
 
-    socket.on('camera-offer', handleCameraOffer);
-    socket.on('camera-answer', handleCameraAnswer);
-    socket.on('camera-ice', handleCameraIce);
+    socket.on('camera-offer', handleOffer);
+    socket.on('camera-answer', handleAnswer);
+    socket.on('camera-ice', handleIce);
 
     return () => {
-      socket.off('camera-offer', handleCameraOffer);
-      socket.off('camera-answer', handleCameraAnswer);
-      socket.off('camera-ice', handleCameraIce);
+      socket.off('camera-offer', handleOffer);
+      socket.off('camera-answer', handleAnswer);
+      socket.off('camera-ice', handleIce);
     };
-  }, [socket, user.id, localStream, peerConnections]);
+  }, [socket, user.id, localStream, peerConnections, iceCandidatesQueue, roomId]);
 
+  const userInRoom = gameState.players?.find(p => p.id === user?.id);
+
+  // --- RENDER ---
   return (
-    <div className="right-panel">
-      <h4>DARTBOARD CAM</h4>
-
-      {/* Device selector */}
-      {devices.length > 1 && userInRoom && (
-        <div className="camera-controls">
-          <label>Kamera auswählen:</label>
-          {showDeviceSelector ? (
-            <select
-              value={selectedDeviceId}
-              onChange={(e) => setSelectedDeviceId(e.target.value)}
-              className="camera-select"
-            >
-              {devices.map(device => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Kamera ${device.deviceId.slice(0, 8)}...`}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <button onClick={() => setShowDeviceSelector(true)} className="select-camera-btn">
-              Kamera auswählen
-            </button>
-          )}
-        </div>
-      )}
-
-      {!gameStarted && (
-        // PRE-GAME: Vertical splitscreen for all players
-        <div className="splitscreen-container">
-          {gameState.players.map((player) => (
-            <div key={player.id} className="splitscreen-player">
-              {player.id === user?.id ? (
-                // Local player camera
-                <div className="video-placeholder">
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="video-element"
-                  />
-                  {!isCameraEnabled && (
-                    <div className="video-overlay">
-                      <button onClick={startCamera}>
-                        Kamera einschalten
-                      </button>
-                    </div>
-                  )}
-                  {isCameraEnabled && (
-                    <div className="video-controls">
-                      <button onClick={stopCamera} className="stop-camera-btn">
-                        Kamerastopp
-                      </button>
-            </div>
-
-          )}
-
-        </div>
-                </div>
-                  ) : (
-                    // Other players - placeholders or videos
-                    <div className="video-placeholder">
-                      <video
-                        ref={el => {
-                          if (remoteStreams[player.id] && el) {
-                            console.log('Setting video srcObject for player', player.name, ':', remoteStreams[player.id]);
-                            el.srcObject = remoteStreams[player.id];
-                            console.log('Video element srcObject set for', player.name);
-                            // Force play to override autoplay restrictions
-                            const playPromise = el.play();
-                            if (playPromise !== undefined) {
-                              playPromise.then(() => {
-                                console.log('✅ Remote video started automatically for', player.name);
-                                setAutoplayBlocked(prev => ({ ...prev, [player.id]: false }));
-                              }).catch(error => {
-                                console.warn('🚫 Autoplay blocked for remote video:', player.name, error);
-                                setAutoplayBlocked(prev => ({ ...prev, [player.id]: true }));
-                              });
-                            }
-                          }
-                        }}
-                        autoPlay
-                        playsInline
-                        muted // Add muted attribute to help autoplay
-                        className="video-element"
-                        style={{
-                          opacity: remoteStreams[player.id] ? 1 : 0,
-                          width: '100%',
-                          height: '100%'
-                        }}
-                      />
-                      <div className="video-label">
-                        {player.name}
-                      </div>
-                    </div>
-          )}
-
-        </div>
-
-      )}
-
+    <div className="cam-container" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}>
+      
+      {/* Header / Controls */}
+      <div style={{ padding: '10px', background: '#111', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+        <h4 style={{ margin: 0, color: '#fff' }}>DARTBOARD CAM</h4>
+        
+        {devices.length > 0 && userInRoom && (
+          <div>
+            {!isCameraEnabled ? (
+               showDeviceSelector ? (
+                <select 
+                  className='camera-select'
+                  value={selectedDeviceId} 
+                  onChange={(e) => setSelectedDeviceId(e.target.value)}
+                  style={{ background: '#333', color: '#fff', padding: '5px' }}
+                >
+                  {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Kamera ' + d.deviceId.slice(0,5)}</option>)}
+                </select>
+               ) : (
+                <button onClick={() => setShowDeviceSelector(true)} style={{ background: '#333', color: 'white', border: '1px solid #555' }}>Wähle Cam</button>
+               )
+            ) : null}
+          </div>
+        )}
       </div>
-    );
-  }
+
+      {/* Video Area - Filling the space */}
+      <div className="splitscreen-container" style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
+        {gameState.players && gameState.players.map((player) => (
+          <div key={player.id} className="splitscreen-player" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+            
+            {/* Logic: Show Local OR Remote Stream */}
+            {player.id === user?.id ? (
+              // LOCAL PLAYER
+              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover', // WICHTIG: Macht das Bild randlos
+                    display: isCameraEnabled ? 'block' : 'none' 
+                  }}
+                />
+                {!isCameraEnabled && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                    <button 
+                      onClick={startCamera}
+                      style={{ padding: '15px 30px', background: '#ffcc00', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      KAMERA STARTEN
+                    </button>
+                  </div>
+                )}
+                {isCameraEnabled && (
+                  <button 
+                    onClick={stopCamera} 
+                    style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px' }}
+                  >
+                    Stopp
+                  </button>
+                )}
+                <div className="video-label" style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px' }}>
+                  {player.name} (Du)
+                </div>
+              </div>
+            ) : (
+              // REMOTE PLAYER
+              remoteStreams[player.id] && (
+                <div style={{ width: '100%', height: '100%', position: 'relative', zIndex: 5 }}>
+                  <video
+                    ref={el => {
+                      if (el) {
+                        el.srcObject = remoteStreams[player.id];
+                        el.play().catch(e => console.log('Autoplay blocked', e));
+                      }
+                    }}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                  <div className="video-label" style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px' }}>
+                    {player.name}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        ))}
+        
+        {/* Fallback Text if no players */}
+        {(!gameState.players || gameState.players.length === 0) && (
+            <div style={{ color: '#666', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                Warte auf Spieler...
+            </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default CameraArea;
