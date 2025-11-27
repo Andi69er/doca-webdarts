@@ -369,7 +369,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
         </div>
       )}
 
-      {!gameStarted ? (
+      {!gameStarted && (
         // PRE-GAME: Vertical splitscreen for all players
         <div className="splitscreen-container">
           {gameState.players.map((player) => (
@@ -396,16 +396,15 @@ function CameraArea({ gameState, user, roomId, socket }) {
                       <button onClick={stopCamera} className="stop-camera-btn">
                         Kamerastopp
                       </button>
-                    </div>
-                  )}
-                  <div className="video-label">
-                    {player.name} (Du)
-                  </div>
+            </div>
+
+          )}
+
+        </div>
                 </div>
                   ) : (
                     // Other players - placeholders or videos
                     <div className="video-placeholder">
-                      <div className="remote-placeholder">
                       <video
                         ref={el => {
                           if (remoteStreams[player.id] && el) {
@@ -433,3 +432,21 @@ function CameraArea({ gameState, user, roomId, socket }) {
                           opacity: remoteStreams[player.id] ? 1 : 0,
                           width: '100%',
                           height: '100%'
+                        }}
+                      />
+                      <div className="video-label">
+                        {player.name}
+                      </div>
+                    </div>
+          )}
+
+        </div>
+
+      )}
+
+      </div>
+    );
+  }
+}
+
+export default CameraArea;
