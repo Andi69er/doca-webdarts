@@ -141,10 +141,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Start camera
   const startCamera = async () => {
-    console.log("Kamera einschalten button clicked");
-    console.log("selectedDeviceId:", selectedDeviceId);
-    console.log("available devices:", devices);
-
     // Check if mediaDevices is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('Kamera nicht unterstützt in diesem Browser');
@@ -161,17 +157,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
       // If user selected a specific device and it exists in our device list
       if (selectedDeviceId && devices.some(d => d.deviceId === selectedDeviceId)) {
         videoConstraints.deviceId = { exact: selectedDeviceId };
-        console.log("Using specific device:", selectedDeviceId);
-      } else {
-        console.log("Using default device (no specific device selected)");
       }
 
       const constraints = {
         video: videoConstraints,
         audio: false
       };
-
-      console.log('Requesting camera access with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('Camera stream obtained successfully');
 
@@ -245,7 +236,13 @@ function CameraArea({ gameState, user, roomId, socket }) {
       }
 
       const pc = peerConnections[data.from] || createPeerConnection(data.from);
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+
+      // Only add tracks if this PeerConnection doesn't have senders yet
+      if (pc.getSenders().length === 0 && localStream) {
+        console.log('📺 Adding tracks to PeerConnection for:', data.from);
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      }
 
       pc.setRemoteDescription(new RTCSessionDescription(data.offer))
         .then(() => {
@@ -256,7 +253,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
         })
         .then(answer => pc.setLocalDescription(answer))
         .then(() => {
-            setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
             console.log('📤 Sending camera-answer to:', data.from);
             socket.emit('camera-answer', { roomId, from: user.id, to: data.from, answer: pc.localDescription });
         })
