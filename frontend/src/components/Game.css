@@ -550,6 +550,7 @@ d.game-container {
   background-color: #333;
   border-radius: 8px;
   max-height: 300px;
+  min-height: 50px;
 }
 
 .chat-message {
