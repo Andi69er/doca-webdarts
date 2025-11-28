@@ -376,6 +376,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
                   <video
                     ref={el => {
                       if (el) {
+                        console.log('🎬 Setting remote stream for', player.name, remoteStreams[player.id].getTracks().length, 'tracks');
                         el.srcObject = remoteStreams[player.id];
                         el.play().catch(e => console.log('Autoplay blocked', e));
                       }
@@ -387,7 +388,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
                   />
                 ) : (
                   <div style={{ width: '100%', height: '100%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-                    Warte auf {player.name}...
+                    {console.log('⌛ Waiting for stream from', player.name, '- remoteStreams[player.id] =', remoteStreams[player.id]) || `Warte auf ${player.name}...`}
                   </div>
                 )}
                 <div style={{ position: 'absolute', bottom: '5px', left: '5px', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '3px', color: 'white', fontSize: '12px' }}>
