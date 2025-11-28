@@ -12,7 +12,7 @@ const app = express();
 const server = http.createServer(app);
 
 const corsOptions = {
-  origin: "https://doca-webdarts-1.onrender.com",
+  origin: ["https://doca-webdarts.onrender.com", "https://doca-webdarts-1.onrender.com", "http://localhost:3000"],
   methods: ["GET", "POST"]
 };
 app.use(cors(corsOptions));

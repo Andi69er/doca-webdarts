@@ -74,7 +74,17 @@ function initializeSocket(io) {
             const room = rooms.find(r => r.id === data.roomId);
 
             if (room) {
-                if (room.players.length < room.maxPlayers) {
+                // Check if user already exists in the room (reconnection case)
+                const existingPlayerIndex = room.players.findIndex(p => p.id === socket.id);
+
+                if (existingPlayerIndex !== -1) {
+                    // User is reconnecting, just update socket and join room
+                    socket.join(room.id);
+                    console.log(`Spieler ${socket.id} bereits im Raum ${room.id}, reconnection behandelt.`);
+
+                    // Send current room state to the reconnected player
+                    socket.emit('gameState', room);
+                } else if (room.players.length < room.maxPlayers) {
                     // Safely handle gameOptions to prevent server crash
                     const gameOptions = room.gameOptions || {};
                     const startScore = parseInt(gameOptions.startingScore, 10) || 501;

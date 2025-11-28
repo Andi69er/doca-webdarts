@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 function CameraArea({ gameState, user, roomId, socket }) {
-  console.log('🎥 CameraArea loaded for user:', user?.id, 'Room:', roomId);
 
   const [localStream, setLocalStream] = useState(null);
   const [devices, setDevices] = useState([]);
@@ -94,6 +93,14 @@ function CameraArea({ gameState, user, roomId, socket }) {
   // Start camera
   const startCamera = async () => {
     console.log("Kamera einschalten button clicked");
+
+    // Check if mediaDevices is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Kamera nicht unterstützt in diesem Browser');
+      console.error('getUserMedia not supported');
+      return;
+    }
+
     try {
       const constraints = {
         video: {
@@ -103,13 +110,38 @@ function CameraArea({ gameState, user, roomId, socket }) {
         },
         audio: false
       };
+
+      console.log('Requesting camera access with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Camera stream obtained successfully');
+
       setLocalStream(stream);
       setIsCameraEnabled(true);
       setShowDeviceSelector(false);
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log('Camera stream assigned to video element');
+      }
     } catch (error) {
-      alert('Kamera-Fehler: ' + error.message);
+      console.error('Camera error:', error);
+
+      let errorMessage = 'Kamera-Fehler: ';
+      if (error.name === 'NotAllowedError') {
+        errorMessage += 'Zugriff verweigert. Bitte erlaube Kamerazugriff in den Browsereinstellungen.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += 'Keine Kamera gefunden.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage += 'Kamera wird bereits von einer anderen Anwendung verwendet.';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage += 'Gewählte Kamerakonfiguration nicht verfügbar.';
+      } else if (error.name === 'SecurityError') {
+        errorMessage += 'Zugriff blockiert. Überprüfe HTTPS oder lokale Entwicklung.';
+      } else {
+        errorMessage += error.message || 'Unbekannter Fehler';
+      }
+
+      alert(errorMessage);
     }
   };
 
