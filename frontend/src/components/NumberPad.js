@@ -8,8 +8,8 @@ const styles = {
     gap: '8px',
     padding: '15px',
     width: '100%',
-    maxWidth: '200px',
-    maxHeight: '200px', // Make it square
+    maxWidth: '150px',
+    maxHeight: '150px', // Make it square
     aspectRatio: '1', // Force square aspect ratio
     margin: '0 auto',
   },
