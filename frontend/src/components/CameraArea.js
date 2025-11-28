@@ -373,33 +373,94 @@ function CameraArea({ gameState, user, roomId, socket }) {
             {gameState.players.filter(p => p.id !== user?.id).map((player) => (
               <div key={player.id} style={{ flex: 1, position: 'relative', borderRadius: '4px', overflow: 'hidden' }}>
                 {remoteStreams[player.id] ? (
-                  <video
-                    ref={el => {
-                      if (el && remoteStreams[player.id]) {
-                        console.log('🎬 Setting remote stream for', player.name, remoteStreams[player.id].getTracks().length, 'tracks');
-                        el.srcObject = remoteStreams[player.id];
-                        // Force play and check if it works
-                        const playPromise = el.play();
-                        playPromise.then(() => {
-                          console.log('✅ Remote video playing successfully for', player.name);
-                        }).catch(e => {
-                          console.warn('❌ Remote video autoplay blocked for', player.name, ':', e);
-                          // Try without autoplay for debugging
-                          el.muted = true;
-                          el.setAttribute('muted', '');
-                          el.play().then(() => {
-                            console.log('📺 Remote video played after muting for', player.name);
-                          }).catch(e2 => {
-                            console.error('🚫 Remote video failed even after muting for', player.name, ':', e2);
-                          });
+                  <div
+                    style={{ width: '100%', height: '100%', position: 'relative', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      // Allow user to click to start video if autoplay fails
+                      const video = e.currentTarget.querySelector('video');
+                      if (video && video.paused) {
+                        console.log('👆 User clicked to start remote video for', player.name);
+                        video.muted = true;
+                        video.setAttribute('muted', '');
+                        video.play().then(() => {
+                          console.log('▶️ Remote video started by user click for', player.name);
+                        }).catch(error => {
+                          console.error('🚫 Failed to start remote video even with user click:', error);
                         });
                       }
                     }}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  >
+                    <video
+                      ref={el => {
+                        if (el && remoteStreams[player.id]) {
+                          console.log('🎬 Setting remote stream for', player.name, remoteStreams[player.id].getTracks().length, 'tracks');
+                          el.srcObject = remoteStreams[player.id];
+
+                          // First try normal autoplay
+                          el.play().then(() => {
+                            console.log('✅ Remote video playing successfully for', player.name);
+                          }).catch(firstError => {
+                            console.warn('❌ Remote video autoplay blocked for', player.name, ':', firstError.message);
+
+                            // Try with user interaction fallback (muted)
+                            if (firstError.name === 'NotAllowedError' || firstError.message.includes('autoplay')) {
+                              el.muted = true;
+                              el.setAttribute('muted', '');
+                              el.play().then(() => {
+                                console.log('📺 Remote video played after muting (will unmute on user click)');
+                                // Add visual indicator
+                                const indicator = document.createElement('div');
+                                indicator.innerHTML = '🔊 Klick zum Entmuten';
+                                indicator.style.cssText = `
+                                  position: absolute;
+                                  top: 50%;
+                                  left: 50%;
+                                  transform: translate(-50%, -50%);
+                                  background: rgba(0,0,0,0.8);
+                                  color: white;
+                                  padding: 10px;
+                                  border-radius: 5px;
+                                  font-size: 14px;
+                                  pointer-events: none;
+                                  z-index: 100;
+                                `;
+                                el.parentElement.appendChild(indicator);
+                                setTimeout(() => indicator.remove(), 3000);
+
+                                // Allow unmute on click
+                                el.parentElement.onclick = () => {
+                                  el.muted = false;
+                                  console.log('🔊 Unmuted remote video for', player.name);
+                                  indicator.remove();
+                                };
+                              }).catch(secondError => {
+                                console.error('🚫 Failed to play remote video even muted:', secondError);
+                                // Show fallback UI
+                                const fallback = document.createElement('div');
+                                fallback.innerHTML = '🎥 Video blockiert<br/>Klick zum Starten';
+                                fallback.style.cssText = `
+                                  position: absolute;
+                                  top: 50%;
+                                  left: 50%;
+                                  transform: translate(-50%, -50%);
+                                  background: rgba(255,0,0,0.8);
+                                  color: white;
+                                  padding: 20px;
+                                  border-radius: 5px;
+                                  text-align: center;
+                                `;
+                                el.parentElement.appendChild(fallback);
+                              });
+                            }
+                          });
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
                 ) : (
                   <div style={{ width: '100%', height: '100%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
                     {console.log('⌛ Waiting for stream from', player.name, '- remoteStreams[player.id] =', remoteStreams[player.id]) || `Warte auf ${player.name}...`}
