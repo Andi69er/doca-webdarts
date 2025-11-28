@@ -5,12 +5,14 @@ const styles = {
   numberPad: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '8px',
-    padding: '15px',
-    width: '100%',
+    gap: '6px',
+    padding: '10px',
+    width: '150px', // Fixed width for square
+    height: '150px', // Fixed height for square
     maxWidth: '150px',
-    
+    maxHeight: '150px',
     margin: '0 auto',
+    boxSizing: 'border-box',
   },
   button: {
     padding: '12px',
