@@ -108,7 +108,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Start camera
   const startCamera = async () => {
-    alert("Kamera einschalten button clicked");
+    console.log("Kamera einschalten button clicked");
 
     // Check if mediaDevices is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -116,8 +116,6 @@ function CameraArea({ gameState, user, roomId, socket }) {
       console.error('getUserMedia not supported');
       return;
     }
-
-    alert("Starte Kamerazugriff...");
 
     try {
       // Simple constraints to start - no deviceId constraints to avoid errors
@@ -130,10 +128,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
       };
 
       console.log('Requesting camera access with constraints:', constraints);
-      alert("Fordere Kameraberechtigung an...");
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('Camera stream obtained successfully');
-      alert("Kamera erfolgreich gestartet!");
 
       setLocalStream(stream);
       setIsCameraEnabled(true);
@@ -258,8 +254,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
       {/* Header / Controls */}
       <div style={{ padding: '10px', background: '#111', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <h4 style={{ margin: 0, color: '#fff' }}>DARTBOARD CAM</h4>
-        
-        {userInRoom && (
+
+        {gameState.players && gameState.players.length > 0 && (
           <div>
             {!isCameraEnabled ? (
                showDeviceSelector && devices.length > 0 ? (
