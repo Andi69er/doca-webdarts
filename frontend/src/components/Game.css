@@ -94,6 +94,7 @@ d.game-container {
   flex-direction: column;
   align-self: end; /* Unterkante mit Zahlenblock-Unterkante ausrichten */
   height: auto;
+  max-height: 150px;
 }
 
 .right-panel {
