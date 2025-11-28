@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import CameraArea from './CameraArea';
 import PlayerScores from './PlayerScores';
-import LiveStatistics from './LiveStatistics';
+import ThrowHistory from './ThrowHistory';
 import NumberPad from './NumberPad';
 import GameChat from './GameChat';
 import GameEndPopup from './GameEndPopup';
@@ -211,7 +211,7 @@ function Game() {
 
                         {/* Score-Historie mitte (1/3) */}
                         <div className="score-history-container">
-                            <LiveStatistics gameState={gameState} />
+                            <ThrowHistory gameState={gameState} />
                         </div>
 
                         {/* Chat rechts (1/3) */}

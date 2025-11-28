@@ -76,6 +76,7 @@ d.game-container {
 .number-pad-container {
   grid-column: 1;
   align-self: end; /* Direkt an unteren Rand des Grid-Bereichs */
+  height: auto;
 }
 
 /* Score-Historie-Bereich (mitte, 1/3) */
@@ -92,7 +93,7 @@ d.game-container {
   display: flex;
   flex-direction: column;
   align-self: end; /* Unterkante mit Zahlenblock-Unterkante ausrichten */
-  height: 100%;
+  height: auto;
 }
 
 .right-panel {

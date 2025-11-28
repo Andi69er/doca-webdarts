@@ -5,10 +5,11 @@ const styles = {
   numberPad: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '10px',
-    padding: '20px',
-    maxWidth: '300px',
-    margin: '20px auto',
+    gap: '2px',
+    padding: '5px',
+    width: '100%',
+    height: '100%',
+    boxSizing: 'border-box',
   },
   button: {
     padding: '12px',
