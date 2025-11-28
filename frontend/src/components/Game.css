@@ -546,7 +546,6 @@ d.game-container {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 1rem;
   padding: 0.5rem;
   background-color: #333;
   border-radius: 8px;
