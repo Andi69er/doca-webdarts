@@ -255,8 +255,6 @@ function Game() {
                     onRematch={handleRematch}
                 />
             )}
-
-            <Link to="/" className="back-to-lobby">Back to Lobby</Link>
         </div>
     );
 }
