@@ -105,8 +105,27 @@ function CameraArea({ gameState, user, roomId, socket }) {
     }
   }, [localStream]);
 
+  // Request permission to populate device list when selector is shown
+  const initializeDevicePermissions = async () => {
+    try {
+      // Request minimal camera permission to populate device list
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      // Immediately stop the stream - we just wanted permission
+      tempStream.getTracks().forEach(track => track.stop());
+      // Now refresh devices with proper labels
+      setTimeout(refreshDevices, 100);
+    } catch (error) {
+      console.log('Could not get device permissions:', error);
+    }
+  };
+
   // Keep selected device consistent when device list updates
   useEffect(() => {
+    // If device selector is shown but no devices, try to get permissions
+    if (showDeviceSelector && devices.length === 0) {
+      initializeDevicePermissions();
+    }
+
     // If we have devices but no selection, select first device
     if (devices.length > 0 && !selectedDeviceId) {
       setSelectedDeviceId(devices[0].deviceId);
@@ -115,11 +134,13 @@ function CameraArea({ gameState, user, roomId, socket }) {
     else if (devices.length > 0 && selectedDeviceId && !devices.some(d => d.deviceId === selectedDeviceId)) {
       setSelectedDeviceId(devices[0].deviceId);
     }
-  }, [devices, selectedDeviceId]);
+  }, [devices, selectedDeviceId, showDeviceSelector]);
 
   // Start camera
   const startCamera = async () => {
     console.log("Kamera einschalten button clicked");
+    console.log("selectedDeviceId:", selectedDeviceId);
+    console.log("available devices:", devices);
 
     // Check if mediaDevices is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -137,6 +158,9 @@ function CameraArea({ gameState, user, roomId, socket }) {
       // If user selected a specific device and it exists in our device list
       if (selectedDeviceId && devices.some(d => d.deviceId === selectedDeviceId)) {
         videoConstraints.deviceId = { exact: selectedDeviceId };
+        console.log("Using specific device:", selectedDeviceId);
+      } else {
+        console.log("Using default device (no specific device selected)");
       }
 
       const constraints = {
