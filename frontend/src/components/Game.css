@@ -75,7 +75,7 @@ d.game-container {
 /* Nummerblock-Bereich (links, 1/3) */
 .number-pad-container {
   grid-column: 1;
-  align-self: end; /* Direkt an unteren Rand des Grid-Bereichs (für Ausrichtung) */
+  align-self: end; /* Direkt an unteren Rand des Grid-Bereichs */
   height: 150px;
   display: flex;
   justify-content: center; /* Zentriert NumberPad im Container */
@@ -86,6 +86,7 @@ d.game-container {
   grid-column: 2;
   display: flex;
   flex-direction: column;
+  align-self: end; /* Gleichermaßen am unteren Rand */
   height: 150px;
 }
 
@@ -94,6 +95,7 @@ d.game-container {
   grid-column: 3;
   display: flex;
   flex-direction: column;
+  align-self: end; /* Gleichermaßen am unteren Rand */
   height: 150px;
 }
 
