@@ -9,8 +9,7 @@ const styles = {
     padding: '15px',
     width: '100%',
     maxWidth: '150px',
-    maxHeight: '150px', // Make it square
-    aspectRatio: '1', // Force square aspect ratio
+    
     margin: '0 auto',
   },
   button: {
