@@ -279,7 +279,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
       <div className="splitscreen-container" style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
         {gameState.players && gameState.players.map((player) => (
           <div key={player.id} className="splitscreen-player" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-            
+
             {/* Logic: Show Local OR Remote Stream */}
             {player.id === user?.id ? (
               // LOCAL PLAYER
@@ -295,19 +295,9 @@ function CameraArea({ gameState, user, roomId, socket }) {
                     display: isCameraEnabled ? 'block' : 'none'
                   }}
                 />
-                {!isCameraEnabled && (
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-                    <button 
-                      onClick={startCamera}
-                      style={{ padding: '15px 30px', background: '#ffcc00', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
-                      KAMERA STARTEN
-                    </button>
-                  </div>
-                )}
                 {isCameraEnabled && (
-                  <button 
-                    onClick={stopCamera} 
+                  <button
+                    onClick={stopCamera}
                     style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px' }}
                   >
                     Stopp
@@ -331,7 +321,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
                     autoPlay
                     playsInline
                     muted
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                   <div className="video-label" style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px' }}>
                     {player.name}
@@ -341,7 +331,19 @@ function CameraArea({ gameState, user, roomId, socket }) {
             )}
           </div>
         ))}
-        
+
+        {/* Camera Start Button - always visible when camera is disabled and we have players */}
+        {!isCameraEnabled && gameState.players && gameState.players.length > 0 && (
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+            <button
+              onClick={startCamera}
+              style={{ padding: '15px 30px', background: '#ffcc00', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '18px' }}
+            >
+              KAMERA STARTEN
+            </button>
+          </div>
+        )}
+
         {/* Fallback Text if no players */}
         {(!gameState.players || gameState.players.length === 0) && (
             <div style={{ color: '#666', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
