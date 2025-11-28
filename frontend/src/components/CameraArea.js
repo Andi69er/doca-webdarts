@@ -94,8 +94,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Initial device check - try once on mount
   useEffect(() => {
-    // For initial load, try to refresh devices and provide fallback
-    setDevices([{ deviceId: 'default', label: 'Kamera (Standard)' }]);
+    // Initialize with empty device list - will be populated after permission
     refreshDevices();
   }, []);
 
@@ -104,7 +103,19 @@ function CameraArea({ gameState, user, roomId, socket }) {
     if (localStream) {
       refreshDevices();
     }
-  }, [localStream, selectedDeviceId]);
+  }, [localStream]);
+
+  // Keep selected device consistent when device list updates
+  useEffect(() => {
+    // If we have devices but no selection, select first device
+    if (devices.length > 0 && !selectedDeviceId) {
+      setSelectedDeviceId(devices[0].deviceId);
+    }
+    // If current selection is not in device list anymore, select first available
+    else if (devices.length > 0 && selectedDeviceId && !devices.some(d => d.deviceId === selectedDeviceId)) {
+      setSelectedDeviceId(devices[0].deviceId);
+    }
+  }, [devices, selectedDeviceId]);
 
   // Start camera
   const startCamera = async () => {
@@ -118,12 +129,18 @@ function CameraArea({ gameState, user, roomId, socket }) {
     }
 
     try {
-      // Simple constraints to start - no deviceId constraints to avoid errors
+      const videoConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      };
+
+      // If user selected a specific device and it exists in our device list
+      if (selectedDeviceId && devices.some(d => d.deviceId === selectedDeviceId)) {
+        videoConstraints.deviceId = { exact: selectedDeviceId };
+      }
+
       const constraints = {
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: videoConstraints,
         audio: false
       };
 
