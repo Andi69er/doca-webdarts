@@ -375,10 +375,24 @@ function CameraArea({ gameState, user, roomId, socket }) {
                 {remoteStreams[player.id] ? (
                   <video
                     ref={el => {
-                      if (el) {
+                      if (el && remoteStreams[player.id]) {
                         console.log('🎬 Setting remote stream for', player.name, remoteStreams[player.id].getTracks().length, 'tracks');
                         el.srcObject = remoteStreams[player.id];
-                        el.play().catch(e => console.log('Autoplay blocked', e));
+                        // Force play and check if it works
+                        const playPromise = el.play();
+                        playPromise.then(() => {
+                          console.log('✅ Remote video playing successfully for', player.name);
+                        }).catch(e => {
+                          console.warn('❌ Remote video autoplay blocked for', player.name, ':', e);
+                          // Try without autoplay for debugging
+                          el.muted = true;
+                          el.setAttribute('muted', '');
+                          el.play().then(() => {
+                            console.log('📺 Remote video played after muting for', player.name);
+                          }).catch(e2 => {
+                            console.error('🚫 Remote video failed even after muting for', player.name, ':', e2);
+                          });
+                        });
                       }
                     }}
                     autoPlay
