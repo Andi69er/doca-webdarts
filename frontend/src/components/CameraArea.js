@@ -318,42 +318,51 @@ function CameraArea({ gameState, user, roomId, socket }) {
         )}
       </div>
 
-      {/* Video Area - Filling the space */}
-      <div className="splitscreen-container" style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
-        {gameState.players && gameState.players.map((player) => (
-          <div key={player.id} className="splitscreen-player" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+      {/* Video Area - Top: Own camera, Bottom: Other players */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
 
-            {/* Logic: Show Local OR Remote Stream */}
-            {player.id === user?.id ? (
-              // LOCAL PLAYER
-              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  muted
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover', // WICHTIG: Macht das Bild randlos
-                    display: isCameraEnabled ? 'block' : 'none'
-                  }}
-                />
-                {isCameraEnabled && (
-                  <button
-                    onClick={stopCamera}
-                    style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px' }}
-                  >
-                    Stopp
-                  </button>
-                )}
-                <div className="video-label" style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px' }}>
-                  {player.name} (Du)
-                </div>
-              </div>
-            ) : (
-              // REMOTE PLAYER
-              remoteStreams[player.id] && (
-                <div style={{ width: '100%', height: '100%', position: 'relative', zIndex: 5 }}>
+        {/* LOCAL CAMERA - Top half */}
+        <div style={{ flex: 1, position: 'relative', width: '100%', minHeight: '50%' }}>
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: isCameraEnabled ? 'block' : 'none'
+            }}
+          />
+          {!isCameraEnabled && gameState.players && gameState.players.length > 0 && (
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+              <button
+                onClick={startCamera}
+                style={{ padding: '15px 30px', background: '#ffcc00', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '18px' }}
+              >
+                KAMERA STARTEN
+              </button>
+            </div>
+          )}
+          {isCameraEnabled && (
+            <button
+              onClick={stopCamera}
+              style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px' }}
+            >
+              Stopp
+            </button>
+          )}
+          <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', color: 'white' }}>
+            Ich ({user?.name || 'Spieler'})
+          </div>
+        </div>
+
+        {/* REMOTE CAMERAS - Bottom area */}
+        {gameState.players && gameState.players.filter(p => p.id !== user?.id).length > 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '5px', padding: '5px', minHeight: '50%' }}>
+            {gameState.players.filter(p => p.id !== user?.id).map((player) => (
+              <div key={player.id} style={{ flex: 1, position: 'relative', borderRadius: '4px', overflow: 'hidden' }}>
+                {remoteStreams[player.id] ? (
                   <video
                     ref={el => {
                       if (el) {
@@ -366,32 +375,24 @@ function CameraArea({ gameState, user, roomId, socket }) {
                     muted
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
-                  <div className="video-label" style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px' }}>
-                    {player.name}
+                ) : (
+                  <div style={{ width: '100%', height: '100%', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                    Warte auf {player.name}...
                   </div>
+                )}
+                <div style={{ position: 'absolute', bottom: '5px', left: '5px', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '3px', color: 'white', fontSize: '12px' }}>
+                  {player.name}
                 </div>
-              )
-            )}
-          </div>
-        ))}
-
-        {/* Camera Start Button - always visible when camera is disabled and we have players */}
-        {!isCameraEnabled && gameState.players && gameState.players.length > 0 && (
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-            <button
-              onClick={startCamera}
-              style={{ padding: '15px 30px', background: '#ffcc00', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '18px' }}
-            >
-              KAMERA STARTEN
-            </button>
+              </div>
+            ))}
           </div>
         )}
 
         {/* Fallback Text if no players */}
         {(!gameState.players || gameState.players.length === 0) && (
-            <div style={{ color: '#666', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                Warte auf Spieler...
-            </div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '18px' }}>
+            Warte auf Spieler...
+          </div>
         )}
       </div>
     </div>
