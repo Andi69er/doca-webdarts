@@ -9,7 +9,7 @@ d.game-container {
 
 .game-layout {
   display: grid;
-  grid-template-columns: 1fr 40vw;
+  grid-template-columns: 2fr 1fr;
   height: 100vh;
   overflow: hidden;
 }
@@ -62,13 +62,39 @@ d.game-container {
   border-right: 1px solid #333;
 }
 
+/* Neue Layout-Struktur für die untere Sektion */
 .bottom-section {
-  display: flex;
-  gap: 1rem;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
   height: 100%;
   margin-top: auto;
   flex-shrink: 0;
+}
+
+/* Nummerblock-Bereich (links, 1/3) */
+.number-pad-container {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  align-self: end; /* Positioniert sich unten rechts */
+}
+
+/* Score-Historie-Bereich (mitte, 1/3) */
+.score-history-container {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Chat-Bereich (rechts, 1/3) */
+.chat-container {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .right-panel {

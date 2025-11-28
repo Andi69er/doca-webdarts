@@ -193,25 +193,36 @@ function Game() {
             <div className="game-layout">
                 <div className="left-panel">
                     <PlayerScores gameState={gameState} user={user} />
-                    <LiveStatistics gameState={gameState} />
                     <div className="bottom-section">
-                        {gameStarted && (
-                            <NumberPad
-                                onScoreInput={handleScoreInput}
-                                checkoutSuggestions={gameState.checkoutSuggestions}
-                                waitingTimer={gameState.waitingTimer}
-                                isActive={isCurrentUserActive()}
-                                isLocked={inputLockout}
-                                lockoutTimer={lockoutTimer}
-                                gameState={gameState}
+                        {/* Zahlenblock links (1/3) */}
+                        <div className="number-pad-container">
+                            {gameStarted && (
+                                <NumberPad
+                                    onScoreInput={handleScoreInput}
+                                    checkoutSuggestions={gameState.checkoutSuggestions}
+                                    waitingTimer={gameState.waitingTimer}
+                                    isActive={isCurrentUserActive()}
+                                    isLocked={inputLockout}
+                                    lockoutTimer={lockoutTimer}
+                                    gameState={gameState}
+                                />
+                            )}
+                        </div>
+
+                        {/* Score-Historie mitte (1/3) */}
+                        <div className="score-history-container">
+                            <LiveStatistics gameState={gameState} />
+                        </div>
+
+                        {/* Chat rechts (1/3) */}
+                        <div className="chat-container">
+                            <GameChat
+                                socket={socket}
+                                roomId={roomId}
+                                user={user}
+                                messages={gameState.chatMessages || []}
                             />
-                        )}
-                        <GameChat
-                            socket={socket}
-                            roomId={roomId}
-                            user={user}
-                            messages={gameState.chatMessages || []}
-                        />
+                        </div>
                     </div>
                 </div>
 
