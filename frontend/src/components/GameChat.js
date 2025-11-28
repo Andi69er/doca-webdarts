@@ -54,15 +54,6 @@ function GameChat({ socket, roomId, user, messages = [] }) {
 
   return (
     <div className="game-chat">
-      <div className="chat-messages">
-        {(messages || []).map((msg, index) => (
-          <div key={index} className="chat-message">
-            <span className="message-sender">{msg.userName}:</span> {msg.message}
-            <span className="message-time">{formatTimestamp(msg.timestamp)}</span>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
       <div className="chat-input">
         <input
           type="text"
@@ -72,6 +63,15 @@ function GameChat({ socket, roomId, user, messages = [] }) {
           placeholder="Type a message..."
         />
         <button onClick={sendMessage}>Send</button>
+      </div>
+      <div className="chat-messages">
+        {(messages || []).map((msg, index) => (
+          <div key={index} className="chat-message">
+            <span className="message-sender">{msg.userName}:</span> {msg.message}
+            <span className="message-time">{formatTimestamp(msg.timestamp)}</span>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
       </div>
     </div>
   );
