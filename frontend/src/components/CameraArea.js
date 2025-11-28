@@ -107,23 +107,15 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Request permission to populate device list when selector is shown
   const initializeDevicePermissions = async () => {
-    console.log('initializeDevicePermissions called');
     try {
-      console.log('Requesting temp camera permission...');
       // Request minimal camera permission to populate device list
       const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      console.log('Temp camera permission granted, stopping stream...');
       // Immediately stop the stream - we just wanted permission
       tempStream.getTracks().forEach(track => track.stop());
       // Now refresh devices with proper labels
-      console.log('Refreshing device list...');
-      setTimeout(() => {
-        console.log('Calling refreshDevices...');
-        refreshDevices();
-      }, 100);
+      setTimeout(refreshDevices, 100);
     } catch (error) {
       console.error('Could not get device permissions:', error);
-      alert('Kamera-Berechtigung fehlgeschlagen. Incognito-Modus kann Kameraauswahl einschränken.');
       // Fallback: show at least basic camera option
       setDevices([{ deviceId: 'default', label: 'Kamera (Standard)' }]);
     }
