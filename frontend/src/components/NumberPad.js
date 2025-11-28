@@ -61,7 +61,7 @@ function NumberPad({ onScoreInput, isActive, gameState: room }) {
     }
     setInput('');
   };
-  
+
   const waitingTimer = room?.gameState?.waitingTimer;
 
   // Add keyboard event listeners
@@ -84,14 +84,14 @@ function NumberPad({ onScoreInput, isActive, gameState: room }) {
 
     document.addEventListener('keydown', handleKeyPress);
     return () => {
-      document.removeEventListener('keydown', handleKeyPress);
+    document.removeEventListener('keydown', handleKeyPress);
     };
   }, [isActive, input]);
 
   return (
     <div style={styles.numberPad}>
       <div style={styles.display}>{input || '0'}</div>
-      
+
       {isActive && waitingTimer > 0 && (
          <div style={{...styles.display, fontSize: '1rem', textAlign: 'center'}}>
            Zeit verbleibend: {waitingTimer}s
