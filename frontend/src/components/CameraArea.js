@@ -94,6 +94,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Initial device check - try once on mount
   useEffect(() => {
+    // For initial load, try to refresh devices and provide fallback
+    setDevices([{ deviceId: 'default', label: 'Kamera (Standard)' }]);
     refreshDevices();
   }, []);
 
