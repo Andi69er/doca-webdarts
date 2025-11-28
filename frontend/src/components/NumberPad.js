@@ -5,13 +5,10 @@ const styles = {
   numberPad: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '8px',
-    padding: '15px',
-    width: '100%',
-    maxWidth: '150px',
-    maxHeight: '150px', // Make it square
-    aspectRatio: '1', // Force square aspect ratio
-    margin: '0 auto',
+    gap: '10px',
+    padding: '20px',
+    maxWidth: '300px',
+    margin: '20px auto',
   },
   button: {
     padding: '12px',
