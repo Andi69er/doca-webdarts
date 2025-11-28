@@ -39,11 +39,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
     pc.ontrack = (event) => {
       const remoteStream = event.streams[0];
-      console.log('Received remote stream from:', targetUserId);
+      console.log('📡 Received remote stream from:', targetUserId, 'Stream tracks:', remoteStream.getTracks().length);
       setRemoteStreams(prev => ({
         ...prev,
         [targetUserId]: remoteStream
       }));
+      console.log('🖥️ Updated remoteStreams state');
     };
 
     return pc;
@@ -237,8 +238,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
     if (!socket) return;
 
     const handleOffer = (data) => {
-      if (data.to !== user.id || !localStream) return;
-      
+      console.log('📨 Received camera-offer from:', data.from, 'to:', data.to);
+      if (data.to !== user.id || !localStream) {
+        console.log('❌ Ignoring camera-offer - wrong recipient or no localStream');
+        return;
+      }
+
       const pc = peerConnections[data.from] || createPeerConnection(data.from);
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
@@ -252,24 +257,33 @@ function CameraArea({ gameState, user, roomId, socket }) {
         .then(answer => pc.setLocalDescription(answer))
         .then(() => {
             setPeerConnections(prev => ({ ...prev, [data.from]: pc }));
+            console.log('📤 Sending camera-answer to:', data.from);
             socket.emit('camera-answer', { roomId, from: user.id, to: data.from, answer: pc.localDescription });
-        });
+        })
+        .catch(error => console.error('❌ Error handling camera-offer:', error));
     };
 
     const handleAnswer = (data) => {
+      console.log('📨 Received camera-answer from:', data.from, 'to:', data.to);
       if (data.to !== user.id) return;
       const pc = peerConnections[data.from];
       if (pc) {
         pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        console.log('✅ Applied camera-answer for:', data.from);
+      } else {
+        console.log('❌ No peerConnection found for camera-answer:', data.from);
       }
     };
 
     const handleIce = (data) => {
+      console.log('📨 Received camera-ice from:', data.from, 'to:', data.to);
       if (data.to !== user.id) return;
       const pc = peerConnections[data.from];
       if (pc?.remoteDescription) {
         pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        console.log('✅ Added ICE candidate for:', data.from);
       } else {
+        console.log('⏳ Queuing ICE candidate for:', data.from);
         setIceCandidatesQueue(prev => ({
           ...prev,
           [data.from]: [...(prev[data.from] || []), data.candidate]
