@@ -118,19 +118,12 @@ function CameraArea({ gameState, user, roomId, socket }) {
     }
 
     try {
-      // Build constraints based on available device
-      const videoConstraints = {
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      };
-
-      // Only add deviceId constraint if we have a valid device selected
-      if (selectedDeviceId && selectedDeviceId !== 'default' && devices.some(d => d.deviceId === selectedDeviceId)) {
-        videoConstraints.deviceId = { exact: selectedDeviceId };
-      }
-
+      // Simple constraints to start - no deviceId constraints to avoid errors
       const constraints = {
-        video: videoConstraints,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false
       };
 
