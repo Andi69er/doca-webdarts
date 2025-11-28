@@ -84,7 +84,8 @@ d.game-container {
   grid-column: 2;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
+  max-height: 150px;
 }
 
 /* Chat-Bereich (rechts, 1/3) */
