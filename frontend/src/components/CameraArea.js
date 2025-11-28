@@ -108,7 +108,7 @@ function CameraArea({ gameState, user, roomId, socket }) {
 
   // Start camera
   const startCamera = async () => {
-    console.log("Kamera einschalten button clicked");
+    alert("Kamera einschalten button clicked");
 
     // Check if mediaDevices is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -116,6 +116,8 @@ function CameraArea({ gameState, user, roomId, socket }) {
       console.error('getUserMedia not supported');
       return;
     }
+
+    alert("Starte Kamerazugriff...");
 
     try {
       // Simple constraints to start - no deviceId constraints to avoid errors
@@ -128,8 +130,10 @@ function CameraArea({ gameState, user, roomId, socket }) {
       };
 
       console.log('Requesting camera access with constraints:', constraints);
+      alert("Fordere Kameraberechtigung an...");
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('Camera stream obtained successfully');
+      alert("Kamera erfolgreich gestartet!");
 
       setLocalStream(stream);
       setIsCameraEnabled(true);
