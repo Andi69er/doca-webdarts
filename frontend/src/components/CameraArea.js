@@ -73,22 +73,36 @@ function CameraArea({ gameState, user, roomId, socket }) {
       .catch(error => console.error('Error creating offer:', error));
   };
 
-  // Get available camera devices
-  useEffect(() => {
-    const getDevices = async () => {
-      try {
+  // Get available camera devices - only after permission granted
+  const refreshDevices = async () => {
+    try {
+      if (navigator.mediaDevices?.enumerateDevices) {
         const deviceList = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = deviceList.filter(device => device.kind === 'videoinput');
         setDevices(videoDevices);
+        // Only set default device if we have devices and no device is selected yet
         if (videoDevices.length > 0 && !selectedDeviceId) {
           setSelectedDeviceId(videoDevices[0].deviceId);
         }
-      } catch (error) {
-        console.error('Error getting devices:', error);
       }
-    };
-    if (navigator.mediaDevices?.enumerateDevices) getDevices();
-  }, [selectedDeviceId]);
+    } catch (error) {
+      console.error('Error getting devices:', error);
+      // On error, at least show basic camera button
+      setDevices([{ deviceId: 'default', label: 'Kamera (Standard)' }]);
+    }
+  };
+
+  // Initial device check - try once on mount
+  useEffect(() => {
+    refreshDevices();
+  }, []);
+
+  // Refresh devices after camera permission granted
+  useEffect(() => {
+    if (localStream) {
+      refreshDevices();
+    }
+  }, [localStream, selectedDeviceId]);
 
   // Start camera
   const startCamera = async () => {
@@ -102,12 +116,19 @@ function CameraArea({ gameState, user, roomId, socket }) {
     }
 
     try {
+      // Build constraints based on available device
+      const videoConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      };
+
+      // Only add deviceId constraint if we have a valid device selected
+      if (selectedDeviceId && selectedDeviceId !== 'default' && devices.some(d => d.deviceId === selectedDeviceId)) {
+        videoConstraints.deviceId = { exact: selectedDeviceId };
+      }
+
       const constraints = {
-        video: {
-          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          width: { ideal: 1280 }, // Höhere Auflösung versuchen
-          height: { ideal: 720 }
-        },
+        video: videoConstraints,
         audio: false
       };
 
@@ -239,13 +260,13 @@ function CameraArea({ gameState, user, roomId, socket }) {
       <div style={{ padding: '10px', background: '#111', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <h4 style={{ margin: 0, color: '#fff' }}>DARTBOARD CAM</h4>
         
-        {devices.length > 0 && userInRoom && (
+        {userInRoom && (
           <div>
             {!isCameraEnabled ? (
-               showDeviceSelector ? (
-                <select 
+               showDeviceSelector && devices.length > 0 ? (
+                <select
                   className='camera-select'
-                  value={selectedDeviceId} 
+                  value={selectedDeviceId}
                   onChange={(e) => setSelectedDeviceId(e.target.value)}
                   style={{ background: '#333', color: '#fff', padding: '5px' }}
                 >
