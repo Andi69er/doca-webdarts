@@ -262,8 +262,7 @@ const [localGameStarted, setLocalGameStarted] = useState(false);
     const expectedLocalScore = useRef(null);
     const localVideoRef = useRef(null);
     const peerConnections = useRef({});
-    const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidates
-    const lockoutTimerRef = useRef(null);
+const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidates
 
     // Callbacks - Device Enumeration
     const refreshDevices = useCallback(async () => {
@@ -524,7 +523,7 @@ socket.on('statusUpdate', handleGameState);
             socket.off('receiveMessage', handleReceiveMessage);
 socket.off('statusUpdate', handleGameState);
         };
-    }, [socket, roomId, handleGameState, handleReceiveMessage, handleScoreLocked]);
+    }, [socket, roomId, handleGameState, handleReceiveMessage]);
 
     // --- KAMERA & WEBRTC LOGIK ---
 
