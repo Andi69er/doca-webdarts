@@ -921,15 +921,7 @@ const isHost = gameState.hostId === user.id;
     };
 
     return (
-        <div className="game-container">
-            <div className="debug-info">
-                <h4>Debug-Info:</h4>
-                <div>Spieler: {gameState?.players?.map(p => `${p.name}: ${p.score}`).join(' | ')}</div>
-                <div>Aktueller Spieler: {gameState?.players?.[gameState.currentPlayerIndex]?.name}</div>
-<div>Mein Zug: {isMyTurn ? 'Ja' : 'Nein'}</div>
-                <div>Gesperrt: {numpadState.isLocked ? 'Ja' : 'Nein'}</div>
-                <div>Undo: {numpadState.canUndo ? 'Ja' : 'Nein'}</div>
-            </div>
+<div className="game-container">
             
             {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
             <div className="game-layout">
