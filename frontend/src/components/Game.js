@@ -555,25 +555,47 @@ const stopCamera = () => {
         }
     };
 
-    // Automatische Verbindung mit allen Gegnern
+    // ROBUSTE automatische Verbindung mit allen Gegnern
     const autoConnectToOpponents = useCallback(() => {
-        if (!localStream || !gameState?.players) {
-            console.log("AutoConnect übersprungen - localStream:", !!localStream, "gameState.players:", !!gameState?.players);
+        console.log(`[AutoConnect] 🔄 Versuche automatische Verbindung...`);
+        console.log(`[AutoConnect] localStream:`, !!localStream);
+        console.log(`[AutoConnect] gameState.players:`, !!gameState?.players);
+        console.log(`[AutoConnect] user.id:`, user.id);
+        
+        if (!gameState?.players) {
+            console.log(`[AutoConnect] ❌ Übersprungen - keine Spieler`);
             return;
         }
         
         const opponents = gameState.players.filter(p => p.id !== user.id);
-        console.log("Automatisch verbinden mit:", opponents.map(p => p.name));
+        console.log(`[AutoConnect] Gegner gefunden:`, opponents.map(p => p.name));
         
-        opponents.forEach(opponent => {
+        if (opponents.length === 0) {
+            console.log(`[AutoConnect] ⚠️ Keine Gegner gefunden`);
+            return;
+        }
+        
+        opponents.forEach((opponent, index) => {
             if (!peerConnections.current[opponent.id]) {
-                console.log("Initiating call to:", opponent.name, opponent.id);
-                setTimeout(() => initiateCall(opponent.id), 500);
+                console.log(`[AutoConnect] Initiating call to:`, opponent.name, opponent.id);
+                // Verzögerung für bessere Stabilität
+                setTimeout(() => {
+                    console.log(`[AutoConnect] 🔌 Führe Anruf aus für:`, opponent.name);
+                    initiateCall(opponent.id);
+                }, (index + 1) * 1000); // 1s, 2s, 3s Verzögerung
             } else {
-                console.log("Bereits verbunden mit:", opponent.name);
+                console.log(`[AutoConnect] ✅ Bereits verbunden mit:`, opponent.name);
             }
         });
-    }, [localStream, gameState?.players, user.id]);
+    }, [gameState?.players, user.id]);
+
+    // Automatische Verbindung wenn localStream verfügbar wird
+    useEffect(() => {
+        if (gameState?.players) {
+            console.log("🚀 gameState.players verfügbar - starte automatische Verbindung");
+            setTimeout(() => autoConnectToOpponents(), 2000); // 2s Verzögerung
+        }
+    }, [gameState?.players, autoConnectToOpponents]);
 
     // Hilfsfunktion zum Verarbeiten der Queue (Race Condition Fix)
     const processIceQueue = async (socketId, pc) => {
@@ -589,7 +611,7 @@ const stopCamera = () => {
     };
 
 const createPeerConnection = (targetSocketId) => {
-        console.log(`[WebRTC] Erstelle PeerConnection zu: ${targetSocketId}, localStream verfügbar:`, !!localStream);
+        console.log(`[WebRTC] 🔧 Erstelle PeerConnection zu: ${targetSocketId}, localStream verfügbar:`, !!localStream);
         
         const pc = new RTCPeerConnection({
             iceServers: [
@@ -599,9 +621,24 @@ const createPeerConnection = (targetSocketId) => {
             ]
         });
 
-        // WICHTIG: Transceiver erzwingen (Video empfangen, auch wenn wir keins senden)
-        pc.addTransceiver('video', { direction: 'sendrecv' });
-        pc.addTransceiver('audio', { direction: 'sendrecv' });
+        // ROBUSTE Transceiver Konfiguration für alle Browser
+        try {
+            // Video Transceiver - erzwinge Empfang
+            const videoTransceiver = pc.addTransceiver('video', { 
+                direction: 'sendrecv',
+                streams: [] // Explizit leer für bessere Kompatibilität
+            });
+            console.log(`[WebRTC] ✅ Video Transceiver erstellt:`, videoTransceiver);
+            
+            // Audio Transceiver
+            const audioTransceiver = pc.addTransceiver('audio', { 
+                direction: 'sendrecv',
+                streams: []
+            });
+            console.log(`[WebRTC] ✅ Audio Transceiver erstellt:`, audioTransceiver);
+        } catch (error) {
+            console.error(`[WebRTC] ❌ Transceiver Fehler:`, error);
+        }
 
         pc.onicecandidate = (event) => {
             if (event.candidate && socket) {
@@ -615,54 +652,53 @@ const createPeerConnection = (targetSocketId) => {
             }
         };
 
+        // ROBUSTE ontrack Behandlung
         pc.ontrack = (event) => {
             console.log(`[WebRTC] 🔥 ontrack Event von ${targetSocketId}!`);
             console.log(`[WebRTC] Event Details:`, {
-                track: event.track,
-                streams: event.streams,
-                receiver: event.receiver,
-                transceiver: event.transceiver
+                track: event.track?.kind,
+                streams: event.streams?.length,
+                receiver: !!event.receiver,
+                transceiver: !!event.transceiver
             });
             
-            console.log(`[WebRTC] Track Details:`, {
-                kind: event.track.kind,
-                label: event.track.label,
-                readyState: event.track.readyState,
-                id: event.track.id
-            });
-            
-            const stream = event.streams[0];
-            console.log(`[WebRTC] Stream aus event.streams[0]:`, stream);
-            
-            if (stream) {
-                console.log(`[WebRTC] ✅ Gültiger Stream empfangen von ${targetSocketId}`);
-                console.log(`[WebRTC] Stream Properties:`, {
-                    id: stream.id,
-                    active: stream.active,
-                    tracks: stream.getTracks().length,
-                    videoTracks: stream.getVideoTracks().length,
-                    audioTracks: stream.getAudioTracks().length
-                });
-                
-                setRemoteStreams(prev => {
-                    console.log(`[WebRTC] Aktuelle Remote Streams:`, Object.keys(prev));
-                    const newStreams = {
-                        ...prev,
-                        [targetSocketId]: stream
-                    };
-                    console.log(`[WebRTC] ✅ Remote Streams aktualisiert für ${targetSocketId}:`, Object.keys(newStreams));
-                    console.log(`[WebRTC] Stream für ${targetSocketId}:`, newStreams[targetSocketId]);
-                    return newStreams;
+            // Mehrere Streams的处理 (manche Browser senden mehrere)
+            if (event.streams && event.streams.length > 0) {
+                event.streams.forEach((stream, index) => {
+                    console.log(`[WebRTC] Stream ${index} von ${targetSocketId}:`, {
+                        id: stream.id,
+                        active: stream.active,
+                        tracks: stream.getTracks().length
+                    });
+                    
+                    if (stream && stream.getTracks().length > 0) {
+                        setRemoteStreams(prev => {
+                            const newStreams = {
+                                ...prev,
+                                [targetSocketId]: stream
+                            };
+                            console.log(`[WebRTC] ✅ Remote Stream gesetzt für ${targetSocketId}:`, stream.id);
+                            return newStreams;
+                        });
+                    }
                 });
             } else {
-                console.error(`[WebRTC] ❌ KEIN STREAM in ontrack event von ${targetSocketId}!`);
-                console.error(`[WebRTC] event.streams:`, event.streams);
-                console.error(`[WebRTC] event.track:`, event.track);
+                // Fallback: Track direkt verwenden
+                console.log(`[WebRTC] ⚠️ Kein Stream, verwende Track direkt`);
+                const stream = new MediaStream([event.track]);
+                setRemoteStreams(prev => ({
+                    ...prev,
+                    [targetSocketId]: stream
+                }));
             }
         };
 
         pc.onconnectionstatechange = () => {
             console.log(`[WebRTC] Connection State zu ${targetSocketId}:`, pc.connectionState);
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            console.log(`[WebRTC] ICE Connection State zu ${targetSocketId}:`, pc.iceConnectionState);
         };
 
         // ROBUSTE localStream Behandlung
@@ -671,8 +707,8 @@ const createPeerConnection = (targetSocketId) => {
                 console.log(`[WebRTC] Füge ${localStream.getTracks().length} Tracks zu PeerConnection hinzu`);
                 localStream.getTracks().forEach(track => {
                     try {
-                        pc.addTrack(track, localStream);
-                        console.log(`[WebRTC] ✅ Track hinzugefügt:`, track.kind, track.label);
+                        const sender = pc.addTrack(track, localStream);
+                        console.log(`[WebRTC] ✅ Track hinzugefügt:`, track.kind, track.label, sender);
                     } catch (error) {
                         console.error(`[WebRTC] ❌ Fehler beim Hinzufügen von Track:`, error);
                     }
@@ -689,18 +725,18 @@ const createPeerConnection = (targetSocketId) => {
         if (!localStream) {
             console.log(`[WebRTC] Warte auf localStream für ${targetSocketId}...`);
             const checkLocalStream = setInterval(() => {
-                if (localStream) {
+                if (localStream && localStream.getTracks().length > 0) {
                     console.log(`[WebRTC] localStream jetzt verfügbar für ${targetSocketId}`);
                     addLocalTracks();
                     clearInterval(checkLocalStream);
                 }
             }, 100);
             
-            // Timeout nach 5 Sekunden
+            // Timeout nach 10 Sekunden
             setTimeout(() => {
                 clearInterval(checkLocalStream);
                 console.log(`[WebRTC] Timeout beim Warten auf localStream für ${targetSocketId}`);
-            }, 5000);
+            }, 10000);
         }
 
         peerConnections.current[targetSocketId] = pc;
