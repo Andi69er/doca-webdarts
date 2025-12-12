@@ -99,210 +99,7 @@ const ensureStats = (player) => {
 };
 
 // --- HELPERS ---
-const getCheckoutText = (score) => {
-    if (score === undefined || score === null) return "";
-    if (score > 170 || score < 2) return ""; // No checkout possible
-
-    const checkouts = {
-        170: "T20 T20 BULL",
-        167: "T20 T19 BULL",
-        164: "T20 T18 BULL",
-        161: "T20 T17 BULL",
-        160: "T20 T20 D20",
-        158: "T20 T20 D19",
-        157: "T19 T20 D20",
-        156: "T20 T20 D18",
-        155: "T20 T19 D20",
-        154: "T20 T18 D20",
-        153: "T20 T19 D18",
-        152: "T20 T20 D16",
-        151: "T20 T17 D20",
-        150: "T20 T18 D18",
-        149: "T20 T19 D16",
-        148: "T20 T16 D20",
-        147: "T19 T18 D18",
-        146: "T20 T14 D20",
-        145: "T20 T15 D20",
-        144: "T20 T20 D12",
-        143: "T20 T17 D16",
-        142: "T20 T14 D20",
-        141: "T20 T19 D12",
-        140: "T20 T20 D10",
-        139: "T19 T14 D20",
-        138: "T20 T18 D12",
-        137: "T19 T16 D16",
-        136: "T20 T20 D8",
-        135: "T20 T15 D15",
-        134: "T20 T14 D16",
-        133: "T20 T19 D8",
-        132: "T20 T20 D6",
-        131: "T20 T13 D16",
-        130: "T20 T20 D5",
-        129: "T19 T16 D12",
-        128: "T20 T20 D4",
-        127: "T20 T17 D8",
-        126: "T19 T19 D6",
-        125: "T20 T15 D10",
-        124: "T20 T16 D8",
-        123: "T19 T14 D12",
-        122: "T18 T20 D4",
-        121: "T20 T15 D8",
-        120: "T20 20 D20",
-        119: "T19 12 D20",
-        118: "T20 18 D20",
-        117: "T20 17 D20",
-        116: "T20 16 D20",
-        115: "T20 15 D20",
-        114: "T20 14 D20",
-        113: "T20 13 D20",
-        112: "T20 12 D20",
-        111: "T20 11 D20",
-        110: "T20 10 D20",
-        109: "T19 12 D20",
-        108: "T20 8 D20",
-        107: "T19 10 D20",
-        106: "T20 6 D20",
-        105: "T20 5 D20",
-        104: "T18 10 D20",
-        103: "T19 6 D20",
-        102: "T20 2 D20",
-        101: "T17 10 D20",
-        100: "T20 D20",
-        99: "T19 10 D16",
-        98: "T20 D19",
-        97: "T19 D20",
-        96: "T20 D18",
-        95: "T19 D19",
-        94: "T18 D20",
-        93: "T19 D18",
-        92: "T20 D16",
-        91: "T17 D20",
-        90: "T18 D18",
-        89: "T19 D16",
-        88: "T16 D20",
-        87: "T17 D18",
-        86: "T18 D16",
-        85: "T15 D20",
-        84: "T20 D12",
-        83: "T17 D16",
-        82: "T14 D20",
-        81: "T19 D12",
-        80: "T20 D10",
-        79: "T13 D20",
-        78: "T18 D12",
-        77: "T19 D10",
-        76: "T20 D8",
-        75: "T17 D12",
-        74: "T14 D16",
-        73: "T19 D8",
-        72: "T12 D18",
-        71: "T13 D16",
-        70: "T10 D20",
-        69: "T19 D6",
-        68: "T20 D4",
-        67: "T17 D8",
-        66: "T10 D18",
-        65: "T19 D4",
-        64: "T16 D8",
-        63: "T13 D12",
-        62: "T10 D16",
-        61: "T15 D8",
-        60: "20 D20",
-        59: "19 D20",
-        58: "18 D20",
-        57: "17 D20",
-        56: "16 D20",
-        55: "15 D20",
-        54: "14 D20",
-        53: "13 D20",
-        52: "12 D20",
-        51: "11 D20",
-        50: "10 D20",
-        49: "9 D20",
-        48: "8 D20",
-        47: "7 D20",
-        46: "6 D20",
-        45: "5 D20",
-        44: "4 D20",
-        43: "3 D20",
-        42: "2 D20",
-        41: "1 D20",
-        40: "D20",
-        39: "7 D16",
-        38: "D19",
-        37: "5 D16",
-        36: "D18",
-        35: "3 D16",
-        34: "D17",
-        33: "1 D16",
-        32: "D16",
-        31: "15 D8",
-        30: "D15",
-        29: "13 D8",
-        28: "D14",
-        27: "19 D4",
-        26: "D13",
-        25: "17 D4",
-        24: "D12",
-        23: "7 D8",
-        22: "D11",
-        21: "13 D4",
-        20: "D10",
-        19: "11 D4",
-        18: "D9",
-        17: "9 D4",
-        16: "D8",
-        15: "7 D4",
-        14: "D7",
-        13: "5 D4",
-        12: "D6",
-        11: "3 D4",
-        10: "D5",
-        9: "1 D4",
-        8: "D4",
-        7: "S3 D2",
-        6: "D3",
-        5: "S1 D2",
-        4: "D2",
-        3: "S1 D1",
-        2: "D1"
-    };
-
-    return checkouts[score] || "";
-};
-
 // --- COMPONENTS ---
-const GameInfoBar = ({ currentPlayer, isMyTurn }) => {
-    if (!currentPlayer) return <div style={{padding:'20px', textAlign:'center', color:'#666'}}>Lade...</div>;
-    const styles = {
-        container: {
-            width: '100%', padding: '15px 25px', background: 'linear-gradient(90deg, #1f1f2e, #252535)',
-            borderBottom: '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderLeft: `5px solid ${isMyTurn ? '#4CAF50' : '#d9534f'}`,
-            boxShadow: '0 4px 10px rgba(0,0,0,0.2)', marginBottom: '10px', minHeight: '80px'
-        },
-        left: { display: 'flex', flexDirection: 'column' },
-        label: { fontSize: '0.8rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' },
-        player: { fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' },
-        right: { textAlign: 'right' },
-        finishLabel: { fontSize: '0.8rem', color: '#ffd700', fontWeight: 'bold', textTransform: 'uppercase' },
-        checkout: { fontSize: '1.3rem', color: '#ccc', fontFamily: 'monospace', fontWeight: 'bold' }
-    };
-    const checkoutText = getCheckoutText(currentPlayer.score);
-    return (
-        <div style={styles.container}>
-            <div style={styles.left}><span style={styles.label}>Am Wurf</span><span style={styles.player}>{currentPlayer.name}</span></div>
-            {checkoutText && (
-                <div style={styles.right}>
-                    <span style={styles.finishLabel}>Finish Weg</span>
-                    <div style={styles.checkout}>{checkoutText}</div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-
 // Erweiterter Video Player (Startet Muted um Autoplay-Blockaden zu verhindern)
 const RemoteVideoPlayer = ({ stream, name }) => {
     const videoRef = useRef(null);
@@ -361,18 +158,7 @@ function Game() {
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
     
-    // Video / Camera State
-    const [videoLayout, setVideoLayout] = useState({
-        flexDirection: 'column',
-        localHeight: '50%',
-        remoteHeight: '50%',
-        localVisible: true,
-        remoteVisible: true
-    });
-    // Immer remoteVisible true setzen
-    useEffect(() => {
-        setVideoLayout(prev => ({ ...prev, remoteVisible: true }));
-    }, []);
+// Video / Camera State - Vereinfacht
     const [opponentLocked, setOpponentLocked] = useState(false);
     const [canUseUndo, setCanUseUndo] = useState(false);
     const [localStream, setLocalStream] = useState(null);
@@ -380,8 +166,13 @@ function Game() {
     const [selectedDeviceId, setSelectedDeviceId] = useState('');
     const [isCameraEnabled, setIsCameraEnabled] = useState(false);
     const [remoteStreams, setRemoteStreams] = useState({});
-    const [fullscreenVideoId, setFullscreenVideoId] = useState(null);
     const [showWinnerPopup, setShowWinnerPopup] = useState(false);
+    
+    // Video Layout State
+    const [videoLayout, setVideoLayout] = useState({
+        mode: 'splitscreen', // 'splitscreen' oder 'fullscreen'
+        currentPlayerId: null
+    });
     
     // Refs
     const ignoreServerUntil = useRef(0);
@@ -502,18 +293,28 @@ function Game() {
                     }
                 }
 
-                // Vollbild setzen basierend auf aktuellem Spieler
+// Video Layout setzen basierend auf Spielphase
                 if (gameStarted && currentPlayer) {
-                    // Setze Vollbild für den aktuellen Spieler, egal ob lokal oder Gegner
-                    setFullscreenVideoId(newIsMyTurn ? 'local' : currentPlayer.id);
-                } else if (!gameStarted) {
-                    setFullscreenVideoId(null);
+                    // Spiel läuft: Aktueller Spieler in Vollbild
+                    setVideoLayout({
+                        mode: 'fullscreen',
+                        currentPlayerId: newIsMyTurn ? 'local' : currentPlayer.id
+                    });
+                } else if (!gameStarted && newState.gameStatus !== 'finished') {
+                    // Vor Spielstart: Splitscreen
+                    setVideoLayout({
+                        mode: 'splitscreen',
+                        currentPlayerId: null
+                    });
                 }
             }
 
-            // Wenn Spiel endet, Vollbild verlassen
+// Wenn Spiel endet, zurück zu Splitscreen
             if (newState.gameStatus === 'finished') {
-                setFullscreenVideoId(null);
+                setVideoLayout({
+                    mode: 'splitscreen',
+                    currentPlayerId: null
+                });
             }
 
             return {
@@ -597,7 +398,7 @@ function Game() {
 
     // --- KAMERA & WEBRTC LOGIK ---
 
-    const startCamera = async (targetDeviceId) => {
+const startCamera = async (targetDeviceId) => {
         const idToUse = targetDeviceId || selectedDeviceId;
         console.log("Starte Kamera mit ID:", idToUse);
         
@@ -644,10 +445,15 @@ function Game() {
                     }
                 });
             });
+            
+            // Automatisch mit allen Gegnern verbinden wenn Kamera gestartet wird
+            setTimeout(() => {
+                autoConnectToOpponents();
+            }, 1000);
         }
     };
 
-    const stopCamera = () => {
+const stopCamera = () => {
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
             setLocalStream(null);
@@ -657,6 +463,20 @@ function Game() {
             }
         }
     };
+
+    // Automatische Verbindung mit allen Gegnern
+    const autoConnectToOpponents = useCallback(() => {
+        if (!localStream || !gameState?.players) return;
+        
+        const opponents = gameState.players.filter(p => p.id !== user.id);
+        console.log("Automatisch verbinden mit:", opponents.map(p => p.name));
+        
+        opponents.forEach(opponent => {
+            if (!peerConnections.current[opponent.id]) {
+                setTimeout(() => initiateCall(opponent.id), 500);
+            }
+        });
+    }, [localStream, gameState?.players, user.id]);
 
     // Hilfsfunktion zum Verarbeiten der Queue (Race Condition Fix)
     const processIceQueue = async (socketId, pc) => {
@@ -875,13 +695,7 @@ function Game() {
     const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
     const isGameFinished = gameState.gameStatus === 'finished';
 
-    let playerForInfoBar = currentPlayer;
-    // When the game is finished, the "current player" is the winner. 
-    // For the info bar, we want to show the checkout of the other player (the loser).
-    if (isGameFinished) {
-        playerForInfoBar = winner && gameState.players.find(p => p.id !== winner.id);
-    }
-    
+
     const isHost = gameState.hostId === user.id;
     const canInput = !inputLockout;
     const showCountdown = false;
@@ -914,7 +728,7 @@ function Game() {
                     ) : null}
                     
                     {/* Show ready box only if game is not running AND not finished */}
-                    {(!isGameRunning && !isGameFinished) ? (
+                    {(!isGameRunning && !isGameFinished) && (
                         <div className="ready-box">
                             <div className="ready-status">
                                 {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
@@ -927,9 +741,6 @@ function Game() {
                                 <div className="waiting-message">Warte auf Host...</div>
                             )}
                         </div>
-                    ) : (
-                        // Show info bar if game is running OR finished
-                        <GameInfoBar currentPlayer={playerForInfoBar} isMyTurn={isMyTurn} />
                     )}
 
                     <div className="game-bottom-section">
@@ -969,24 +780,81 @@ function Game() {
                         }}>
                             {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || "Kamera"}</option>)}
                         </select>
-                        <button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)}>{isCameraEnabled ? "Stop" : "Start"}</button>
-                        <button onClick={() => gameState.players.forEach(p => { if(p.id !== user.id) initiateCall(p.id); })} style={{ marginLeft: '10px', padding: '5px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px' }}>🔌 Verbinden</button>
+<button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)}>
+                            {isCameraEnabled ? "📹 Stop" : "📹 Start"}
+                        </button>
+                        <span style={{ marginLeft: '10px', fontSize: '12px', color: '#ccc' }}>
+                            {isCameraEnabled ? "Automatisch verbunden" : "Kamera starten für Video"}
+                        </span>
                     </div>
-                    <div className="video-container" style={{ flexDirection: videoLayout.flexDirection }}>
+{/* Video Container mit korrekter Logik */}
+                    <div className="video-container" style={{ 
+                        display: 'flex', 
+                        flexDirection: videoLayout.mode === 'splitscreen' ? 'column' : 'column',
+                        height: '100%',
+                        gap: '10px'
+                    }}>
+                        {/* Lokaler Spieler */}
                         <div className="video-player local" style={{
-                            height: fullscreenVideoId === 'local' ? '100%' : videoLayout.localHeight,
-                            flex: fullscreenVideoId === 'local' ? 'none' : '1',
-                            display: (fullscreenVideoId === 'local' || videoLayout.localVisible) ? 'flex' : 'none'
+                            height: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '100%' : '200px',
+                            flex: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? 'none' : '1',
+                            display: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId !== 'local' ? 'none' : 'flex',
+                            border: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '3px solid #4CAF50' : '1px solid #555',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            position: 'relative'
                         }}>
-                            <div className="video-label">Du</div>
-                            <video ref={localVideoRef} autoPlay muted playsInline style={{width:'100%', height:'100%', objectFit: 'cover'}} />
+                            <div className="video-label" style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '10px',
+                                background: 'rgba(0,0,0,0.7)',
+                                color: 'white',
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                                zIndex: '10'
+                            }}>
+                                Du {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? ' (DU BIST DRAN)' : ''}
+                            </div>
+                            <video 
+                                ref={localVideoRef} 
+                                autoPlay 
+                                muted 
+                                playsInline 
+                                style={{
+                                    width:'100%', 
+                                    height:'100%', 
+                                    objectFit: 'cover',
+                                    backgroundColor: '#000'
+                                }} 
+                            />
                         </div>
+                        
+                        {/* Remote Spieler */}
                         {gameState.players.filter(p => p.id !== user.id).map(p => (
                             <div key={p.id} className="video-player remote" style={{
-                                height: fullscreenVideoId === p.id ? '100%' : videoLayout.remoteHeight,
-                                flex: fullscreenVideoId === p.id ? 'none' : '1',
-                                display: (fullscreenVideoId === p.id || videoLayout.remoteVisible) ? 'flex' : 'none'
+                                height: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '100%' : '200px',
+                                flex: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? 'none' : '1',
+                                display: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId !== p.id ? 'none' : 'flex',
+                                border: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '3px solid #4CAF50' : '1px solid #555',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                position: 'relative'
                             }}>
+                                <div className="video-label" style={{
+                                    position: 'absolute',
+                                    top: '10px',
+                                    left: '10px',
+                                    background: 'rgba(0,0,0,0.7)',
+                                    color: 'white',
+                                    padding: '5px 10px',
+                                    borderRadius: '4px',
+                                    fontSize: '14px',
+                                    zIndex: '10'
+                                }}>
+                                    {p.name} {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? ' (IST DRAN)' : ''}
+                                </div>
                                 <RemoteVideoPlayer stream={remoteStreams[p.id]} name={p.name} />
                             </div>
                         ))}
