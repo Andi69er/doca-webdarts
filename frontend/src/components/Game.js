@@ -846,6 +846,20 @@ socket.emit('start-game', payload);
 <button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)}>
                             {isCameraEnabled ? "📹 Stop" : "📹 Start"}
                         </button>
+                        <button 
+                            onClick={() => autoConnectToOpponents()} 
+                            style={{ 
+                                marginLeft: '10px', 
+                                padding: '5px 10px', 
+                                backgroundColor: '#4CAF50', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: '4px',
+                                fontSize: '12px'
+                            }}
+                        >
+                            🔌 Verbinden
+                        </button>
                         <span style={{ marginLeft: '10px', fontSize: '12px', color: '#ccc' }}>
                             {isCameraEnabled ? "Automatisch verbunden" : "Kamera starten für Video"}
                         </span>
