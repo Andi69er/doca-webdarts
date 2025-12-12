@@ -76,10 +76,10 @@ const PlayerScores = ({ gameState, user }) => {
         </div>
     );
 
-    const DartsInfoBlock = (
+const DartsInfoBlock = (
         <div className="dart-info-bild1">
             <span className="dart-icon">🎯</span>
-            <span className="additional-number">{player.lastScore || '0'}</span>
+            <span className="additional-number">{player.dartsThrown || 0}</span>
         </div>
     );
 
