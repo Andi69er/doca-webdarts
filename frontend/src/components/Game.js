@@ -864,6 +864,11 @@ function Game() {
     }
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const winner = gameState.players?.find(p => p.score <= 0);
+    const loser = winner && gameState.players?.find(p => p.id !== winner.id);
+    const checkoutText = loser ? getCheckoutText(loser.score) : null;
+
+
     const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
     const isHost = gameState.hostId === user.id;
     const canInput = !inputLockout;
@@ -874,8 +879,6 @@ function Game() {
             socket.emit('rematch', { roomId, userId: user.id });
         }
     };
-
-    const winner = gameState.players?.find(p => p.score <= 0);
 
     return (
         <div className="game-container">
@@ -975,7 +978,7 @@ function Game() {
                     </div>
                 </div>
             </div>
-            {gameState.gameStatus === 'finished' && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
+            {gameState.gameStatus === 'finished' && <GameEndPopup winner={winner} checkout={checkoutText} countdown={10} onRematch={handleRematch} />}
             <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
         </div>
     );

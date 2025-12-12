@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './GameEndPopup.css';
 
-function GameEndPopup({ winner, countdown, onRematch }) {
+function GameEndPopup({ winner, countdown, onRematch, checkout }) {
   const [countdownTime, setCountdownTime] = useState(countdown || 10);
+
+  const handleRematch = useCallback(() => {
+    onRematch();
+  }, [onRematch]);
 
   useEffect(() => {
     if (countdownTime > 0) {
@@ -14,11 +18,7 @@ function GameEndPopup({ winner, countdown, onRematch }) {
       // Auto rematch or close after countdown
       handleRematch();
     }
-  }, [countdownTime]);
-
-  const handleRematch = useCallback(() => {
-    onRematch();
-  }, [onRematch]);
+  }, [countdownTime, handleRematch]);
 
   const winnerName = winner ? winner.name || winner : 'Unknown';
 
@@ -36,6 +36,12 @@ function GameEndPopup({ winner, countdown, onRematch }) {
         <h2 className="winner-announcement">
           🏆 Winner: {winnerName} 🏆
         </h2>
+        {checkout && (
+          <div className="checkout-info">
+            <h4 style={{ margin: '0 0 5px 0', color: '#ffd700' }}>Finish-Weg für den Gegner:</h4>
+            <p style={{ margin: 0, fontSize: '1.2em', fontFamily: 'monospace' }}>{checkout}</p>
+          </div>
+        )}
         <div className="countdown">
           Rematch in {countdownTime} seconds...
         </div>
