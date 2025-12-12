@@ -231,38 +231,30 @@ function Game() {
     const [connectionError, setConnectionError] = useState(null);
     const [user, setUser] = useState({ id: null, name: 'Gast' });
     const [gameState, setGameState] = useState(null);
-    const [inputLockout, setInputLockout] = useState(true);
-    const [localGameStarted, setLocalGameStarted] = useState(false);
+const [localGameStarted, setLocalGameStarted] = useState(false);
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
     
-// Video / Camera State - Vereinfacht
-    const [opponentLocked, setOpponentLocked] = useState(false);
-    const [canUseUndo, setCanUseUndo] = useState(false);
+    // Video / Camera State - Vereinfacht
     const [localStream, setLocalStream] = useState(null);
     const [devices, setDevices] = useState([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState('');
     const [isCameraEnabled, setIsCameraEnabled] = useState(false);
     const [remoteStreams, setRemoteStreams] = useState({});
-    
-    // Debug remoteStreams changes
-    useEffect(() => {
-        console.log(`[Game] Remote Streams State geändert:`, remoteStreams);
-        console.log(`[Game] Remote Streams Keys:`, Object.keys(remoteStreams));
-        Object.entries(remoteStreams).forEach(([playerId, stream]) => {
-            console.log(`[Game] Player ${playerId} Stream:`, {
-                exists: !!stream,
-                active: stream?.active,
-                tracks: stream?.getTracks()?.length || 0
-            });
-        });
-    }, [remoteStreams]);
     const [showWinnerPopup, setShowWinnerPopup] = useState(false);
     
     // Video Layout State
     const [videoLayout, setVideoLayout] = useState({
         mode: 'splitscreen', // 'splitscreen' oder 'fullscreen'
         currentPlayerId: null
+    });
+
+    // Nummernpad-Sperrlogik - VEREINFACHT
+    const [numpadState, setNumpadState] = useState({
+        isLocked: true,        // Nummernpad gesperrt/entsperrt
+        canUndo: false,        // Undo möglich
+        lockedPlayerId: null,  // Wer ist gesperrt
+        lockTimer: null        // Timer für automatische Entsperrung
     });
     
     // Refs
@@ -332,9 +324,8 @@ function Game() {
             ? newState.currentPlayerIndex 
             : (newState.gameState?.currentPlayerIndex || 0);
         
-        setGameState(prev => {
+setGameState(prev => {
             if (!prev) {
-                setInputLockout(false);
                 setTurnEndTime(null);
             }
 
@@ -374,13 +365,17 @@ function Game() {
                 const newIsMyTurn = currentPlayer.id === user.id;
                 setIsMyTurn(newIsMyTurn);
 
-                // Wenn ich jetzt dran bin und vorher nicht, dann Lockout aufheben
+// Wenn ich jetzt dran bin und vorher nicht, dann Nummernpad entsperren
                 if (newIsMyTurn && prevPlayerIndex !== currentPlayerIndex) {
-                    setInputLockout(false);
+                    setNumpadState(prev => ({
+                        ...prev,
+                        isLocked: false,
+                        canUndo: false,
+                        lockedPlayerId: null
+                    }));
                     setTurnEndTime(null);
-                    if (lockoutTimerRef.current) {
-                        clearTimeout(lockoutTimerRef.current);
-                        lockoutTimerRef.current = null;
+                    if (numpadState.lockTimer) {
+                        clearTimeout(numpadState.lockTimer);
                     }
                 }
 
@@ -430,35 +425,81 @@ function Game() {
         });
     }, []);
 
-    // Handler für Score-Lock Event
-    const handleScoreLocked = useCallback((data) => {
-        const { lockedPlayerId, duration } = data;
-        console.log(`Score-Lock Event empfangen: Spieler ${lockedPlayerId} gesperrt für ${duration}ms`);
+// VEREINFACHTE Nummernpad-Sperrlogik
+    const handleScoreInput = (scoreInput) => {
+        if (!isMyTurn || numpadState.isLocked) return;
+        const currentIndex = gameState?.currentPlayerIndex;
+        const currentPlayer = gameState?.players?.[currentIndex];
+        
+        if (!currentPlayer) return;
 
-        // Wenn der Gegner gesperrt ist, kann ich (der aktive Spieler) Undo verwenden
-        if (lockedPlayerId !== user.id) {
-            setOpponentLocked(true);
-            setCanUseUndo(true); // Ich kann Undo verwenden, da Gegner gesperrt
+        const isHost = gameState?.hostId === user.id;
 
-            // Timer für 5 Sekunden starten
-            if (lockoutTimerRef.current) clearTimeout(lockoutTimerRef.current);
-            lockoutTimerRef.current = setTimeout(() => {
-                setOpponentLocked(false);
-                setCanUseUndo(false);
-                console.log('Score-Lock und Undo-Möglichkeit aufgehoben');
-            }, duration);
-        } else {
-            // Ich bin der gesperrte Spieler - kann nicht Undo verwenden
-            setCanUseUndo(false);
-            setOpponentLocked(false); // Ich bin gesperrt, Gegner nicht
+        if (!socket || !user?.id || numpadState.isLocked) return;
+        if (!isMyTurn && !isHost) return;
 
-            // Timer für 5 Sekunden starten
-            if (lockoutTimerRef.current) clearTimeout(lockoutTimerRef.current);
-            lockoutTimerRef.current = setTimeout(() => {
-                console.log('Score-Lock aufgehoben');
-            }, duration);
+        const points = parseInt(scoreInput, 10);
+        if (isNaN(points)) return;
+
+        setLocalGameStarted(true);
+        
+        // Nummernpad für 5 Sekunden entsperren (für Undo)
+        setNumpadState(prev => ({
+            ...prev,
+            isLocked: false,
+            canUndo: true,
+            lockedPlayerId: user.id
+        }));
+
+        // Timer für 5 Sekunden starten
+        if (numpadState.lockTimer) {
+            clearTimeout(numpadState.lockTimer);
         }
-    }, [user.id]);
+        
+        const lockTimer = setTimeout(() => {
+            setNumpadState(prev => ({
+                ...prev,
+                isLocked: true,
+                canUndo: false,
+                lockedPlayerId: null,
+                lockTimer: null
+            }));
+            console.log('Nummernpad nach 5 Sekunden gesperrt');
+        }, 5000); // 5 Sekunden
+        
+        setNumpadState(prev => ({
+            ...prev,
+            lockTimer: lockTimer
+        }));
+        
+        const payload = {
+            roomId,
+            userId: currentPlayer.id,
+            score: points
+        };
+        
+        socket.emit('score-input', payload);
+    };
+
+    const handleUndo = () => {
+        if (socket && user.id && numpadState.canUndo && window.confirm("Undo?")) {
+            ignoreServerUntil.current = 0;
+            expectedLocalScore.current = null;
+            socket.emit('undo', { roomId, userId: user.id });
+            
+            // Nach Undo: Nummernpad sofort sperren
+            setNumpadState(prev => ({
+                ...prev,
+                isLocked: true,
+                canUndo: false,
+                lockedPlayerId: null
+            }));
+            
+            if (numpadState.lockTimer) {
+                clearTimeout(numpadState.lockTimer);
+            }
+        }
+    };
 
     const winner = gameState?.players?.find(p => p.score <= 0);
 
@@ -469,8 +510,7 @@ function Game() {
         socket.on('game-started', handleGameState);
         socket.on('gameState', handleGameState);
         socket.on('receiveMessage', handleReceiveMessage);
-        socket.on('statusUpdate', handleGameState);
-        socket.on('score-locked', handleScoreLocked);
+socket.on('statusUpdate', handleGameState);
 
         socket.emit('joinRoom', { roomId });
         socket.emit('getGameState', roomId);
@@ -482,8 +522,7 @@ function Game() {
             socket.off('game-started', handleGameState);
             socket.off('gameState', handleGameState);
             socket.off('receiveMessage', handleReceiveMessage);
-            socket.off('statusUpdate', handleGameState);
-            socket.off('score-locked', handleScoreLocked);
+socket.off('statusUpdate', handleGameState);
         };
     }, [socket, roomId, handleGameState, handleReceiveMessage, handleScoreLocked]);
 
@@ -852,51 +891,7 @@ socket.emit('start-game', payload);
         }
     };
 
-    const handleScoreInput = (scoreInput) => {
-        if (!isMyTurn || inputLockout) return;
-        const currentIndex = gameState?.currentPlayerIndex;
-        const currentPlayer = gameState?.players?.[currentIndex];
-        
-        if (!currentPlayer) return;
 
-        const isHost = gameState?.hostId === user.id;
-
-        if (!socket || !user?.id || inputLockout) return;
-        if (!isMyTurn && !isHost) return;
-
-        const points = parseInt(scoreInput, 10);
-        if (isNaN(points)) return;
-
-        setLocalGameStarted(true);
-        // Entsperre das Nummernpad für den aktiven Spieler
-        // Entsperre das Nummernpad für Undo
-        setInputLockout(false);
-        
-        const payload = {
-            roomId,
-            userId: currentPlayer.id,
-            score: points
-        };
-        
-        socket.emit('score-input', payload);
-
-        // Score-Eingabe gesendet - Sperr-Logik läuft jetzt über Socket-Event
-    };
-
-    const handleUndo = () => {
-        if (socket && user.id && canUseUndo && window.confirm("Undo?")) {
-            ignoreServerUntil.current = 0;
-            expectedLocalScore.current = null;
-            socket.emit('undo', { roomId, userId: user.id });
-            
-            // Nach Undo: Undo-Möglichkeit zurücksetzen
-            setCanUseUndo(false);
-            if (lockoutTimerRef.current) {
-                clearTimeout(lockoutTimerRef.current);
-                lockoutTimerRef.current = null;
-            }
-        }
-    };
 
     // --- WHITESCREEN FIX ---
     if (!gameState || !gameState.players) {
@@ -915,8 +910,8 @@ socket.emit('start-game', payload);
     const isGameFinished = gameState.gameStatus === 'finished';
 
 
-    const isHost = gameState.hostId === user.id;
-    const canInput = !inputLockout;
+const isHost = gameState.hostId === user.id;
+    const canInput = !numpadState.isLocked;
     const showCountdown = false;
     const countdown = 0;
     const handleRematch = () => {
@@ -932,8 +927,9 @@ socket.emit('start-game', payload);
                 <h4>Debug-Info:</h4>
                 <div>Spieler: {gameState?.players?.map(p => `${p.name}: ${p.score}`).join(' | ')}</div>
                 <div>Aktueller Spieler: {gameState?.players?.[gameState.currentPlayerIndex]?.name}</div>
-                <div>Mein Zug: {isMyTurn ? 'Ja' : 'Nein'}</div>
-                <div>Gesperrt: {inputLockout ? 'Ja' : 'Nein'}</div>
+<div>Mein Zug: {isMyTurn ? 'Ja' : 'Nein'}</div>
+                <div>Gesperrt: {numpadState.isLocked ? 'Ja' : 'Nein'}</div>
+                <div>Undo: {numpadState.canUndo ? 'Ja' : 'Nein'}</div>
             </div>
             
             {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
@@ -973,16 +969,16 @@ socket.emit('start-game', payload);
                                                 <div className="countdown-text">{countdown}s</div>
                                             </div>
                                         )}
-                                         <NumberPad
-                                             onScoreInput={handleScoreInput}
-                                             onUndo={handleUndo}
-                                             checkoutSuggestions={gameState.checkoutSuggestions}
-                                             isActive={canInput && isMyTurn && !inputLockout}
-                                             isLocked={!isMyTurn || inputLockout}
-                                             isOpponentLocked={opponentLocked}
-                                             isMyTurn={isMyTurn}
-                                             canUseUndo={canUseUndo}
-                                         />
+<NumberPad
+                                              onScoreInput={handleScoreInput}
+                                              onUndo={handleUndo}
+                                              checkoutSuggestions={gameState.checkoutSuggestions}
+                                              isActive={canInput && isMyTurn && !numpadState.isLocked}
+                                              isLocked={!isMyTurn || numpadState.isLocked}
+                                              isOpponentLocked={false}
+                                              isMyTurn={isMyTurn}
+                                              canUseUndo={numpadState.canUndo}
+                                          />
                                     </div>
                                 </div>
                             </div>
