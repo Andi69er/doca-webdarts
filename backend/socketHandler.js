@@ -191,6 +191,7 @@ function initializeSocket(io, gameManager, auth) {
                     ...p,
                     score: startScore,
                     dartsThrown: 0,
+                    dartsThrownBeforeLeg: 0, // Add this line
                     avg: '0.00',
                     isActive: index === 0,
                     legs: 0,
@@ -300,24 +301,39 @@ function initializeSocket(io, gameManager, auth) {
 
                 if (legWinnerId) {
                     console.log(`[LEG-WINNER] Spieler ${legWinnerId} hat das Leg gewonnen.`);
+                    
                     const winnerPlayer = room.players.find(p => p.id === legWinnerId);
-                    const dartsThisLeg = winnerPlayer.dartsThrown - (winnerPlayer.legs * (winnerPlayer.dartsThrown / (winnerPlayer.legs + 1)));
+                    const dartsThisLeg = winnerPlayer.dartsThrown - (winnerPlayer.dartsThrownBeforeLeg || 0);
 
                     if (!updateData.turns[legWinnerId]) {
                         updateData.turns[legWinnerId] = [];
                     }
-                    updateData.turns[legWinnerId].push(Math.round(dartsThisLeg));
+                    updateData.turns[legWinnerId].push(dartsThisLeg);
 
-                    // Reset for next leg
-                    room.game.initializePlayers(room.players);
-                    room.players.forEach(p => {
-                        p.score = startScore;
-                        if (p.id === legWinnerId) {
-                            p.legs += 1;
-                        }
-                    });
+                    winnerPlayer.legs += 1;
+
+                    const legsToWin = room.gameOptions.legsToWin || 1;
+
+                    if (winnerPlayer.legs >= legsToWin) {
+                        updateData.gameStatus = 'finished';
+                        updateData.winner = legWinnerId;
+                        console.log(`[GAME-OVER] Spiel beendet! Gewinner: ${legWinnerId}`);
+                    } else {
+                        // Reset for next leg ONLY if game is not over
+                        room.players.forEach(p => {
+                            p.score = startScore;
+                            p.dartsThrownBeforeLeg = p.dartsThrown;
+                        });
+                        
+                        room.game.scores = {};
+                        room.players.forEach(p => {
+                            room.game.scores[p.id] = startScore;
+                        });
+
+                        console.log(`[NEW-LEG] Nächstes Leg gestartet. Scores zurückgesetzt.`);
+                    }
+
                     updateData.players = room.players;
-                    console.log(`[NEW-LEG] Nächstes Leg gestartet. Scores zurückgesetzt.`);
                 }
                 
                 room.gameState = {

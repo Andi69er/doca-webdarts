@@ -869,6 +869,12 @@ function Game() {
     const canInput = !inputLockout;
     const showCountdown = false;
     const countdown = 0;
+    const handleRematch = () => {
+        if (socket) {
+            socket.emit('rematch', { roomId, userId: user.id });
+        }
+    };
+
     const winner = gameState.players?.find(p => p.score <= 0);
 
     return (
@@ -969,7 +975,7 @@ function Game() {
                     </div>
                 </div>
             </div>
-            {gameState.gameStatus === 'finished' && <GameEndPopup winner={winner} countdown={10} onRematch={() => {}} />}
+            {gameState.gameStatus === 'finished' && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
             <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
         </div>
     );
