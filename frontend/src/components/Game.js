@@ -381,6 +381,7 @@ function Game() {
     const [isCameraEnabled, setIsCameraEnabled] = useState(false);
     const [remoteStreams, setRemoteStreams] = useState({});
     const [fullscreenVideoId, setFullscreenVideoId] = useState(null);
+    const [showWinnerPopup, setShowWinnerPopup] = useState(false);
     
     // Refs
     const ignoreServerUntil = useRef(0);
@@ -868,6 +869,15 @@ function Game() {
     const loser = winner && gameState.players?.find(p => p.id !== winner.id);
     const checkoutText = loser ? getCheckoutText(loser.score) : null;
 
+    useEffect(() => {
+        if (winner && !showWinnerPopup) {
+            setShowWinnerPopup(true);
+        }
+        if (!winner && showWinnerPopup) {
+            setShowWinnerPopup(false);
+        }
+    }, [winner, showWinnerPopup]);
+
 
     const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
     const isHost = gameState.hostId === user.id;
@@ -875,6 +885,7 @@ function Game() {
     const showCountdown = false;
     const countdown = 0;
     const handleRematch = () => {
+        setShowWinnerPopup(false);
         if (socket) {
             socket.emit('rematch', { roomId, userId: user.id });
         }
@@ -978,7 +989,7 @@ function Game() {
                     </div>
                 </div>
             </div>
-            {gameState.gameStatus === 'finished' && <GameEndPopup winner={winner} checkout={checkoutText} countdown={10} onRematch={handleRematch} />}
+            {showWinnerPopup && <GameEndPopup winner={winner} checkout={checkoutText} countdown={10} onRematch={handleRematch} />}
             <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
         </div>
     );
