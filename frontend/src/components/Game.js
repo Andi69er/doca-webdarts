@@ -105,19 +105,53 @@ const RemoteVideoPlayer = ({ stream, name }) => {
     const videoRef = useRef(null);
 
     useEffect(() => {
+        console.log(`[RemoteVideoPlayer] ${name} - Stream verfügbar:`, !!stream);
+        console.log(`[RemoteVideoPlayer] ${name} - Stream Details:`, stream);
+        
         if (videoRef.current && stream) {
+            console.log(`[RemoteVideoPlayer] ${name} - Setze Stream auf Video Element`);
             videoRef.current.srcObject = stream;
+            
             // WICHTIG: Muted setzen, sonst blockiert Chrome Autoplay!
             videoRef.current.muted = true;
+            videoRef.current.playsInline = true;
+            videoRef.current.autoplay = true;
 
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.error(`[VIDEO] Autoplay Fehler bei ${name}:`, error);
+                playPromise.then(() => {
+                    console.log(`[RemoteVideoPlayer] ${name} - Video erfolgreich gestartet`);
+                }).catch(error => {
+                    console.error(`[RemoteVideoPlayer] ${name} - Autoplay Fehler:`, error);
                 });
+            }
+        } else if (!stream) {
+            console.log(`[RemoteVideoPlayer] ${name} - Kein Stream verfügbar`);
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
             }
         }
     }, [stream, name]);
+
+    // Debug: Zeige Stream Status
+    if (!stream) {
+        return (
+            <div className="remote-video-wrapper" style={{
+                position: 'relative', 
+                width: '100%', 
+                height: '100%',
+                backgroundColor: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ccc',
+                fontSize: '14px'
+            }}>
+                <div className="video-label">{name} - Kein Stream</div>
+                <div>Warte auf Videoverbindung...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="remote-video-wrapper" style={{position: 'relative', width: '100%', height: '100%'}}>
@@ -127,15 +161,20 @@ const RemoteVideoPlayer = ({ stream, name }) => {
                 playsInline
                 autoPlay
                 muted // Standardmäßig stumm
-                style={{width:'100%', height:'100%', objectFit: 'contain', backgroundColor: '#222'}}
+                style={{width:'100%', height:'100%', objectFit: 'cover', backgroundColor: '#000'}}
+                onLoadedMetadata={() => console.log(`[RemoteVideoPlayer] ${name} - Video Metadata geladen`)}
+                onCanPlay={() => console.log(`[RemoteVideoPlayer] ${name} - Video kann abgespielt werden`)}
             />
             {/* Unmute Button Overlay */}
             <button
                 onClick={(e) => {
                     const v = e.target.parentElement.querySelector('video');
-                    if(v) v.muted = !v.muted;
+                    if(v) {
+                        v.muted = !v.muted;
+                        console.log(`[RemoteVideoPlayer] ${name} - Muted geändert zu:`, v.muted);
+                    }
                 }}
-                style={{position:'absolute', bottom:5, right:5, fontSize:'0.8em', opacity:0.7}}
+                style={{position:'absolute', bottom:5, right:5, fontSize:'0.8em', opacity:0.7, zIndex: 10}}
             >
                 🔇/🔊
             </button>
@@ -466,14 +505,20 @@ const stopCamera = () => {
 
     // Automatische Verbindung mit allen Gegnern
     const autoConnectToOpponents = useCallback(() => {
-        if (!localStream || !gameState?.players) return;
+        if (!localStream || !gameState?.players) {
+            console.log("AutoConnect übersprungen - localStream:", !!localStream, "gameState.players:", !!gameState?.players);
+            return;
+        }
         
         const opponents = gameState.players.filter(p => p.id !== user.id);
         console.log("Automatisch verbinden mit:", opponents.map(p => p.name));
         
         opponents.forEach(opponent => {
             if (!peerConnections.current[opponent.id]) {
+                console.log("Initiating call to:", opponent.name, opponent.id);
                 setTimeout(() => initiateCall(opponent.id), 500);
+            } else {
+                console.log("Bereits verbunden mit:", opponent.name);
             }
         });
     }, [localStream, gameState?.players, user.id]);
@@ -512,12 +557,27 @@ const stopCamera = () => {
             }
         };
 
-        pc.ontrack = (event) => {
-            console.log(`Stream von ${targetSocketId} empfangen:`, event.streams[0]);
-            setRemoteStreams(prev => ({
-                ...prev,
-                [targetSocketId]: event.streams[0]
-            }));
+pc.ontrack = (event) => {
+            console.log(`[WebRTC] Stream von ${targetSocketId} empfangen:`, event.streams[0]);
+            console.log(`[WebRTC] Track Details:`, {
+                kind: event.track.kind,
+                label: event.track.label,
+                readyState: event.track.readyState
+            });
+            
+            const stream = event.streams[0];
+            if (stream) {
+                setRemoteStreams(prev => {
+                    const newStreams = {
+                        ...prev,
+                        [targetSocketId]: stream
+                    };
+                    console.log(`[WebRTC] Remote Streams aktualisiert:`, Object.keys(newStreams));
+                    return newStreams;
+                });
+            } else {
+                console.error(`[WebRTC] Kein Stream in ontrack event!`);
+            }
         };
 
         if (localStream) {
