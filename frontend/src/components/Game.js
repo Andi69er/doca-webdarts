@@ -536,10 +536,15 @@ const stopCamera = () => {
         }
     };
 
-    const createPeerConnection = (targetSocketId) => {
-        console.log("Erstelle PeerConnection zu:", targetSocketId);
+const createPeerConnection = (targetSocketId) => {
+        console.log(`[WebRTC] Erstelle PeerConnection zu: ${targetSocketId}, localStream verfügbar:`, !!localStream);
+        
         const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
         });
 
         // WICHTIG: Transceiver erzwingen (Video empfangen, auch wenn wir keins senden)
@@ -548,6 +553,7 @@ const stopCamera = () => {
 
         pc.onicecandidate = (event) => {
             if (event.candidate && socket) {
+                console.log(`[WebRTC] ICE Candidate gesendet an ${targetSocketId}`);
                 socket.emit('camera-ice', {
                     candidate: event.candidate,
                     to: targetSocketId,
@@ -557,8 +563,8 @@ const stopCamera = () => {
             }
         };
 
-pc.ontrack = (event) => {
-            console.log(`[WebRTC] Stream von ${targetSocketId} empfangen:`, event.streams[0]);
+        pc.ontrack = (event) => {
+            console.log(`[WebRTC] ✅ Stream von ${targetSocketId} empfangen:`, event.streams[0]);
             console.log(`[WebRTC] Track Details:`, {
                 kind: event.track.kind,
                 label: event.track.label,
@@ -576,15 +582,54 @@ pc.ontrack = (event) => {
                     return newStreams;
                 });
             } else {
-                console.error(`[WebRTC] Kein Stream in ontrack event!`);
+                console.error(`[WebRTC] ❌ Kein Stream in ontrack event!`);
             }
         };
 
-        if (localStream) {
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        pc.onconnectionstatechange = () => {
+            console.log(`[WebRTC] Connection State zu ${targetSocketId}:`, pc.connectionState);
+        };
+
+        // ROBUSTE localStream Behandlung
+        const addLocalTracks = () => {
+            if (localStream && localStream.getTracks().length > 0) {
+                console.log(`[WebRTC] Füge ${localStream.getTracks().length} Tracks zu PeerConnection hinzu`);
+                localStream.getTracks().forEach(track => {
+                    try {
+                        pc.addTrack(track, localStream);
+                        console.log(`[WebRTC] ✅ Track hinzugefügt:`, track.kind, track.label);
+                    } catch (error) {
+                        console.error(`[WebRTC] ❌ Fehler beim Hinzufügen von Track:`, error);
+                    }
+                });
+            } else {
+                console.log(`[WebRTC] ⚠️ Keine localStream Tracks verfügbar für ${targetSocketId}`);
+            }
+        };
+
+        // Tracks sofort hinzufügen wenn localStream verfügbar
+        addLocalTracks();
+
+        // Falls localStream noch nicht verfügbar, warte darauf
+        if (!localStream) {
+            console.log(`[WebRTC] Warte auf localStream für ${targetSocketId}...`);
+            const checkLocalStream = setInterval(() => {
+                if (localStream) {
+                    console.log(`[WebRTC] localStream jetzt verfügbar für ${targetSocketId}`);
+                    addLocalTracks();
+                    clearInterval(checkLocalStream);
+                }
+            }, 100);
+            
+            // Timeout nach 5 Sekunden
+            setTimeout(() => {
+                clearInterval(checkLocalStream);
+                console.log(`[WebRTC] Timeout beim Warten auf localStream für ${targetSocketId}`);
+            }, 5000);
         }
 
         peerConnections.current[targetSocketId] = pc;
+        console.log(`[WebRTC] PeerConnection erstellt für ${targetSocketId}`);
         return pc;
     };
 
