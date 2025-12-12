@@ -626,10 +626,13 @@ const stopCamera = () => {
             userId: user.id,
             resetScores: true
         };
-        socket.emit('start-game', payload);
-        // Wenn Host startet, seine Cam in Vollbild
+socket.emit('start-game', payload);
+        // Wenn Host startet, setze automatisch Vollbild für Host
         if (user.id === gameState?.hostId) {
-            setFullscreenVideoId('local');
+            setVideoLayout({
+                mode: 'fullscreen',
+                currentPlayerId: 'local'
+            });
         }
     };
 
