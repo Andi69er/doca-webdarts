@@ -564,6 +564,17 @@ function Game() {
         }
     }, [user.id]);
 
+    const winner = gameState?.players?.find(p => p.score <= 0);
+
+    useEffect(() => {
+        if (winner && !showWinnerPopup) {
+            setShowWinnerPopup(true);
+        }
+        if (!winner && showWinnerPopup) {
+            setShowWinnerPopup(false);
+        }
+    }, [winner, showWinnerPopup]);
+
     useEffect(() => {
         if (!socket) return;
         socket.on('game-state-update', handleGameState);
@@ -865,20 +876,8 @@ function Game() {
     }
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    const winner = gameState.players?.find(p => p.score <= 0);
     const loser = winner && gameState.players?.find(p => p.id !== winner.id);
     const checkoutText = loser ? getCheckoutText(loser.score) : null;
-
-    useEffect(() => {
-        if (winner && !showWinnerPopup) {
-            setShowWinnerPopup(true);
-        }
-        if (!winner && showWinnerPopup) {
-            setShowWinnerPopup(false);
-        }
-    }, [winner, showWinnerPopup]);
-
-
     const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
     const isHost = gameState.hostId === user.id;
     const canInput = !inputLockout;
