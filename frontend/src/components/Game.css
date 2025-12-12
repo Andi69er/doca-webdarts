@@ -1,0 +1,1093 @@
+.game-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #111;
+  color: white;
+  position: relative;
+}
+
+.game-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Links: 2/3 des Bildschirms */
+.game-main-area {
+  width: 66.66%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid #555;
+}
+
+.game-top-header {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  gap: 15px;
+  background: linear-gradient(90deg, #1a1a2e, #2a2a3e);
+  padding: 20px;
+  border-bottom: 3px solid #4CAF50;
+}
+
+.header-box {
+  background: #2a2a3e;
+  padding: 15px 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  height: 100%;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  color: #ffffff;
+}
+
+.header-top.left { text-align: left; }
+.header-top.right { text-align: right; }
+
+.player-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.player-score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.header-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.wins-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  background: #1a1a2e;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
+.checkout-path {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.header-name {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.header-name.left {
+  text-align: left;
+}
+
+.header-name.right {
+  text-align: right;
+}
+
+.header-center {
+  font-size: 1rem;
+  color: #ccc;
+  text-transform: none;
+  text-align: center;
+}
+
+/* Styles for PlayerScores Component */
+.player-scores-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch; /* Wichtig: Alles gleich hoch */
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, #1a1a2e, #2a2a3e);
+  border-bottom: 3px solid #4CAF50;
+  gap: 10px; /* Abstand zwischen den 3 großen Boxen */
+}
+
+/* Die Container für die 3 Hauptbereiche (Spieler 1, Verlauf, Spieler 2) */
+.player-score-section,
+.player-history-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #2a2a3e; /* Hintergrund der äußeren Hülle */
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  height: auto;
+  min-height: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* Damit Ecken abgerundet bleiben */
+  padding: 0; /* WICHTIG: Kein Padding, damit innere Box den Rand berührt */
+}
+
+/* Mittlere Box (Verlauf) */
+.player-history-section .history-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.history-wrapper h4 {
+  margin-top: 0;
+  color: #ffd700;
+}
+
+/* Grüner Status-Balken oben */
+.game-status-bar {
+  width: 100%;
+  padding: 15px 20px;
+  background: #4CAF50;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.game-status-bar.my-turn {
+  background: #4CAF50;
+}
+
+.game-status-bar.opponent-turn {
+  background: #666;
+}
+
+.status-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.total-score {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: normal;
+}
+
+/* Bereit-Box */
+.ready-box {
+  width: 100%;
+  padding: 30px 20px;
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  border-bottom: 1px solid #555;
+}
+
+.ready-status {
+  font-size: 1.5rem;
+  color: #fff;
+  font-weight: bold;
+}
+
+.waiting-message {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.start-game-button {
+  padding: 15px 40px;
+  background: linear-gradient(45deg, #ffd700, #ffb347);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.start-game-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+}
+
+/* 3 Spalten unten */
+.game-bottom-section {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Linke Spalte: DEIN WURF */
+.game-column-left {
+  width: 33.33%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid #555;
+  background: #0f0f1a;
+}
+
+.wurf-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+}
+
+.wurf-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 20px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* Nummernblock Container */
+.number-pad-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Mittlere Spalte: Statistics */
+.game-column-center {
+  width: 33.33%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid #555;
+  background: #0f0f1a;
+}
+
+.statistics-section {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Rechte Spalte: Chat */
+.game-column-right {
+  width: 33.33%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0f0f1a;
+}
+
+.game-chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Rechts: 1/3 für Video */
+.camera-column {
+  width: 33.33%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #222;
+  min-width: 300px;
+}
+
+/* Video Container */
+.camera-controls {
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #555;
+}
+
+.camera-controls label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: bold;
+}
+
+.camera-controls select {
+  padding: 5px 10px;
+  background: #444;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.camera-controls button {
+  padding: 5px 15px;
+  background: #555;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.camera-controls button:hover {
+  background: #666;
+}
+
+.video-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+.video-player {
+  position: relative;
+  width: 100%;
+  background: #000;
+  overflow: hidden;
+  transition: height 0.5s ease;
+  min-height: 250px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.video-player.remote {
+  height: 100%;
+  max-height: 100%;
+}
+
+.video-player video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  flex: 1;
+}
+
+.video-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  z-index: 10;
+  color: white;
+}
+
+.video-player.local {
+  border-bottom: 1px solid #555;
+}
+
+/* Game Controls Overlay (entfernt, jetzt in ready-box) */
+.game-controls-overlay {
+  display: none;
+}
+
+.spectator-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 107, 107, 0.9);
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 50;
+  font-size: 0.9rem;
+}
+
+.spectator-banner button {
+  margin-left: 10px;
+  padding: 5px 15px;
+  background: #fff;
+  color: #ff6b6b;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Game End Popup */
+.game-end-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background-color: #333;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+}
+
+.winner-announcement {
+  font-size: 2rem;
+  color: #ff6b6b;
+  margin-bottom: 1rem;
+}
+
+.popup-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.popup-buttons button {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.rematch-btn {
+  background-color: #4ecdc4;
+  color: white;
+}
+
+.rematch-btn:hover {
+  background-color: #45b7aa;
+}
+
+.lobby-btn {
+  background-color: #444;
+  color: white;
+}
+
+.lobby-btn:hover {
+  background-color: #555;
+}
+
+/* NumberPad Styles */
+.numpad-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+}
+
+.status-display {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 15px;
+  text-align: center;
+  min-height: 24px;
+}
+
+.status-display.active {
+  color: #4CAF50;
+}
+
+.input-preview {
+  width: 100%;
+  max-width: 300px;
+  height: 120px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.input-preview.locked {
+  opacity: 0.6;
+}
+
+.checkout-hint {
+  color: #ffd700;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 20px;
+}
+
+.numpad-btn {
+  padding: 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+  min-height: 60px;
+}
+
+.numpad-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.numpad-btn.number {
+  background: #2a2a3e;
+  color: white;
+}
+
+.numpad-btn.number:hover:not(:disabled) {
+  background: #3a3a4e;
+  transform: scale(1.05);
+}
+
+.numpad-btn.clear {
+  background: #d9534f;
+  color: white;
+}
+
+.numpad-btn.clear:hover:not(:disabled) {
+  background: #c9302c;
+  transform: scale(1.05);
+}
+
+.numpad-btn.enter {
+  background: #8b6f47;
+  color: white;
+}
+
+.numpad-btn.enter:hover:not(:disabled) {
+  background: #7a5f36;
+  transform: scale(1.05);
+}
+
+.numpad-footer {
+  width: 100%;
+  max-width: 300px;
+}
+
+.numpad-btn.undo {
+  width: 100%;
+  padding: 15px;
+  background: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.numpad-btn.undo:hover:not(:disabled) {
+  background: #c9302c;
+  transform: scale(1.02);
+}
+
+.numpad-btn.undo:disabled {
+  background: #555;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Statistics Styles */
+.darts-per-leg-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  max-width: none; /* Überschreibt max-width von stats-wrapper */
+  margin: 0; /* Überschreibt margin von stats-wrapper */
+}
+.stats-wrapper {
+  width: 75%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.stats-header,
+.darts-per-leg-wrapper .stats-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  padding: 15px;
+  background: #2a2a3e;
+  border-bottom: 2px solid #555;
+  align-items: center;
+  text-align: center;
+}
+
+.p-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: white;
+}
+
+.vs {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #ffd700;
+  padding: 0 15px;
+}
+
+.stats-table {
+  flex: 1;
+  overflow-y: auto;
+  background: #1a1a2e;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  gap: 10px;
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.stat-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.stat-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-cell {
+  font-size: 0.95rem;
+  color: white;
+  text-align: center;
+}
+
+.stat-cell.left {
+  text-align: right;
+  padding-right: 10px;
+}
+
+.stat-cell.center {
+  text-align: center;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-cell.right {
+  text-align: left;
+  padding-left: 10px;
+}
+
+.stat-cell.highlight {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+/* ========================================================== */
+/* Styles for PlayerScores.js - Bild 1 Layout - NEU ANGEPASST */
+/* ========================================================== */
+
+.player-card-bild1 {
+  background-color: #333;
+  /* border-radius wird vom Elternteil geerbt oder ignoriert, da padding:0 ist */
+  border-radius: 8px; 
+  padding: 0; /* KEIN PADDING MEHR */
+  margin: 0;  /* KEIN MARGIN MEHR */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Volle Breite */
+  position: relative;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  height: 100%; /* Volle Höhe */
+  flex: 1;      /* Voller Platz */
+}
+
+.player-card-bild1.active-turn {
+  border: 2px solid #ffd700;
+  box-sizing: border-box; /* Rand drückt Inhalt nicht weg */
+}
+
+.active-dot {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 12px;
+  height: 12px;
+  background-color: red;
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.player-name-bild1 {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #fff;
+  margin: 10px 0 5px 0;
+  text-align: center;
+}
+
+.score-details-bild1 {
+  display: flex;
+  align-items: stretch; /* Damit Legs und Score gleich hoch sind */
+  width: 100%;
+  flex: 1; /* Nimmt restlichen Platz nach unten */
+  padding: 5px 10px 10px 10px;
+}
+
+.legs-section-bild1 {
+  background-color: #444;
+  padding: 5px;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 25%;
+  /* min-height entfernt, Flexbox regelt das */
+}
+
+.legs-label-bild1 {
+  font-size: 0.8rem;
+  color: #ccc;
+  margin-bottom: 5px;
+}
+
+.legs-count-bild1 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.main-score-bild1 {
+  flex: 1;
+  display: flex; /* Zentrieren ermöglichen */
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem; /* Etwas größer */
+  font-weight: bold;
+  color: #4CAF50;
+  text-align: center;
+  margin: 0 10px;
+}
+
+.dart-info-bild1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 20%;
+}
+
+.dart-icon {
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.additional-number {
+  font-size: 1rem;
+  color: #ccc;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .game-layout {
+    flex-direction: column;
+  }
+
+  .game-main-area {
+    width: 100%;
+    height: 60%;
+  }
+
+  .camera-column {
+    width: 100%;
+    height: 40%;
+  }
+
+  .game-bottom-section {
+    flex-direction: column;
+  }
+
+  .game-column-left,
+  .game-column-center,
+  .game-column-right {
+    width: 100%;
+    height: 33.33%;
+  }
+
+  /* ============================================================ */
+/* NEUES LAYOUT FÜR "DARTS PRO LEG" (wie Bild 2)                */
+/* Füge dies ganz unten in deine CSS-Datei ein                  */
+/* ============================================================ */
+
+/* Der Hauptcontainer der Tabelle */
+.darts-per-leg-wrapper.table-style {
+  background-color: #222; /* Dunkler Hintergrund wie im Screenshot */
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 6px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+  box-sizing: border-box;
+  overflow: hidden; /* Verhindert, dass es aus der Box platzt */
+}
+
+/* Titel "Darts pro Leg" */
+.table-header {
+  text-align: center;
+  font-style: italic;
+  color: #bbb;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Das Grid-System: Links Namen (fest), Rechts Scores (flexibel) */
+.score-grid {
+  display: grid;
+  grid-template-columns: 100px 1fr; /* 100px für Namen, Rest für Zahlen */
+  align-items: center;
+  row-gap: 4px;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+/* Überschreibt den globalen .player-name Style nur hier drin */
+.darts-per-leg-wrapper .player-name {
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: #fff;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0; /* Reset global margin */
+}
+
+/* Container für die Zahlenreihe */
+.scores-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start; /* Linksbuendig neben dem Namen */
+  gap: 8px; /* Abstand zwischen den Zahlen */
+  overflow-x: auto; /* Scrollbar falls zu viele Legs */
+  padding-bottom: 2px; /* Platz für Scrollbar */
+}
+
+/* Scrollbar verstecken (optional) */
+.scores-row::-webkit-scrollbar {
+  height: 0px;
+  background: transparent;
+}
+
+/* Die einzelne Zahl */
+.score-cell {
+  min-width: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums; /* Damit Zahlen untereinander stehen */
+}
+
+/* Beste Darts (Unterstrichen) */
+.best-leg {
+  text-decoration: underline;
+  text-decoration-color: #fff;
+  text-underline-offset: 3px;
+  font-weight: bold;
+}
+
+/* Die rote Trennlinie */
+.divider-line {
+  grid-column: 1 / -1; /* Über volle Breite */
+  height: 1px;
+  background-color: #b00; /* Dunkelrot */
+  margin: 2px 0;
+  width: 100%;
+}
+
+/* Die unterste Zeile (Leg Nummern 1 2 3 4 5) */
+.leg-numbers .score-cell {
+  color: #666;
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+/* ================================================= */
+/* NUMMERNPAD: ULTRA KOMPAKT (Scrollbalken-Killer)   */
+/* ================================================= */
+
+/* 1. Den Hauptcontainer zwingen, den Scrollbalken zu verstecken */
+.game-column-left, 
+.wurf-section,
+.number-pad-container,
+.numpad-wrapper {
+    overflow: hidden !important; /* Scrollbalken AUS */
+    padding: 2px !important;     /* Kaum Abstand zum Rand */
+    justify-content: center !important; /* Vertikal mittig */
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Begrenzung der Breite */
+.number-pad-container {
+    max-width: 200px !important;
+    margin: 0 auto !important;
+    height: 100% !important;
+}
+
+/* 2. Titel und Status kleiner */
+.wurf-title {
+    font-size: 0.9rem !important;
+    margin: 0 0 5px 0 !important;
+}
+.status-display {
+    font-size: 0.7rem !important;
+    margin-bottom: 5px !important;
+    min-height: 0 !important;
+}
+
+/* 3. Die weiße Box oben */
+.input-preview {
+    height: 45px !important;    /* Fixe Höhe */
+    line-height: 45px !important;
+    font-size: 1.8rem !important;
+    margin-bottom: 5px !important;
+    border-radius: 6px !important;
+    width: 100% !important;
+}
+
+/* 4. Das Gitter */
+.numpad-grid {
+    gap: 4px !important;
+    margin-bottom: 5px !important;
+    width: 100% !important;
+}
+
+/* 5. DIE BUTTONS (Das Wichtigste!) */
+.numpad-btn {
+    min-height: 0 !important;   /* Zerstört die 60px Grenze */
+    height: 40px !important;    /* Feste kleine Höhe */
+    padding: 0 !important;      /* Zerstört das 20px Padding */
+    font-size: 1.1rem !important;
+    line-height: 40px !important; /* Text vertikal mittig */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 4px !important;
+}
+
+/* 6. Undo Button unten */
+.numpad-footer {
+    width: 100% !important;
+}
+.numpad-btn.undo {
+    height: 30px !important;
+    font-size: 0.8rem !important;
+}
+
+/* ================================================= */
+/* FIX: LEGS-BOX FÜLLEND MACHEN (Rechts & Links)     */
+/* ================================================= */
+
+/* 1. Der Container muss die Kinder strecken */
+.score-details-bild1 {
+  align-items: stretch !important; /* WICHTIG: Zieht alle Elemente auf gleiche Höhe */
+  justify-content: space-between !important; /* Verteilt Platz fair */
+  padding-bottom: 5px !important; /* Etwas weniger Abstand unten */
+}
+
+/* 2. Das Legs-Kästchen (Graue Box) */
+.legs-section-bild1 {
+  width: 30% !important;       /* Breiter machen (vorher war es ca 25%) */
+  height: auto !important;     /* Automatische Höhe basierend auf Stretch */
+  min-height: 100% !important; /* Erzwingt volle Höhe des Containers */
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important; /* Inhalt vertikal mittig */
+  margin: 0 !important;        /* Keine Ränder, die es kleiner machen */
+  box-sizing: border-box !important;
+}
+
+/* 3. Die Schrift darin etwas anpassen, damit es "voller" wirkt */
+.legs-count-bild1 {
+  font-size: 1.8rem !important; /* Zahl größer */
+  line-height: 1 !important;
+}
+
+/* 4. Das Dart-Icon auf der anderen Seite auch schön mittig */
+.dart-info-bild1 {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 30% !important; /* Sollte genauso breit sein wie die Legs-Box für Symmetrie */
+}
+}

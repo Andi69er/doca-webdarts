@@ -1,0 +1,97 @@
+import React from 'react';
+
+const LiveStatistics = ({ gameState }) => {
+    // Sicherheits-Check: Absturz verhindern, wenn Daten fehlen
+    if (!gameState || !gameState.players) {
+        return <div className="stats-wrapper" style={{justifyContent:'center', alignItems:'center', color:'#666'}}>Lade...</div>;
+    }
+
+    const p1 = gameState.players[0] || {};
+    const p2 = gameState.players[1] || {};
+
+    const val = (v, suffix = '') => (v !== undefined && v !== null ? v + suffix : '0' + suffix);
+    const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
+    
+    const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
+    const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
+    
+    // Berechne zusätzliche Statistiken
+    const getScoreRange = (player, min, max = null) => {
+        const scores = player.scores || [];
+        if (max) {
+            return scores.filter(s => s >= min && s <= max).length;
+        }
+        // Wenn kein max, dann zähle alle >= min (für 60+, 100+, 140+)
+        if (min >= 60) {
+            return scores.filter(s => s >= min).length;
+        }
+        // Für 19- zähle alle < min
+        return scores.filter(s => s < min).length;
+    };
+    
+    const p1Scores19Minus = getScoreRange(p1, 19);
+    const p2Scores19Minus = getScoreRange(p2, 19);
+    const p1Scores19Plus = getScoreRange(p1, 19, 37);
+    const p2Scores19Plus = getScoreRange(p2, 19, 37);
+    const p1Scores38Plus = getScoreRange(p1, 38, 56);
+    const p2Scores38Plus = getScoreRange(p2, 38, 56);
+    const p1Scores57Plus = getScoreRange(p1, 57, 75);
+    const p2Scores57Plus = getScoreRange(p2, 57, 75);
+    const p1Scores76Plus = getScoreRange(p1, 76, 94);
+    const p2Scores76Plus = getScoreRange(p2, 76, 94);
+    const p1Scores95Plus = getScoreRange(p1, 95, 132);
+    const p2Scores95Plus = getScoreRange(p2, 95, 132);
+    const p1Scores133Plus = getScoreRange(p1, 133, 170);
+    const p2Scores133Plus = getScoreRange(p2, 133, 170);
+    const p1Scores171Plus = getScoreRange(p1, 171, 179);
+    const p2Scores171Plus = getScoreRange(p2, 171, 179);
+    
+    // Berechne 60+, 100+, 140+
+    const p1Scores60Plus = getScoreRange(p1, 60);
+    const p2Scores60Plus = getScoreRange(p2, 60);
+    const p1Scores100Plus = getScoreRange(p1, 100);
+    const p2Scores100Plus = getScoreRange(p2, 100);
+    const p1Scores140Plus = getScoreRange(p1, 140);
+    const p2Scores140Plus = getScoreRange(p2, 140);
+    
+    const p1TonPlusFinishes = (p1.finishes || []).filter(f => f >= 100).length;
+    const p2TonPlusFinishes = (p2.finishes || []).filter(f => f >= 100).length;
+
+    const StatRow = ({ label, v1, v2, highlightP1, highlightP2 }) => (
+        <div className="stat-row">
+            <div className={`stat-cell left ${highlightP1 ? 'highlight' : ''}`}>{v1}</div>
+            <div className="stat-cell center">{label}</div>
+            <div className={`stat-cell right ${highlightP2 ? 'highlight' : ''}`}>{v2}</div>
+        </div>
+    );
+
+    return (
+        <div className="stats-wrapper">
+            <div className="stats-header">
+                <div className="p-name">{p1.name || "Player 1"}</div>
+                <div className="vs">VS</div>
+                <div className="p-name">{p2.name || "Player 2"}</div>
+            </div>
+
+            <div className="stats-table">
+                <StatRow 
+                    label="MATCH Ø" 
+                    v1={avg(p1.average)} 
+                    v2={avg(p2.average)} 
+                    highlightP1={parseFloat(p1.average || 0) > parseFloat(p2.average || 0)}
+                    highlightP2={parseFloat(p2.average || 0) > parseFloat(p1.average || 0)}
+                />
+                <StatRow label="FIRST 9 Ø" v1={avg(p1.first9Avg)} v2={avg(p2.first9Avg)} />
+                <StatRow label="DOPPEL %" v1={p1Doubles} v2={p2Doubles} />
+                <StatRow label="60+" v1={val(p1Scores60Plus)} v2={val(p2Scores60Plus)} />
+                <StatRow label="100+" v1={val(p1Scores100Plus)} v2={val(p2Scores100Plus)} />
+                <StatRow label="140+" v1={val(p1Scores140Plus)} v2={val(p2Scores140Plus)} />
+                <StatRow label="180ER" v1={val(p1.scores180)} v2={val(p2.scores180)} />
+                <StatRow label="HIGH FINISH" v1={val(p1.highestFinish)} v2={val(p2.highestFinish)} />
+                <StatRow label="SHORT LEG" v1={val(p1.bestLeg)} v2={val(p2.bestLeg)} />
+            </div>
+        </div>
+    );
+};
+
+export default LiveStatistics;
