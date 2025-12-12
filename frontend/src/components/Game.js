@@ -101,37 +101,78 @@ const ensureStats = (player) => {
 // --- HELPERS ---
 // --- COMPONENTS ---
 // Erweiterter Video Player (Startet Muted um Autoplay-Blockaden zu verhindern)
-const RemoteVideoPlayer = ({ stream, name }) => {
+const RemoteVideoPlayer = ({ stream, name, playerId }) => {
     const videoRef = useRef(null);
 
     useEffect(() => {
-        console.log(`[RemoteVideoPlayer] ${name} - Stream verfügbar:`, !!stream);
+        console.log(`[RemoteVideoPlayer] ${name} (${playerId}) - Stream verfügbar:`, !!stream);
         console.log(`[RemoteVideoPlayer] ${name} - Stream Details:`, stream);
+        console.log(`[RemoteVideoPlayer] ${name} - VideoRef:`, videoRef.current);
         
         if (videoRef.current && stream) {
             console.log(`[RemoteVideoPlayer] ${name} - Setze Stream auf Video Element`);
+            
+            // Stream setzen
             videoRef.current.srcObject = stream;
             
-            // WICHTIG: Muted setzen, sonst blockiert Chrome Autoplay!
+            // Video-Eigenschaften setzen
             videoRef.current.muted = true;
             videoRef.current.playsInline = true;
             videoRef.current.autoplay = true;
+            videoRef.current.controls = false;
 
+            // Video-Event-Handler
+            const handleLoadedMetadata = () => {
+                console.log(`[RemoteVideoPlayer] ${name} - ✅ Video Metadata geladen`);
+                console.log(`[RemoteVideoPlayer] ${name} - Video Dimensions:`, {
+                    videoWidth: videoRef.current.videoWidth,
+                    videoHeight: videoRef.current.videoHeight
+                });
+            };
+            
+            const handleCanPlay = () => {
+                console.log(`[RemoteVideoPlayer] ${name} - ✅ Video kann abgespielt werden`);
+            };
+            
+            const handlePlay = () => {
+                console.log(`[RemoteVideoPlayer] ${name} - ✅ Video spielt ab`);
+            };
+            
+            const handleError = (error) => {
+                console.error(`[RemoteVideoPlayer] ${name} - ❌ Video Fehler:`, error);
+            };
+
+            videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+            videoRef.current.addEventListener('canplay', handleCanPlay);
+            videoRef.current.addEventListener('play', handlePlay);
+            videoRef.current.addEventListener('error', handleError);
+
+            // Video starten
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
-                    console.log(`[RemoteVideoPlayer] ${name} - Video erfolgreich gestartet`);
+                    console.log(`[RemoteVideoPlayer] ${name} - ✅ Video erfolgreich gestartet`);
                 }).catch(error => {
-                    console.error(`[RemoteVideoPlayer] ${name} - Autoplay Fehler:`, error);
+                    console.error(`[RemoteVideoPlayer] ${name} - ❌ Autoplay Fehler:`, error);
                 });
             }
+            
+            // Cleanup
+            return () => {
+                if (videoRef.current) {
+                    videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                    videoRef.current.removeEventListener('canplay', handleCanPlay);
+                    videoRef.current.removeEventListener('play', handlePlay);
+                    videoRef.current.removeEventListener('error', handleError);
+                }
+            };
         } else if (!stream) {
-            console.log(`[RemoteVideoPlayer] ${name} - Kein Stream verfügbar`);
+            console.log(`[RemoteVideoPlayer] ${name} - ❌ Kein Stream verfügbar`);
             if (videoRef.current) {
                 videoRef.current.srcObject = null;
             }
         }
-    }, [stream, name]);
+    }, [stream, name, playerId]);
 
     // Debug: Zeige Stream Status
     if (!stream) {
@@ -160,10 +201,8 @@ const RemoteVideoPlayer = ({ stream, name }) => {
                 ref={videoRef}
                 playsInline
                 autoPlay
-                muted // Standardmäßig stumm
+                muted
                 style={{width:'100%', height:'100%', objectFit: 'cover', backgroundColor: '#000'}}
-                onLoadedMetadata={() => console.log(`[RemoteVideoPlayer] ${name} - Video Metadata geladen`)}
-                onCanPlay={() => console.log(`[RemoteVideoPlayer] ${name} - Video kann abgespielt werden`)}
             />
             {/* Unmute Button Overlay */}
             <button
@@ -205,6 +244,19 @@ function Game() {
     const [selectedDeviceId, setSelectedDeviceId] = useState('');
     const [isCameraEnabled, setIsCameraEnabled] = useState(false);
     const [remoteStreams, setRemoteStreams] = useState({});
+    
+    // Debug remoteStreams changes
+    useEffect(() => {
+        console.log(`[Game] Remote Streams State geändert:`, remoteStreams);
+        console.log(`[Game] Remote Streams Keys:`, Object.keys(remoteStreams));
+        Object.entries(remoteStreams).forEach(([playerId, stream]) => {
+            console.log(`[Game] Player ${playerId} Stream:`, {
+                exists: !!stream,
+                active: stream?.active,
+                tracks: stream?.getTracks()?.length || 0
+            });
+        });
+    }, [remoteStreams]);
     const [showWinnerPopup, setShowWinnerPopup] = useState(false);
     
     // Video Layout State
@@ -564,25 +616,48 @@ const createPeerConnection = (targetSocketId) => {
         };
 
         pc.ontrack = (event) => {
-            console.log(`[WebRTC] ✅ Stream von ${targetSocketId} empfangen:`, event.streams[0]);
+            console.log(`[WebRTC] 🔥 ontrack Event von ${targetSocketId}!`);
+            console.log(`[WebRTC] Event Details:`, {
+                track: event.track,
+                streams: event.streams,
+                receiver: event.receiver,
+                transceiver: event.transceiver
+            });
+            
             console.log(`[WebRTC] Track Details:`, {
                 kind: event.track.kind,
                 label: event.track.label,
-                readyState: event.track.readyState
+                readyState: event.track.readyState,
+                id: event.track.id
             });
             
             const stream = event.streams[0];
+            console.log(`[WebRTC] Stream aus event.streams[0]:`, stream);
+            
             if (stream) {
+                console.log(`[WebRTC] ✅ Gültiger Stream empfangen von ${targetSocketId}`);
+                console.log(`[WebRTC] Stream Properties:`, {
+                    id: stream.id,
+                    active: stream.active,
+                    tracks: stream.getTracks().length,
+                    videoTracks: stream.getVideoTracks().length,
+                    audioTracks: stream.getAudioTracks().length
+                });
+                
                 setRemoteStreams(prev => {
+                    console.log(`[WebRTC] Aktuelle Remote Streams:`, Object.keys(prev));
                     const newStreams = {
                         ...prev,
                         [targetSocketId]: stream
                     };
-                    console.log(`[WebRTC] Remote Streams aktualisiert:`, Object.keys(newStreams));
+                    console.log(`[WebRTC] ✅ Remote Streams aktualisiert für ${targetSocketId}:`, Object.keys(newStreams));
+                    console.log(`[WebRTC] Stream für ${targetSocketId}:`, newStreams[targetSocketId]);
                     return newStreams;
                 });
             } else {
-                console.error(`[WebRTC] ❌ Kein Stream in ontrack event!`);
+                console.error(`[WebRTC] ❌ KEIN STREAM in ontrack event von ${targetSocketId}!`);
+                console.error(`[WebRTC] event.streams:`, event.streams);
+                console.error(`[WebRTC] event.track:`, event.track);
             }
         };
 
@@ -977,7 +1052,7 @@ socket.emit('start-game', payload);
                                 }}>
                                     {p.name} {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? ' (IST DRAN)' : ''}
                                 </div>
-                                <RemoteVideoPlayer stream={remoteStreams[p.id]} name={p.name} />
+                                <RemoteVideoPlayer stream={remoteStreams[p.id]} name={p.name} playerId={p.id} />
                             </div>
                         ))}
                     </div>
