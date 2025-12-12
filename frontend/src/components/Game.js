@@ -455,6 +455,10 @@ function Game() {
                 setInputLockout(false);
                 setTurnEndTime(null);
             }
+
+            if (newState.gameStatus === 'finished' && prev?.gameStatus !== 'finished') {
+                setShowWinnerPopup(true);
+            }
             
             const updatedPlayers = (newState.players || prev?.players || []).map(newPlayer => {
                 const existingPlayer = (prev?.players || []).find(p => p.id === newPlayer.id) || {};
@@ -566,14 +570,6 @@ function Game() {
 
     const winner = gameState?.players?.find(p => p.score <= 0);
 
-    useEffect(() => {
-        if (winner && !showWinnerPopup) {
-            setShowWinnerPopup(true);
-        }
-        if (!winner && showWinnerPopup) {
-            setShowWinnerPopup(false);
-        }
-    }, [winner, showWinnerPopup]);
 
     useEffect(() => {
         if (!socket) return;
@@ -876,9 +872,16 @@ function Game() {
     }
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    const loser = winner && gameState.players?.find(p => p.id !== winner.id);
-    const checkoutText = loser ? getCheckoutText(loser.score) : null;
     const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
+    const isGameFinished = gameState.gameStatus === 'finished';
+
+    let playerForInfoBar = currentPlayer;
+    // When the game is finished, the "current player" is the winner. 
+    // For the info bar, we want to show the checkout of the other player (the loser).
+    if (isGameFinished) {
+        playerForInfoBar = winner && gameState.players.find(p => p.id !== winner.id);
+    }
+    
     const isHost = gameState.hostId === user.id;
     const canInput = !inputLockout;
     const showCountdown = false;
@@ -910,7 +913,8 @@ function Game() {
                         </div>
                     ) : null}
                     
-                    {!isGameRunning ? (
+                    {/* Show ready box only if game is not running AND not finished */}
+                    {(!isGameRunning && !isGameFinished) ? (
                         <div className="ready-box">
                             <div className="ready-status">
                                 {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
@@ -924,7 +928,8 @@ function Game() {
                             )}
                         </div>
                     ) : (
-                        <GameInfoBar currentPlayer={currentPlayer} isMyTurn={isMyTurn} />
+                        // Show info bar if game is running OR finished
+                        <GameInfoBar currentPlayer={playerForInfoBar} isMyTurn={isMyTurn} />
                     )}
 
                     <div className="game-bottom-section">
@@ -988,7 +993,7 @@ function Game() {
                     </div>
                 </div>
             </div>
-            {showWinnerPopup && <GameEndPopup winner={winner} checkout={checkoutText} countdown={10} onRematch={handleRematch} />}
+            {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
             <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
         </div>
     );
