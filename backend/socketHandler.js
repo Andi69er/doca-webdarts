@@ -62,7 +62,7 @@ function initializeSocket(io, gameManager, auth) {
                 name: roomData.roomName,
                 gameMode: roomData.gameMode,
                 gameOptions: gameOptions,
-                whoStarts: roomData.whoStarts || 'random', 
+                whoStarts: roomData.whoStarts, 
                 hostId: socket.id, 
                 maxPlayers: 2,
                 players: [{ id: socket.id, name: `Player ${Math.floor(Math.random() * 1000)}`}],
@@ -187,7 +187,7 @@ function initializeSocket(io, gameManager, auth) {
             
             room.gameStarted = true;
 
-            // 4. GameState für Frontend bauen
+// 4. GameState für Frontend bauen
             room.gameState = {
                 players: room.players.map((p, index) => ({
                     ...p,
@@ -205,6 +205,7 @@ function initializeSocket(io, gameManager, auth) {
                 lastThrow: null,
                 history: [],
                 hostId: room.hostId,
+                whoStarts: room.whoStarts, // WICHTIG: Lobby-Einstellung an Frontend weitergeben
                 turns: {} 
             };
             

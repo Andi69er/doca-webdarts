@@ -378,9 +378,18 @@ function Game() {
     // NEU: Standard-Startspieler setzen, sobald Spieldaten geladen sind
     useEffect(() => {
         if (gameState?.players?.length > 0 && !startingPlayerId) {
-            setStartingPlayerId(gameState.players[0].id);
+            // Lobby-Einstellung verwenden um startingPlayerId zu setzen
+            if (gameState.whoStarts === 'opponent' && gameState.players.length >= 2) {
+                setStartingPlayerId(gameState.players[1].id);
+            } else if (gameState.whoStarts === 'random') {
+                const randomIndex = Math.random() < 0.5 ? 0 : 1;
+                setStartingPlayerId(gameState.players[randomIndex].id);
+            } else {
+                // 'me' oder undefined → Host beginnt (Index 0)
+                setStartingPlayerId(gameState.players[0].id);
+            }
         }
-    }, [gameState?.players, startingPlayerId]);
+    }, [gameState?.players, gameState?.whoStarts, startingPlayerId]);
 
 
     // Game State Handling
