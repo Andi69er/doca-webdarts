@@ -665,13 +665,16 @@ const stopCamera = () => {
         }
     };
 
-    // ROBUSTE automatische Verbindung mit allen Gegnern
+    // EDGE-OPTIMIERTE automatische Verbindung mit allen Gegnern
     const autoConnectToOpponents = useCallback(() => {
+        const isEdge = navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg');
+        
         console.log(`[AutoConnect] 🔄 Versuche automatische Verbindung...`);
         console.log(`[AutoConnect] localStream:`, !!localStream);
         console.log(`[AutoConnect] isCameraEnabled:`, isCameraEnabled);
         console.log(`[AutoConnect] gameState.players:`, !!gameState?.players);
         console.log(`[AutoConnect] user.id:`, user.id);
+        console.log(`[AutoConnect] Browser:`, isEdge ? 'Edge' : 'Other');
         
         // WICHTIG: Nur verbinden wenn Kamera bereits aktiviert ist
         if (!isCameraEnabled || !localStream) {
@@ -692,18 +695,37 @@ const stopCamera = () => {
             return;
         }
         
+        // Edge benötigt längere Verzögerungen zwischen Verbindungsversuchen
+        const baseDelay = isEdge ? 2000 : 1000; // 2s für Edge, 1s für andere
+        const incrementDelay = isEdge ? 1500 : 1000; // 1.5s Inkrement für Edge, 1s für andere
+        
         opponents.forEach((opponent, index) => {
             if (!peerConnections.current[opponent.id]) {
                 console.log(`[AutoConnect] Initiating call to:`, opponent.name, opponent.id);
-                // Verzögerung für bessere Stabilität
+                // Längere Verzögerung für Edge für bessere Stabilität
                 setTimeout(() => {
                     console.log(`[AutoConnect] 🔌 Führe Anruf aus für:`, opponent.name);
                     initiateCall(opponent.id);
-                }, (index + 1) * 1000); // 1s, 2s, 3s Verzögerung
+                }, (index * incrementDelay) + baseDelay);
             } else {
                 console.log(`[AutoConnect] ✅ Bereits verbunden mit:`, opponent.name);
             }
         });
+        
+        // Edge: Zusätzlicher Verbindungsversuch nach längerer Zeit
+        if (isEdge && opponents.length > 0) {
+            setTimeout(() => {
+                console.log(`[AutoConnect] 🔄 Edge: Zusätzlicher Verbindungsversuch...`);
+                opponents.forEach((opponent, index) => {
+                    if (!peerConnections.current[opponent.id]) {
+                        console.log(`[AutoConnect] 🔌 Edge Retry für:`, opponent.name);
+                        setTimeout(() => {
+                            initiateCall(opponent.id);
+                        }, index * 500);
+                    }
+                });
+            }, 10000); // 10 Sekunden später
+        }
     }, [gameState?.players, user.id, isCameraEnabled, localStream]);
 
     // Automatische Verbindung nur wenn Kamera bereits aktiviert ist
@@ -797,7 +819,7 @@ const createPeerConnection = (targetSocketId) => {
             }
         };
 
-        // ROBUSTE ontrack Behandlung für alle Browser
+        // ROBUSTE ontrack Behandlung für alle Browser (inkl. Edge-Fixes)
         pc.ontrack = (event) => {
             console.log(`[WebRTC] 🔥 ontrack Event von ${targetSocketId}!`);
             console.log(`[WebRTC] Event Details:`, {
@@ -808,71 +830,123 @@ const createPeerConnection = (targetSocketId) => {
                 transceiver: !!event.transceiver
             });
             
-            // Methode 1: Event.streams verwenden (moderne Browser)
-            if (event.streams && event.streams.length > 0) {
-                event.streams.forEach((stream, index) => {
-                    console.log(`[WebRTC] Stream ${index} von ${targetSocketId}:`, {
-                        id: stream.id,
-                        active: stream.active,
-                        tracks: stream.getTracks().length
+            const isEdge = navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg');
+            
+            // EDGE-SPEZIFISCHE Stream-Behandlung
+            if (isEdge) {
+                // Edge benötigt oft eine andere Behandlung
+                if (event.streams && event.streams.length > 0) {
+                    event.streams.forEach((stream, index) => {
+                        console.log(`[WebRTC] Edge Stream ${index} von ${targetSocketId}:`, {
+                            id: stream.id,
+                            active: stream.active,
+                            tracks: stream.getTracks().length
+                        });
+                        
+                        if (stream && stream.getTracks().length > 0) {
+                            // Edge: Erstelle eine frische Stream-Kopie für bessere Kompatibilität
+                            const edgeStream = new MediaStream();
+                            stream.getTracks().forEach(track => {
+                                edgeStream.addTrack(track);
+                            });
+                            
+                            setRemoteStreams(prev => {
+                                const newStreams = {
+                                    ...prev,
+                                    [targetSocketId]: edgeStream
+                                };
+                                console.log(`[WebRTC] ✅ Edge Remote Stream gesetzt für ${targetSocketId}:`, edgeStream.id);
+                                return newStreams;
+                            });
+                        }
                     });
-                    
-                    if (stream && stream.getTracks().length > 0) {
-                        setRemoteStreams(prev => {
-                            const newStreams = {
+                } else if (event.track) {
+                    console.log(`[WebRTC] ⚠️ Edge: Kein Stream, verwende Track direkt`);
+                    setRemoteStreams(prev => {
+                        const existingStream = prev[targetSocketId];
+                        if (existingStream) {
+                            existingStream.addTrack(event.track);
+                            return {
+                                ...prev,
+                                [targetSocketId]: existingStream
+                            };
+                        } else {
+                            const stream = new MediaStream([event.track]);
+                            return {
                                 ...prev,
                                 [targetSocketId]: stream
                             };
-                            console.log(`[WebRTC] ✅ Remote Stream gesetzt für ${targetSocketId}:`, stream.id);
-                            return newStreams;
+                        }
+                    });
+                }
+            } else {
+                // Standard-Behandlung für andere Browser
+                // Methode 1: Event.streams verwenden (moderne Browser)
+                if (event.streams && event.streams.length > 0) {
+                    event.streams.forEach((stream, index) => {
+                        console.log(`[WebRTC] Stream ${index} von ${targetSocketId}:`, {
+                            id: stream.id,
+                            active: stream.active,
+                            tracks: stream.getTracks().length
                         });
-                    }
-                });
-            } 
-            // Methode 2: Track direkt verwenden (Legacy Browser)
-            else if (event.track) {
-                console.log(`[WebRTC] ⚠️ Kein Stream, verwende Track direkt`);
-                setRemoteStreams(prev => {
-                    const existingStream = prev[targetSocketId];
-                    if (existingStream) {
-                        // Füge Track zu existierendem Stream hinzu
-                        existingStream.addTrack(event.track);
-                        console.log(`[WebRTC] ✅ Track zu existierendem Stream hinzugefügt`);
-                        return {
-                            ...prev,
-                            [targetSocketId]: existingStream
-                        };
-                    } else {
-                        // Erstelle neuen Stream
-                        const stream = new MediaStream([event.track]);
-                        console.log(`[WebRTC] ✅ Neuen Stream erstellt für Track:`, event.track.kind);
-                        return {
-                            ...prev,
-                            [targetSocketId]: stream
-                        };
-                    }
-                });
-            }
-            
-            // Methode 3: Fallback über receiver (falls verfügbar)
-            if (event.receiver && event.receiver.track) {
-                console.log(`[WebRTC] 📡 Receiver Track verfügbar:`, event.receiver.track.kind);
-                setRemoteStreams(prev => {
-                    const existingStream = prev[targetSocketId];
-                    if (existingStream) {
-                        existingStream.addTrack(event.receiver.track);
-                        return {
-                            ...prev,
-                            [targetSocketId]: existingStream
-                        };
-                    } else {
-                        const stream = new MediaStream([event.receiver.track]);
-                        return {
-                            ...prev,
-                            [targetSocketId]: stream
-                        };
-                    }
-                });
+                        
+                        if (stream && stream.getTracks().length > 0) {
+                            setRemoteStreams(prev => {
+                                const newStreams = {
+                                    ...prev,
+                                    [targetSocketId]: stream
+                                };
+                                console.log(`[WebRTC] ✅ Remote Stream gesetzt für ${targetSocketId}:`, stream.id);
+                                return newStreams;
+                            });
+                        }
+                    });
+                } 
+                // Methode 2: Track direkt verwenden (Legacy Browser)
+                else if (event.track) {
+                    console.log(`[WebRTC] ⚠️ Kein Stream, verwende Track direkt`);
+                    setRemoteStreams(prev => {
+                        const existingStream = prev[targetSocketId];
+                        if (existingStream) {
+                            // Füge Track zu existierendem Stream hinzu
+                            existingStream.addTrack(event.track);
+                            console.log(`[WebRTC] ✅ Track zu existierendem Stream hinzugefügt`);
+                            return {
+                                ...prev,
+                                [targetSocketId]: existingStream
+                            };
+                        } else {
+                            // Erstelle neuen Stream
+                            const stream = new MediaStream([event.track]);
+                            console.log(`[WebRTC] ✅ Neuen Stream erstellt für Track:`, event.track.kind);
+                            return {
+                                ...prev,
+                                [targetSocketId]: stream
+                            };
+                        }
+                    });
+                }
+                
+                // Methode 3: Fallback über receiver (falls verfügbar)
+                if (event.receiver && event.receiver.track) {
+                    console.log(`[WebRTC] 📡 Receiver Track verfügbar:`, event.receiver.track.kind);
+                    setRemoteStreams(prev => {
+                        const existingStream = prev[targetSocketId];
+                        if (existingStream) {
+                            existingStream.addTrack(event.receiver.track);
+                            return {
+                                ...prev,
+                                [targetSocketId]: existingStream
+                            };
+                        } else {
+                            const stream = new MediaStream([event.receiver.track]);
+                            return {
+                                ...prev,
+                                [targetSocketId]: stream
+                            };
+                        }
+                    });
+                }
             }
         };
 
@@ -1072,22 +1146,36 @@ socket.on('camera-ice', async (data) => {
             const pc = peerConnections.current[data.from];
             const isEdge = navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg');
             
-            // ROBUSTE ICE Candidate Behandlung
+            // EDGE-OPTIMIERTE ICE Candidate Behandlung
             if (pc && pc.remoteDescription) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                     console.log(`[WebRTC] ✅ ICE Candidate hinzugefügt für ${data.from}`);
                 } catch (e) { 
                     console.error("ICE Error:", e);
-                    // Edge benötigt etwas längere Verzögerung
-                    const retryDelay = isEdge ? 800 : 500;
-                    // Retry nach kurzer Verzögerung
+                    
+                    // Edge benötigt oft längere Verzögerungen
+                    const retryDelay = isEdge ? 1000 : 500;
+                    
+                    // Retry nach längerer Verzögerung bei Edge
                     setTimeout(async () => {
                         try {
                             await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                             console.log(`[WebRTC] ✅ ICE Candidate nach Retry hinzugefügt für ${data.from}`);
                         } catch (retryError) {
                             console.error(`[WebRTC] ❌ ICE Retry fehlgeschlagen für ${data.from}:`, retryError);
+                            
+                            // Bei Edge: Noch ein weiterer Versuch
+                            if (isEdge) {
+                                setTimeout(async () => {
+                                    try {
+                                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                                        console.log(`[WebRTC] ✅ ICE Candidate nach 2. Retry hinzugefügt für ${data.from}`);
+                                    } catch (finalError) {
+                                        console.error(`[WebRTC] ❌ ICE Final Retry fehlgeschlagen für ${data.from}:`, finalError);
+                                    }
+                                }, 2000);
+                            }
                         }
                     }, retryDelay);
                 }
