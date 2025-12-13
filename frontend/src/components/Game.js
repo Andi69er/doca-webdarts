@@ -264,19 +264,29 @@ const [localGameStarted, setLocalGameStarted] = useState(false);
     const peerConnections = useRef({});
 const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidates
 
-    // Callbacks - Device Enumeration
+// Callbacks - Device Enumeration
     const refreshDevices = useCallback(async () => {
         try {
-            await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                .then(s => s.getTracks().forEach(t => t.stop()))
-                .catch(() => {});
-                
+            // Geräte direkt enumerieren ohne temporären Stream
             const list = await navigator.mediaDevices.enumerateDevices();
             const v = list.filter(d => d.kind === 'videoinput');
             setDevices(v);
             if (v.length > 0 && !selectedDeviceId) setSelectedDeviceId(v[0].deviceId);
-        } catch(e) { console.error("Geräte konnten nicht geladen werden:", e); }
-    }, [selectedDeviceId]);
+        } catch(e) { 
+            console.error("Geräte konnten nicht geladen werden:", e);
+            // Fallback: Versuche mit temporärem Stream nur bei Fehlern
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(s => s.getTracks().forEach(t => t.stop()));
+                const list = await navigator.mediaDevices.enumerateDevices();
+                const v = list.filter(d => d.kind === 'videoinput');
+                setDevices(v);
+                if (v.length > 0 && !selectedDeviceId) setSelectedDeviceId(v[0].deviceId);
+            } catch(e2) {
+                console.error("Auch Fallback fehlgeschlagen:", e2);
+            }
+        }
+    }, []); // Entferne selectedDeviceId aus Dependencies für bessere Performance
 
     // Socket Connection Setup
     useEffect(() => {
@@ -579,6 +589,9 @@ const startCamera = async (targetDeviceId) => {
             setTimeout(() => {
                 autoConnectToOpponents();
             }, 1000);
+            
+            // Geräte-Liste aktualisieren (nur wenn Kamera erfolgreich gestartet)
+            refreshDevices();
         }
     };
 
