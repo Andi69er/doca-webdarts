@@ -379,9 +379,9 @@ const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidat
     const handleGameState = useCallback((newState) => {
         if (!newState) return;
         
-        const currentIndex = newState.currentPlayerIndex !== undefined 
+const currentIndex = newState.currentPlayerIndex !== undefined 
             ? newState.currentPlayerIndex 
-            : (newState.gameState?.currentPlayerIndex || 0);
+            : 0;
         
 setGameState(prev => {
             if (!prev) {
@@ -410,11 +410,9 @@ setGameState(prev => {
                 setLocalGameStarted(true);
             }
 
-            const currentPlayerIndex = newState.currentPlayerIndex !== undefined 
+const currentPlayerIndex = newState.currentPlayerIndex !== undefined 
                 ? newState.currentPlayerIndex 
-                : (newState.gameState?.currentPlayerIndex !== undefined 
-                    ? newState.gameState.currentPlayerIndex 
-                    : (prev?.gameState?.currentPlayerIndex || 0));
+                : (prev?.currentPlayerIndex || 0);
             
             const currentPlayer = updatedPlayers[currentPlayerIndex];
             const prevPlayerIndex = prev?.currentPlayerIndex;
@@ -487,7 +485,7 @@ setGameState(prev => {
 // VEREINFACHTE Nummernpad-Sperrlogik
     const handleScoreInput = (scoreInput) => {
         if (!isMyTurn || numpadState.isLocked) return;
-        const currentIndex = gameState?.currentPlayerIndex;
+        const currentIndex = gameState?.currentPlayerIndex || 0;
         const currentPlayer = gameState?.players?.[currentIndex];
         
         if (!currentPlayer) return;
