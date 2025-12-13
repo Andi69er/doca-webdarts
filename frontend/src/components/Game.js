@@ -377,22 +377,43 @@ function Game() {
 
     useEffect(() => { refreshDevices(); }, [refreshDevices]);
 
-    // Funktion um Standard-Startspieler basierend auf Lobby-Einstellung zu berechnen
-    const getDefaultStartingPlayerId = () => {
+    // Initialisiere startingPlayerId basierend auf Lobby-Einstellung, solange das Spiel nicht läuft
+    useEffect(() => {
+        if (gameState && gameState.players && gameState.players.length >= 2 && !localGameStarted) {
+            const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
+            const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
+            
+            let initialStarterId = null;
+            if (gameState.whoStarts === 'opponent' && opponentPlayer) {
+                initialStarterId = opponentPlayer.id;
+            } else if (gameState.whoStarts === 'me' && hostPlayer) {
+                initialStarterId = hostPlayer.id;
+            } else if (gameState.whoStarts === 'random') {
+                initialStarterId = 'bull-off'; // Zeige Ausbullen an
+            }
+            
+            if (initialStarterId && startingPlayerId === null) {
+                setStartingPlayerId(initialStarterId);
+            }
+        }
+    }, [gameState, localGameStarted, startingPlayerId]);
+
+    // Funktion um Standard-Startspieler basierend auf Lobby-Einstellung ZUR ANZEIGE zu berechnen
+    // Diese Funktion gibt die ID oder den String 'bull-off' zurück.
+    const getDefaultStartingPlayerId = useCallback(() => {
         if (!gameState?.players || gameState.players.length < 2) return null;
         const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
         const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
 
         if (gameState.whoStarts === 'opponent') {
-            return opponentPlayer.id;
+            return opponentPlayer?.id;
         } else if (gameState.whoStarts === 'random') {
-            // Für 'random' (Ausbullen) - zufällige Auswahl
-            return Math.random() < 0.5 ? hostPlayer.id : opponentPlayer.id;
+            return 'bull-off';
         } else {
             // 'me' oder undefined → Host beginnt
-            return hostPlayer.id;
+            return hostPlayer?.id;
         }
-    };
+    }, [gameState]);
 
 
     // Game State Handling
@@ -515,7 +536,8 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
         const isHost = gameState?.hostId === user.id;
 
         if (!socket || !user?.id || numpadState.isLocked) return;
-        if (!isMyTurn && !isHost) return;
+        // Die Eingabe soll nur erlaubt sein, wenn es der eigene Zug ist.
+        if (!isMyTurn) return;
 
         const points = parseInt(scoreInput, 10);
         if (isNaN(points)) return;
@@ -1170,25 +1192,20 @@ socket.on('camera-ice', async (data) => {
         if (!socket) return;
         setLocalGameStarted(true);
 
-        // Stelle sicher, dass startingPlayerId gesetzt ist (entweder aus Dropdown oder Lobby-Einstellung)
-        let finalStartingPlayerId = startingPlayerId;
-        if (!finalStartingPlayerId && gameState?.players?.length >= 2) {
-            const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
-            const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
-            if (gameState.whoStarts === 'opponent') {
-                finalStartingPlayerId = opponentPlayer.id;
-            } else if (gameState.whoStarts === 'random') {
-                finalStartingPlayerId = Math.random() < 0.5 ? hostPlayer.id : opponentPlayer.id;
-            } else {
-                finalStartingPlayerId = hostPlayer.id;
-            }
-        }
-
-        // Wenn Ausbullen ausgewählt, zeige Modal und starte nicht das Spiel
+        // Bestimme die endgültige Startspieler-ID basierend auf Dropdown-Auswahl oder Lobby-Standard.
+        const defaultStarter = getDefaultStartingPlayerId();
+        let finalStartingPlayerId = startingPlayerId || defaultStarter;
+        
+        // Wenn die Lobby-Einstellung 'random' ist, wird defaultStarter zu 'bull-off'.
+        // Dies verhindert, dass 'random' in eine ID umgewandelt wird, bevor das Spiel startet (Problem 4).
         if (finalStartingPlayerId === 'bull-off') {
+            // Wenn Ausbullen ausgewählt, zeige Modal und starte nicht das Spiel
             setShowBullOffModal(true);
             return;
         }
+
+        // Wenn Host das Dropdown nicht angeklickt hat, aber whoStarts 'opponent' ist,
+        // wird finalStartingPlayerId hier die ID des Gegners sein.
 
         const payload = {
             roomId,
@@ -1310,7 +1327,7 @@ const isHost = gameState.hostId === user.id;
                     <div className="game-bottom-section">
                         <div className="game-column-left">
                             <div className="wurf-section">
-                                <h3 className="wurf-title">DEIN WURF</h3>
+                                <h3 className="wurf-title">{isMyTurn ? 'DEIN WURF' : `${currentPlayer?.name.toUpperCase()} WIRFT`}</h3>
                                 <div className="number-pad-container">
                                     <div className="number-pad-wrapper">
                                         {showCountdown && (
@@ -1322,9 +1339,9 @@ const isHost = gameState.hostId === user.id;
                                               onScoreInput={handleScoreInput}
                                               onUndo={handleUndo}
                                               checkoutSuggestions={gameState.checkoutSuggestions}
-                                              isActive={canInput && isMyTurn && !numpadState.isLocked}
+                                              isActive={isMyTurn && canInput}
                                               isLocked={!isMyTurn || numpadState.isLocked}
-                                              isOpponentLocked={false}
+                                              isOpponentLocked={!isMyTurn}
                                               isMyTurn={isMyTurn}
                                               canUseUndo={numpadState.canUndo}
                                           />
