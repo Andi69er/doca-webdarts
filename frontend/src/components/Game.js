@@ -375,14 +375,14 @@ function Game() {
 
     useEffect(() => { refreshDevices(); }, [refreshDevices]);
 
-    // NEU: Standard-Startspieler setzen, sobald Spieldaten geladen sind
+    // NEU: Standard-Startspieler setzen, sobald Gegner beigetreten ist
     useEffect(() => {
-        if (gameState?.players?.length > 0 && !startingPlayerId) {
+        if (gameState?.players?.length >= 2 && !startingPlayerId) {
             // Lobby-Einstellung verwenden um startingPlayerId zu setzen
             const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
             const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
 
-            if (gameState.whoStarts === 'opponent' && gameState.players.length >= 2) {
+            if (gameState.whoStarts === 'opponent') {
                 setStartingPlayerId(opponentPlayer.id);
             } else if (gameState.whoStarts === 'random') {
                 const randomPlayer = Math.random() < 0.5 ? hostPlayer : opponentPlayer;
