@@ -100,7 +100,7 @@ const ensureStats = (player) => {
 
 // --- HELPERS ---
 // --- COMPONENTS ---
-// Erweiterter Video Player (Startet Muted um Autoplay-Blockaden zu verhindern)
+// ROBUSTE Video Player für alle Browser
 const RemoteVideoPlayer = ({ stream, name, playerId }) => {
     const videoRef = useRef(null);
 
@@ -112,16 +112,36 @@ const RemoteVideoPlayer = ({ stream, name, playerId }) => {
         if (videoRef.current && stream) {
             console.log(`[RemoteVideoPlayer] ${name} - Setze Stream auf Video Element`);
             
-            // Stream setzen
-            videoRef.current.srcObject = stream;
+            // ROBUSTE Stream-Behandlung
+            try {
+                // Methode 1: Standard srcObject
+                videoRef.current.srcObject = stream;
+                console.log(`[RemoteVideoPlayer] ${name} - ✅ srcObject gesetzt`);
+            } catch (error) {
+                console.error(`[RemoteVideoPlayer] ${name} - ❌ srcObject Fehler:`, error);
+                
+                // Methode 2: Fallback - Tracks einzeln hinzufügen
+                try {
+                    const mediaStream = new MediaStream();
+                    stream.getTracks().forEach(track => {
+                        mediaStream.addTrack(track);
+                    });
+                    videoRef.current.srcObject = mediaStream;
+                    console.log(`[RemoteVideoPlayer] ${name} - ✅ Fallback Stream erstellt`);
+                } catch (fallbackError) {
+                    console.error(`[RemoteVideoPlayer] ${name} - ❌ Fallback Fehler:`, fallbackError);
+                }
+            }
             
-            // Video-Eigenschaften setzen
+            // ROBUSTE Video-Eigenschaften
             videoRef.current.muted = true;
             videoRef.current.playsInline = true;
             videoRef.current.autoplay = true;
             videoRef.current.controls = false;
+            videoRef.current.setAttribute('webkit-playsinline', 'true');
+            videoRef.current.setAttribute('x-webkit-airplay', 'allow');
 
-            // Video-Event-Handler
+            // ROBUSTE Event-Handler
             const handleLoadedMetadata = () => {
                 console.log(`[RemoteVideoPlayer] ${name} - ✅ Video Metadata geladen`);
                 console.log(`[RemoteVideoPlayer] ${name} - Video Dimensions:`, {
@@ -140,22 +160,50 @@ const RemoteVideoPlayer = ({ stream, name, playerId }) => {
             
             const handleError = (error) => {
                 console.error(`[RemoteVideoPlayer] ${name} - ❌ Video Fehler:`, error);
+                console.error(`[RemoteVideoPlayer] ${name} - Video Error Details:`, videoRef.current.error);
             };
 
+            const handleLoadStart = () => {
+                console.log(`[RemoteVideoPlayer] ${name} - 🔄 Video Load Start`);
+            };
+
+            const handleAbort = () => {
+                console.log(`[RemoteVideoPlayer] ${name} - ⚠️ Video Load Abort`);
+            };
+
+            // Event-Listener hinzufügen
             videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
             videoRef.current.addEventListener('canplay', handleCanPlay);
             videoRef.current.addEventListener('play', handlePlay);
             videoRef.current.addEventListener('error', handleError);
+            videoRef.current.addEventListener('loadstart', handleLoadStart);
+            videoRef.current.addEventListener('abort', handleAbort);
 
-            // Video starten
-            const playPromise = videoRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    console.log(`[RemoteVideoPlayer] ${name} - ✅ Video erfolgreich gestartet`);
-                }).catch(error => {
-                    console.error(`[RemoteVideoPlayer] ${name} - ❌ Autoplay Fehler:`, error);
-                });
-            }
+            // ROBUSTE Video-Start-Funktion
+            const startVideo = () => {
+                if (videoRef.current) {
+                    const playPromise = videoRef.current.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            console.log(`[RemoteVideoPlayer] ${name} - ✅ Video erfolgreich gestartet`);
+                        }).catch(error => {
+                            console.error(`[RemoteVideoPlayer] ${name} - ❌ Autoplay Fehler:`, error);
+                            
+                            // Fallback: Versuche nach kurzer Verzögerung erneut
+                            setTimeout(() => {
+                                if (videoRef.current) {
+                                    videoRef.current.play().catch(e => {
+                                        console.error(`[RemoteVideoPlayer] ${name} - ❌ Retry Fehler:`, e);
+                                    });
+                                }
+                            }, 1000);
+                        });
+                    }
+                }
+            };
+
+            // Video mit Verzögerung starten für bessere Browser-Kompatibilität
+            setTimeout(startVideo, 100);
             
             // Cleanup
             return () => {
@@ -164,6 +212,8 @@ const RemoteVideoPlayer = ({ stream, name, playerId }) => {
                     videoRef.current.removeEventListener('canplay', handleCanPlay);
                     videoRef.current.removeEventListener('play', handlePlay);
                     videoRef.current.removeEventListener('error', handleError);
+                    videoRef.current.removeEventListener('loadstart', handleLoadStart);
+                    videoRef.current.removeEventListener('abort', handleAbort);
                 }
             };
         } else if (!stream) {
@@ -671,31 +721,59 @@ const stopCamera = () => {
 const createPeerConnection = (targetSocketId) => {
         console.log(`[WebRTC] 🔧 Erstelle PeerConnection zu: ${targetSocketId}, localStream verfügbar:`, !!localStream);
         
-        const pc = new RTCPeerConnection({
+        // Browser-spezifische Konfiguration für optimale Kompatibilität
+        const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' }
-            ]
-        });
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:stun.ekiga.net' },
+                { urls: 'stun:stun.ideasip.com' },
+                { urls: 'stun:stun.rixtelecom.se' },
+                { urls: 'stun:stun.schlund.de' }
+            ],
+            iceCandidatePoolSize: 10
+        };
+        
+        // Safari-spezifische Konfiguration
+        if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+            rtcConfig.bundlePolicy = 'max-bundle';
+            rtcConfig.rtcpMuxPolicy = 'require';
+        }
+        
+        // Firefox-spezifische Konfiguration
+        if (navigator.userAgent.includes('Firefox')) {
+            rtcConfig.iceTransportPolicy = 'all';
+        }
+        
+        console.log(`[WebRTC] 🔧 RTC Config für ${targetSocketId}:`, rtcConfig);
+        const pc = new RTCPeerConnection(rtcConfig);
 
-        // ROBUSTE Transceiver Konfiguration für alle Browser
+        // ROBUSTE Browser-kompatible Konfiguration
         try {
-            // Video Transceiver - erzwinge Empfang
-            const videoTransceiver = pc.addTransceiver('video', { 
-                direction: 'sendrecv',
-                streams: [] // Explizit leer für bessere Kompatibilität
-            });
-            console.log(`[WebRTC] ✅ Video Transceiver erstellt:`, videoTransceiver);
-            
-            // Audio Transceiver
-            const audioTransceiver = pc.addTransceiver('audio', { 
-                direction: 'sendrecv',
-                streams: []
-            });
-            console.log(`[WebRTC] ✅ Audio Transceiver erstellt:`, audioTransceiver);
+            // Prüfe ob Transceiver unterstützt werden (moderne Browser)
+            if (pc.addTransceiver) {
+                console.log(`[WebRTC] ✅ Verwende moderne Transceiver API`);
+                
+                // Video Transceiver - erzwinge Empfang
+                const videoTransceiver = pc.addTransceiver('video', { 
+                    direction: 'sendrecv'
+                });
+                console.log(`[WebRTC] ✅ Video Transceiver erstellt:`, videoTransceiver);
+                
+                // Audio Transceiver
+                const audioTransceiver = pc.addTransceiver('audio', { 
+                    direction: 'sendrecv'
+                });
+                console.log(`[WebRTC] ✅ Audio Transceiver erstellt:`, audioTransceiver);
+            } else {
+                console.log(`[WebRTC] ⚠️ Transceiver nicht unterstützt, verwende Legacy API`);
+            }
         } catch (error) {
             console.error(`[WebRTC] ❌ Transceiver Fehler:`, error);
+            // Fallback: Keine explizite Transceiver-Konfiguration
         }
 
         pc.onicecandidate = (event) => {
@@ -710,17 +788,18 @@ const createPeerConnection = (targetSocketId) => {
             }
         };
 
-        // ROBUSTE ontrack Behandlung
+        // ROBUSTE ontrack Behandlung für alle Browser
         pc.ontrack = (event) => {
             console.log(`[WebRTC] 🔥 ontrack Event von ${targetSocketId}!`);
             console.log(`[WebRTC] Event Details:`, {
                 track: event.track?.kind,
+                trackId: event.track?.id,
                 streams: event.streams?.length,
                 receiver: !!event.receiver,
                 transceiver: !!event.transceiver
             });
             
-            // Mehrere Streams的处理 (manche Browser senden mehrere)
+            // Methode 1: Event.streams verwenden (moderne Browser)
             if (event.streams && event.streams.length > 0) {
                 event.streams.forEach((stream, index) => {
                     console.log(`[WebRTC] Stream ${index} von ${targetSocketId}:`, {
@@ -740,37 +819,119 @@ const createPeerConnection = (targetSocketId) => {
                         });
                     }
                 });
-            } else {
-                // Fallback: Track direkt verwenden
+            } 
+            // Methode 2: Track direkt verwenden (Legacy Browser)
+            else if (event.track) {
                 console.log(`[WebRTC] ⚠️ Kein Stream, verwende Track direkt`);
-                const stream = new MediaStream([event.track]);
-                setRemoteStreams(prev => ({
-                    ...prev,
-                    [targetSocketId]: stream
-                }));
+                setRemoteStreams(prev => {
+                    const existingStream = prev[targetSocketId];
+                    if (existingStream) {
+                        // Füge Track zu existierendem Stream hinzu
+                        existingStream.addTrack(event.track);
+                        console.log(`[WebRTC] ✅ Track zu existierendem Stream hinzugefügt`);
+                        return {
+                            ...prev,
+                            [targetSocketId]: existingStream
+                        };
+                    } else {
+                        // Erstelle neuen Stream
+                        const stream = new MediaStream([event.track]);
+                        console.log(`[WebRTC] ✅ Neuen Stream erstellt für Track:`, event.track.kind);
+                        return {
+                            ...prev,
+                            [targetSocketId]: stream
+                        };
+                    }
+                });
+            }
+            
+            // Methode 3: Fallback über receiver (falls verfügbar)
+            if (event.receiver && event.receiver.track) {
+                console.log(`[WebRTC] 📡 Receiver Track verfügbar:`, event.receiver.track.kind);
+                setRemoteStreams(prev => {
+                    const existingStream = prev[targetSocketId];
+                    if (existingStream) {
+                        existingStream.addTrack(event.receiver.track);
+                        return {
+                            ...prev,
+                            [targetSocketId]: existingStream
+                        };
+                    } else {
+                        const stream = new MediaStream([event.receiver.track]);
+                        return {
+                            ...prev,
+                            [targetSocketId]: stream
+                        };
+                    }
+                });
             }
         };
 
         pc.onconnectionstatechange = () => {
-            console.log(`[WebRTC] Connection State zu ${targetSocketId}:`, pc.connectionState);
+            const state = pc.connectionState;
+            console.log(`[WebRTC] Connection State zu ${targetSocketId}:`, state);
+            
+            // Robuste Verbindungsbehandlung
+            if (state === 'failed') {
+                console.log(`[WebRTC] ❌ Verbindung fehlgeschlagen für ${targetSocketId}, versuche Neustart...`);
+                // Versuche ICE Restart
+                if (pc.restartIce) {
+                    pc.restartIce();
+                }
+            } else if (state === 'connected') {
+                console.log(`[WebRTC] ✅ Erfolgreich verbunden mit ${targetSocketId}`);
+            } else if (state === 'disconnected') {
+                console.log(`[WebRTC] ⚠️ Verbindung getrennt zu ${targetSocketId}`);
+            }
         };
 
         pc.oniceconnectionstatechange = () => {
-            console.log(`[WebRTC] ICE Connection State zu ${targetSocketId}:`, pc.iceConnectionState);
+            const state = pc.iceConnectionState;
+            console.log(`[WebRTC] ICE Connection State zu ${targetSocketId}:`, state);
+            
+            if (state === 'failed') {
+                console.log(`[WebRTC] ❌ ICE Connection fehlgeschlagen für ${targetSocketId}`);
+                // Versuche ICE Restart
+                if (pc.restartIce) {
+                    pc.restartIce();
+                }
+            } else if (state === 'connected' || state === 'completed') {
+                console.log(`[WebRTC] ✅ ICE Connection etabliert für ${targetSocketId}`);
+            }
         };
 
-        // ROBUSTE localStream Behandlung
+        // ROBUSTE localStream Behandlung für alle Browser
         const addLocalTracks = () => {
             if (localStream && localStream.getTracks().length > 0) {
                 console.log(`[WebRTC] Füge ${localStream.getTracks().length} Tracks zu PeerConnection hinzu`);
+                
+                // Methode 1: addTrack (Standard)
                 localStream.getTracks().forEach(track => {
                     try {
                         const sender = pc.addTrack(track, localStream);
-                        console.log(`[WebRTC] ✅ Track hinzugefügt:`, track.kind, track.label, sender);
+                        console.log(`[WebRTC] ✅ Track hinzugefügt (addTrack):`, track.kind, track.label, sender);
                     } catch (error) {
-                        console.error(`[WebRTC] ❌ Fehler beim Hinzufügen von Track:`, error);
+                        console.error(`[WebRTC] ❌ Fehler bei addTrack:`, error);
                     }
                 });
+                
+                // Methode 2: Falls Transceiver verfügbar, setze Streams explizit
+                if (pc.getTransceivers) {
+                    pc.getTransceivers().forEach(transceiver => {
+                        if (transceiver.sender && localStream) {
+                            try {
+                                transceiver.sender.replaceTrack(null);
+                                localStream.getTracks().forEach(track => {
+                                    if (track.kind === transceiver.sender.track?.kind) {
+                                        transceiver.sender.replaceTrack(track);
+                                    }
+                                });
+                            } catch (error) {
+                                console.error(`[WebRTC] ❌ Fehler bei Transceiver replaceTrack:`, error);
+                            }
+                        }
+                    });
+                }
             } else {
                 console.log(`[WebRTC] ⚠️ Keine localStream Tracks verfügbar für ${targetSocketId}`);
             }
@@ -802,7 +963,7 @@ const createPeerConnection = (targetSocketId) => {
         return pc;
     };
 
-    const initiateCall = async (targetUserId) => {
+const initiateCall = async (targetUserId) => {
         if (!localStream) {
             alert("Bitte zuerst Kamera starten!");
             return;
@@ -812,8 +973,16 @@ const createPeerConnection = (targetSocketId) => {
         const pc = createPeerConnection(targetUserId);
         
         try {
-            const offer = await pc.createOffer();
+            // Browser-kompatible Offer-Erstellung
+            const offerOptions = {
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            };
+            
+            const offer = await pc.createOffer(offerOptions);
             await pc.setLocalDescription(offer);
+            
+            console.log(`[WebRTC] ✅ Offer erstellt und gesetzt für ${targetUserId}`);
             
             if (socket) {
                 socket.emit('camera-offer', {
@@ -822,9 +991,14 @@ const createPeerConnection = (targetSocketId) => {
                     from: socket.id,
                     roomId
                 });
+                console.log(`[WebRTC] ✅ Offer gesendet an ${targetUserId}`);
             }
         } catch (e) {
             console.error("Fehler beim Anrufen:", e);
+            // Cleanup bei Fehler
+            if (pc) {
+                pc.close();
+            }
         }
     };
 
@@ -832,18 +1006,30 @@ const createPeerConnection = (targetSocketId) => {
     useEffect(() => {
         if (!socket) return;
 
-        socket.on('camera-offer', async (data) => {
+socket.on('camera-offer', async (data) => {
             try {
                 console.log("Kamera-Anruf erhalten von:", data.from);
                 const pc = createPeerConnection(data.from);
                 
-                await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                // Browser-kompatible RemoteDescription
+                const remoteDescription = new RTCSessionDescription(data.offer);
+                await pc.setRemoteDescription(remoteDescription);
+                
+                console.log(`[WebRTC] ✅ RemoteDescription gesetzt für ${data.from}`);
                 
                 // JETZT Queue abarbeiten, da RemoteDescription gesetzt ist
                 await processIceQueue(data.from, pc);
 
-                const answer = await pc.createAnswer();
+                // Browser-kompatible Answer-Erstellung
+                const answerOptions = {
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                };
+                
+                const answer = await pc.createAnswer(answerOptions);
                 await pc.setLocalDescription(answer);
+                
+                console.log(`[WebRTC] ✅ Answer erstellt und gesetzt für ${data.from}`);
 
                 socket.emit('camera-answer', {
                     answer,
@@ -851,8 +1037,14 @@ const createPeerConnection = (targetSocketId) => {
                     from: socket.id,
                     roomId
                 });
+                
+                console.log(`[WebRTC] ✅ Answer gesendet an ${data.from}`);
             } catch (error) {
                 console.error("WebRTC Error (Answer):", error);
+                // Cleanup bei Fehler
+                if (pc) {
+                    pc.close();
+                }
             }
         });
 
@@ -866,17 +1058,29 @@ const createPeerConnection = (targetSocketId) => {
             }
         });
 
-        socket.on('camera-ice', async (data) => {
+socket.on('camera-ice', async (data) => {
             const pc = peerConnections.current[data.from];
             
-            // Wenn PC existiert UND RemoteDescription gesetzt ist -> direkt hinzufügen
+            // ROBUSTE ICE Candidate Behandlung
             if (pc && pc.remoteDescription) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                } catch (e) { console.error("ICE Error:", e); }
+                    console.log(`[WebRTC] ✅ ICE Candidate hinzugefügt für ${data.from}`);
+                } catch (e) { 
+                    console.error("ICE Error:", e);
+                    // Retry nach kurzer Verzögerung
+                    setTimeout(async () => {
+                        try {
+                            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                            console.log(`[WebRTC] ✅ ICE Candidate nach Retry hinzugefügt für ${data.from}`);
+                        } catch (retryError) {
+                            console.error(`[WebRTC] ❌ ICE Retry fehlgeschlagen für ${data.from}:`, retryError);
+                        }
+                    }, 500);
+                }
             } else {
                 // Sonst: In Queue speichern (WICHTIG für das schwarze Bild Problem)
-                console.log(`Puffere ICE Candidate für ${data.from} (Verbindung noch nicht bereit)`);
+                console.log(`[WebRTC] ⏳ Puffere ICE Candidate für ${data.from} (Verbindung noch nicht bereit)`);
                 if (!iceCandidateQueue.current[data.from]) {
                     iceCandidateQueue.current[data.from] = [];
                 }
