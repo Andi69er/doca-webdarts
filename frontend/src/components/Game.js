@@ -775,6 +775,20 @@ const createPeerConnection = (targetSocketId) => {
             console.error(`[WebRTC] ❌ Transceiver Fehler:`, error);
             // Fallback: Keine explizite Transceiver-Konfiguration
         }
+        
+        // Minimale Edge-Optimierung: Zusätzliche Transceiver für Edge
+        if (navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg')) {
+            try {
+                console.log(`[WebRTC] Edge: Zusätzliche Transceiver-Konfiguration`);
+                // Zusätzliche Video Transceiver für Edge
+                const additionalVideoTransceiver = pc.addTransceiver('video', { 
+                    direction: 'recvonly'
+                });
+                console.log(`[WebRTC] ✅ Edge zusätzlicher Video Transceiver:`, additionalVideoTransceiver);
+            } catch (edgeError) {
+                console.error(`[WebRTC] ❌ Edge Transceiver Fehler:`, edgeError);
+            }
+        }
 
         pc.onicecandidate = (event) => {
             if (event.candidate && socket) {
@@ -1059,6 +1073,14 @@ socket.on('camera-offer', async (data) => {
                 });
                 
                 console.log(`[WebRTC] ✅ Answer gesendet an ${data.from}`);
+                
+                // Minimale Edge-Optimierung: Zusätzliche Queue-Verarbeitung für Edge
+                if (navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg')) {
+                    setTimeout(async () => {
+                        console.log(`[WebRTC] Edge: Zusätzliche Queue-Verarbeitung nach Offer`);
+                        await processIceQueue(data.from, pc);
+                    }, 1000);
+                }
             } catch (error) {
                 console.error("WebRTC Error (Answer):", error);
                 // Cleanup bei Fehler
