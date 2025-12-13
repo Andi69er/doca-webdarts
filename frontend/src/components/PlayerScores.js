@@ -1,7 +1,6 @@
 import React from 'react';
 import DartsPerLegTable from './DartsPerLegTable';
 
-// Hilfsfunktion für Checkout-Wege
 const getCheckoutText = (score) => {
     if (score === undefined || score === null) return "";
     if (score > 170 || score < 2) return "";
@@ -67,54 +66,94 @@ const PlayerScores = ({ gameState, user }) => {
             gameState.players[gameState.gameState.currentPlayerIndex]?.id === player.id;
         const checkoutText = getCheckoutText(player.score);
 
-        // --- Block: Legs (Graue Box) ---
+        // --- Block: Sets & Legs (Graue Box) ---
+        // Wenn du 'sets' im player objekt hast, werden sie hier angezeigt
         const LegsBlock = (
-            <div className="legs-section-bild1">
-                <div className="legs-label-bild1">Legs</div>
-                <div className="legs-count-bild1">{player.legs}</div>
+            <div className="legs-section-bild1" style={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'space-around',
+                backgroundColor: '#333', // Dunkelgrauer Hintergrund wie im Bild
+                borderRadius: '6px',
+                padding: '5px 10px',
+                minWidth: '80px',
+                margin: '0 10px'
+            }}>
+                {/* Sets Anzeige (Optional, falls vorhanden) */}
+                {player.sets !== undefined && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: '10px' }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#aaa' }}>Sets</span>
+                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>{player.sets}</span>
+                    </div>
+                )}
+                
+                {/* Legs Anzeige */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#aaa' }}>Legs</span>
+                    <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>{player.legs || 0}</span>
+                </div>
             </div>
         );
 
         // --- Block: Score (Grüne Zahl) ---
         const ScoreBlock = (
-            <div className="player-score" style={{ fontSize: '4em', fontWeight: 'bold', color: '#4ade80', margin: '0 20px' }}>
+            <div className="player-score" style={{ fontSize: '4.5em', fontWeight: 'bold', color: '#4ade80', margin: '0 15px', lineHeight: 1 }}>
                 {player.score}
             </div>
         );
 
         // --- Block: Letzter Wurf (Dartscheibe + Punkte) ---
         const LastScoreBlock = (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 10px' }}>
-                <span style={{ fontSize: '24px' }}>🎯</span>
-                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{player.lastScore || 0}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 15px', width: '40px' }}>
+                {/* Standard Dartscheibe Emoji oder SVG */}
+                <span style={{ fontSize: '28px', lineHeight: '30px' }}>🎯</span>
+                <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginTop: '2px' }}>
+                    {player.lastScore || 0}
+                </span>
             </div>
         );
 
-        // --- NEUER Block: Anzahl Darts (Pfeil + Anzahl) ---
+        // --- NEUER Block: Anzahl Darts (Bunter Pfeil + Weiße Zahl) ---
         const DartsThrownBlock = (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 10px' }}>
-                {/* SVG Icon für Dartpfeil */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12.8 2.2L2.2 12.8L2 16L10 14L10.6 13.4L20.8 23.6L22.2 22.2L12.8 2.2ZM11.4 12.6L4.8 13.8L3.6 12.6L4.8 6L11.4 12.6ZM19.4 19.4L13.4 13.4L20.6 6.2L20.8 6.4L19.4 19.4Z" fill="#3b82f6"/>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 15px', width: '40px' }}>
+                {/* SVG Icon für Dartpfeil (Diagonaler Flug, rötliche Flights) */}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Flights (Rot) */}
+                    <path d="M19.4 19.4L22 22L20.5 23.5L19 22L17.5 23.5L16 22L18.6 19.4C18.6 19.4 19 19 19.4 19.4Z" fill="#ef4444"/>
+                    <path d="M22 16L23.5 17.5L22 19L23.5 20.5L22 22L19.4 19.4L22 16Z" fill="#ef4444"/>
+                    {/* Barrel (Grau/Silber) */}
+                    <path d="M12.8 2.2L2.2 12.8L4 16L11.5 14L10 12.5L20 2.5L21.5 4L19.4 19.4L13.4 13.4L6 14.5L12.8 2.2Z" fill="#cbd5e1"/>
+                    {/* Spitze (Dunkelgrau) */}
+                    <path d="M2.2 12.8L2 16L4 16L12.8 2.2L2.2 12.8Z" fill="#64748b"/>
                 </svg>
-                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
+                
+                {/* Ziffer in Weiß (Größe angepasst an LastScore) */}
+                <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginTop: '2px' }}>
                     {player.dartsThrown || 0}
                 </span>
             </div>
         );
 
         return (
-            <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ border: isActive ? '2px solid yellow' : 'none', padding: '10px', borderRadius: '8px', position: 'relative' }}>
+            <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ 
+                border: isActive ? '2px solid yellow' : '1px solid #333', 
+                backgroundColor: '#1f2937', // Dunkler Hintergrund
+                padding: '10px', 
+                borderRadius: '8px', 
+                position: 'relative',
+                color: 'white'
+            }}>
                 {/* Roter Punkt für aktiven Spieler */}
-                {isActive && <div style={{ position: 'absolute', top: '10px', left: '10px', width: '10px', height: '10px', backgroundColor: 'red', borderRadius: '50%' }}></div>}
+                {isActive && <div style={{ position: 'absolute', top: '10px', left: '10px', width: '12px', height: '12px', backgroundColor: 'red', borderRadius: '50%', boxShadow: '0 0 5px red' }}></div>}
                 
-                <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>
+                <h3 style={{ textAlign: 'center', marginBottom: '15px', fontSize: '1.2em' }}>
                     {player.name} {user && user.id === player.id ? '(Du)' : ''}
                 </h3>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {isRightSide ? (
-                        // RECHTE Seite (Spieler 2): Pfeil | Scheibe | Score | Legs
+                        // RECHTE Seite (Spieler 2): Pfeil | Scheibe | Score | Legs+Sets
                         <>
                             {DartsThrownBlock}
                             {LastScoreBlock}
@@ -122,7 +161,7 @@ const PlayerScores = ({ gameState, user }) => {
                             {LegsBlock}
                         </>
                     ) : (
-                        // LINKE Seite (Spieler 1): Legs | Score | Scheibe | Pfeil
+                        // LINKE Seite (Spieler 1): Legs+Sets | Score | Scheibe | Pfeil
                         <>
                             {LegsBlock}
                             {ScoreBlock}
@@ -132,8 +171,8 @@ const PlayerScores = ({ gameState, user }) => {
                     )}
                 </div>
 
-                {/* Checkout Anzeige unter dem Score */}
-                <div style={{ textAlign: 'center', height: '20px', marginTop: '5px', color: '#aaa', fontSize: '14px' }}>
+                {/* Checkout Anzeige */}
+                <div style={{ textAlign: 'center', height: '20px', marginTop: '10px', color: '#9ca3af', fontSize: '16px', fontWeight: '500' }}>
                     {checkoutText}
                 </div>
             </div>
@@ -141,14 +180,14 @@ const PlayerScores = ({ gameState, user }) => {
     };
 
     return (
-        <div className="player-scores-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <div className="player-scores-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
             {/* Linker Spieler */}
             <div className="player-score-section" style={{ flex: 1 }}>
                 {renderPlayerCard(player1, "Player 1", false)}
             </div>
 
             {/* Mitte: Tabelle */}
-            <div className="player-history-section" style={{ flex: 1, padding: '0 10px' }}>
+            <div className="player-history-section" style={{ flex: 1 }}>
                 <div className="history-wrapper" style={{ width: '100%', height: '100%' }}>
                     <DartsPerLegTable gameState={gameState} />
                 </div>
