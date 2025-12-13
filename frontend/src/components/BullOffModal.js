@@ -27,7 +27,7 @@ const BullOffModal = ({ isOpen, onClose, players, onBullOffComplete, socket, roo
         }
     }, [isOpen, players]);
 
-    useEffect(() => {
+useEffect(() => {
         if (!socket) return;
 
         socket.on('bull-off-throws', (data) => {
@@ -41,10 +41,24 @@ const BullOffModal = ({ isOpen, onClose, players, onBullOffComplete, socket, roo
             }));
         });
 
+        socket.on('bull-off-restart', (data) => {
+            // Reset state when sudden death phase starts
+            setThrows({
+                [players[0]?.id]: [0, 0, 0],
+                [players[1]?.id]: [0, 0, 0]
+            });
+            setSubmitted({
+                [players[0]?.id]: false,
+                [players[1]?.id]: false
+            });
+            setWinner(null);
+        });
+
         return () => {
             socket.off('bull-off-throws');
+            socket.off('bull-off-restart');
         };
-    }, [socket]);
+    }, [socket, players]);
 
     useEffect(() => {
         // Check for winner when both players have submitted
@@ -180,6 +194,14 @@ const determineWinner = () => {
                                     [players[1]?.id]: false 
                                 });
                                 setWinner(null);
+                                
+                                // Informiere Backend über Neustart der Sudden Death Phase
+                                if (socket && roomId) {
+                                    socket.emit('bull-off-restart', {
+                                        roomId,
+                                        playerId: user.id
+                                    });
+                                }
                             }}
                         >
                             Sudden Death - Erneut werfen

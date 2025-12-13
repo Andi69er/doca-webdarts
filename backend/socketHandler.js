@@ -378,7 +378,7 @@ function initializeSocket(io, gameManager, auth) {
             io.to(room.id).emit('game-state-update', room);
         });
 
-        // Bull-off logic
+// Bull-off logic
         socket.on('bull-off-submit', (data) => {
             const { roomId, playerId, throws } = data;
             const room = rooms.find(r => r.id === roomId);
@@ -390,6 +390,19 @@ function initializeSocket(io, gameManager, auth) {
 
             // Broadcast to all players in the room
             io.to(roomId).emit('bull-off-throws', { playerId, throws });
+        });
+
+        // Bull-off restart for sudden death phase
+        socket.on('bull-off-restart', (data) => {
+            const { roomId } = data;
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            // Clear previous throws for sudden death phase
+            room.bullOffThrows = {};
+
+            // Broadcast restart to all players
+            io.to(roomId).emit('bull-off-restart', { roomId });
         });
 
         // WebRTC Camera Signaling
