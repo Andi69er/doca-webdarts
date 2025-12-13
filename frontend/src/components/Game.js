@@ -140,11 +140,6 @@ const RemoteVideoPlayer = ({ stream, name, playerId }) => {
             videoRef.current.controls = false;
             videoRef.current.setAttribute('webkit-playsinline', 'true');
             videoRef.current.setAttribute('x-webkit-airplay', 'allow');
-            
-            // Minimale Edge-Optimierung: playsinline Attribut
-            if (navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg')) {
-                videoRef.current.setAttribute('playsinline', 'true');
-            }
 
             // ROBUSTE Event-Handler
             const handleLoadedMetadata = () => {
@@ -869,6 +864,25 @@ const createPeerConnection = (targetSocketId) => {
                         };
                     }
                 });
+            }
+            
+            // Minimale Edge-Optimierung: Zusätzliche Verzögerung für Edge
+            if (navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg')) {
+                setTimeout(() => {
+                    console.log(`[WebRTC] Edge: Zusätzliche Stream-Verarbeitung`);
+                    if (event.track) {
+                        setRemoteStreams(prev => {
+                            if (prev[targetSocketId]) {
+                                return prev; // Stream bereits vorhanden
+                            }
+                            const stream = new MediaStream([event.track]);
+                            return {
+                                ...prev,
+                                [targetSocketId]: stream
+                            };
+                        });
+                    }
+                }, 100);
             }
         };
 
