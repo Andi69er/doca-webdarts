@@ -186,12 +186,8 @@ const newRoom = {
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
 room.game = new X01Game(gameOptions);
-            console.log(`[DEBUG] Initialisiere Spiel mit currentPlayerIndex: ${currentPlayerIndex}`);
-            room.game.initializePlayers(room.players, currentPlayerIndex);
-            console.log(`[DEBUG] Nach initializePlayers - game.currentPlayerIndex: ${room.game.currentPlayerIndex}`);
-            room.gameStarted = true;
             
-// whoStarts-Logik implementieren
+// whoStarts-Logik implementieren - WICHTIG: VOR initializePlayers!
             let currentPlayerIndex = 0;
             console.log(`[DEBUG] whoStarts-Einstellung: ${room.whoStarts}`);
             console.log(`[DEBUG] Spieler im Raum:`, room.players.map(p => ({ id: p.id, name: p.name })));
@@ -206,6 +202,11 @@ room.game = new X01Game(gameOptions);
                 console.log(`[DEBUG] Host beginnt (Standard) - currentPlayerIndex: ${currentPlayerIndex}`);
             }
             // 'me' → currentPlayerIndex = 0 (Standard, Host beginnt)
+            
+            console.log(`[DEBUG] Initialisiere Spiel mit currentPlayerIndex: ${currentPlayerIndex}`);
+            room.game.initializePlayers(room.players, currentPlayerIndex);
+            console.log(`[DEBUG] Nach initializePlayers - game.currentPlayerIndex: ${room.game.currentPlayerIndex}`);
+            room.gameStarted = true;
 
             room.gameState = {
                 players: room.players.map((p, index) => ({
