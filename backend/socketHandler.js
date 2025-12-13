@@ -175,10 +175,7 @@ function initializeSocket(io, gameManager, auth) {
                     const opponentIndex = room.players.findIndex(p => p.id !== room.hostId);
                     currentPlayerIndex = opponentIndex !== -1 ? opponentIndex : 1;
                     console.log(`-> Einstellung 'opponent': Index ${currentPlayerIndex} beginnt.`);
-                } else if (room.whoStarts === 'random') {
-                    currentPlayerIndex = Math.random() < 0.5 ? 0 : 1;
-                    console.log(`-> Einstellung 'random': Zufall entschied für Index ${currentPlayerIndex}.`);
-                } else {
+            } else {
                     // Finde den Host-Spieler
                     const hostIndex = room.players.findIndex(p => p.id === room.hostId);
                     currentPlayerIndex = hostIndex !== -1 ? hostIndex : 0;
@@ -379,6 +376,20 @@ function initializeSocket(io, gameManager, auth) {
             room.game = null;
 
             io.to(room.id).emit('game-state-update', room);
+        });
+
+        // Bull-off logic
+        socket.on('bull-off-submit', (data) => {
+            const { roomId, playerId, throws } = data;
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            // Store the throws for this player
+            if (!room.bullOffThrows) room.bullOffThrows = {};
+            room.bullOffThrows[playerId] = throws;
+
+            // Broadcast to all players in the room
+            io.to(roomId).emit('bull-off-throws', { playerId, throws });
         });
 
         // WebRTC Camera Signaling

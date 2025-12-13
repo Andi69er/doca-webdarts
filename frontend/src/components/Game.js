@@ -4,6 +4,7 @@ import { useSocket } from '../contexts/SocketContext';
 import NumberPad from './NumberPad';
 import GameChat from './GameChat';
 import GameEndPopup from './GameEndPopup';
+import BullOffModal from './BullOffModal';
 import './Game.css';
 import LiveStatistics from "./LiveStatistics";
 import PlayerScores from "./PlayerScores";
@@ -287,6 +288,7 @@ function Game() {
 
     // NEU: State für Startspieler-Auswahl
     const [startingPlayerId, setStartingPlayerId] = useState(null);
+    const [showBullOffModal, setShowBullOffModal] = useState(false);
     
     // Video / Camera State - Vereinfacht
     const [localStream, setLocalStream] = useState(null);
@@ -375,24 +377,22 @@ function Game() {
 
     useEffect(() => { refreshDevices(); }, [refreshDevices]);
 
-    // NEU: Standard-Startspieler setzen, sobald Gegner beigetreten ist
-    useEffect(() => {
-        if (gameState?.players?.length >= 2 && !startingPlayerId) {
-            // Lobby-Einstellung verwenden um startingPlayerId zu setzen
-            const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
-            const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
+    // Funktion um Standard-Startspieler basierend auf Lobby-Einstellung zu berechnen
+    const getDefaultStartingPlayerId = () => {
+        if (!gameState?.players || gameState.players.length < 2) return null;
+        const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
+        const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
 
-            if (gameState.whoStarts === 'opponent') {
-                setStartingPlayerId(opponentPlayer.id);
-            } else if (gameState.whoStarts === 'random') {
-                const randomPlayer = Math.random() < 0.5 ? hostPlayer : opponentPlayer;
-                setStartingPlayerId(randomPlayer.id);
-            } else {
-                // 'me' oder undefined → Host beginnt
-                setStartingPlayerId(hostPlayer.id);
-            }
+        if (gameState.whoStarts === 'opponent') {
+            return opponentPlayer.id;
+        } else if (gameState.whoStarts === 'random') {
+            // Für 'random' (Ausbullen) keine Vorab-Auswahl, da es zufällig ist
+            return null;
+        } else {
+            // 'me' oder undefined → Host beginnt
+            return hostPlayer.id;
         }
-    }, [gameState?.players, gameState?.whoStarts, gameState?.hostId, startingPlayerId]);
+    };
 
 
     // Game State Handling
@@ -1231,8 +1231,23 @@ const isHost = gameState.hostId === user.id;
     const countdown = 0;
     const handleRematch = () => {
         setShowWinnerPopup(false);
+        // Reset startingPlayerId so that the dropdown shows the correct default for the new game
+        setStartingPlayerId(null);
         if (socket) {
             socket.emit('rematch', { roomId, userId: user.id });
+        }
+    };
+
+    const handleBullOffComplete = (winnerId) => {
+        // Start the game with the bull-off winner
+        if (socket) {
+            const payload = {
+                roomId,
+                userId: user.id,
+                resetScores: true,
+                startingPlayerId: winnerId
+            };
+            socket.emit('start-game', payload);
         }
     };
 
@@ -1261,8 +1276,8 @@ const isHost = gameState.hostId === user.id;
                                     {gameState.players.length > 1 && (
                                         <div style={{ marginBottom: '15px', textAlign: 'center' }}>
                                             <label style={{ color: '#ccc', marginRight: '10px' }}>Wer beginnt?</label>
-                                            <select 
-                                                value={startingPlayerId || ''} 
+                                            <select
+                                                value={startingPlayerId || getDefaultStartingPlayerId() || ''}
                                                 onChange={(e) => setStartingPlayerId(e.target.value)}
                                                 style={{ padding: '5px', borderRadius: '4px', color: 'black' }}
                                             >
@@ -1271,6 +1286,7 @@ const isHost = gameState.hostId === user.id;
                                                         {p.name}
                                                     </option>
                                                 ))}
+                                                <option value="bull-off">Ausbullen</option>
                                             </select>
                                         </div>
                                     )}
@@ -1420,6 +1436,17 @@ const isHost = gameState.hostId === user.id;
                 </div>
             </div>
             {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
+            {showBullOffModal && (
+                <BullOffModal
+                    isOpen={showBullOffModal}
+                    onClose={() => setShowBullOffModal(false)}
+                    players={gameState.players}
+                    onBullOffComplete={handleBullOffComplete}
+                    socket={socket}
+                    roomId={roomId}
+                    user={user}
+                />
+            )}
             <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
         </div>
     );
