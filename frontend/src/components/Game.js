@@ -392,16 +392,19 @@ function Game() {
                 initialStarterId = hostPlayer.id;
             } else if (gameState.whoStarts === 'random') {
                 initialStarterId = 'bull-off'; // Zeige Ausbullen an
+                // Wenn "Ausbullen" ausgewählt ist, zeige das Modal automatisch bei beiden Spielern
+                setShowBullOffModal(true);
             } else {
                 // Standard: Host beginnt
                 initialStarterId = hostPlayer?.id;
             }
             
-            if (initialStarterId && startingPlayerId === null) {
+            // IMMER aktualisieren wenn sich whoStarts ändert, nicht nur beim ersten Mal
+            if (initialStarterId) {
                 setStartingPlayerId(initialStarterId);
             }
         }
-    }, [gameState, localGameStarted, startingPlayerId]);
+    }, [gameState?.whoStarts, gameState?.players, localGameStarted]);
 
     // Funktion um Standard-Startspieler basierend auf Lobby-Einstellung ZUR ANZEIGE zu berechnen
     // Diese Funktion gibt die ID oder den String 'bull-off' zurück.
