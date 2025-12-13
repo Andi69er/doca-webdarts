@@ -1007,9 +1007,10 @@ const initiateCall = async (targetUserId) => {
         if (!socket) return;
 
 socket.on('camera-offer', async (data) => {
+            let pc = null;
             try {
                 console.log("Kamera-Anruf erhalten von:", data.from);
-                const pc = createPeerConnection(data.from);
+                pc = createPeerConnection(data.from);
                 
                 // Browser-kompatible RemoteDescription
                 const remoteDescription = new RTCSessionDescription(data.offer);
