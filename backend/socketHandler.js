@@ -171,13 +171,18 @@ function initializeSocket(io, gameManager, auth) {
                 // Fallback, wenn Frontend keine ID schickt (altes Frontend oder kein Dropdown gewählt)
                 console.log("ℹ️ Keine startingPlayerId empfangen. Nutze Raumeinstellungen/Zufall.");
                 if (room.whoStarts === 'opponent' && room.players.length >= 2) {
-                    currentPlayerIndex = 1;
-                    console.log("-> Einstellung 'opponent': Index 1 beginnt.");
+                    // Finde den Nicht-Host-Spieler
+                    const opponentIndex = room.players.findIndex(p => p.id !== room.hostId);
+                    currentPlayerIndex = opponentIndex !== -1 ? opponentIndex : 1;
+                    console.log(`-> Einstellung 'opponent': Index ${currentPlayerIndex} beginnt.`);
                 } else if (room.whoStarts === 'random') {
                     currentPlayerIndex = Math.random() < 0.5 ? 0 : 1;
                     console.log(`-> Einstellung 'random': Zufall entschied für Index ${currentPlayerIndex}.`);
                 } else {
-                    console.log("-> Standard: Host (Index 0) beginnt.");
+                    // Finde den Host-Spieler
+                    const hostIndex = room.players.findIndex(p => p.id === room.hostId);
+                    currentPlayerIndex = hostIndex !== -1 ? hostIndex : 0;
+                    console.log(`-> Standard: Host (Index ${currentPlayerIndex}) beginnt.`);
                 }
             }
             console.log("---------------------------");

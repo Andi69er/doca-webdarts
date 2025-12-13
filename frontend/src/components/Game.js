@@ -379,17 +379,20 @@ function Game() {
     useEffect(() => {
         if (gameState?.players?.length > 0 && !startingPlayerId) {
             // Lobby-Einstellung verwenden um startingPlayerId zu setzen
+            const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
+            const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
+
             if (gameState.whoStarts === 'opponent' && gameState.players.length >= 2) {
-                setStartingPlayerId(gameState.players[1].id);
+                setStartingPlayerId(opponentPlayer.id);
             } else if (gameState.whoStarts === 'random') {
-                const randomIndex = Math.random() < 0.5 ? 0 : 1;
-                setStartingPlayerId(gameState.players[randomIndex].id);
+                const randomPlayer = Math.random() < 0.5 ? hostPlayer : opponentPlayer;
+                setStartingPlayerId(randomPlayer.id);
             } else {
-                // 'me' oder undefined → Host beginnt (Index 0)
-                setStartingPlayerId(gameState.players[0].id);
+                // 'me' oder undefined → Host beginnt
+                setStartingPlayerId(hostPlayer.id);
             }
         }
-    }, [gameState?.players, gameState?.whoStarts, startingPlayerId]);
+    }, [gameState?.players, gameState?.whoStarts, gameState?.hostId, startingPlayerId]);
 
 
     // Game State Handling
