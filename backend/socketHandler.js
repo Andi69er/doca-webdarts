@@ -61,17 +61,20 @@ function initializeSocket(io, gameManager, auth) {
             const gameOptions = (roomData && roomData.gameOptions) ? roomData.gameOptions : {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
-            const newRoom = {
+const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
                 name: roomData.roomName,
                 gameMode: roomData.gameMode,
                 gameOptions: gameOptions, // Store sanitized game options
+                whoStarts: roomData.whoStarts || 'random', // WICHTIG: whoStarts speichern
                 hostId: socket.id, // Store host ID
                 maxPlayers: 2,
                 players: [{ id: socket.id, name: `Player ${Math.floor(Math.random() * 1000)}`}],
                 gameState: null, // Game state is null until game starts
                 game: null // No game instance until game starts
             };
+            
+            console.log(`[CREATE_ROOM] whoStarts-Einstellung gespeichert: ${newRoom.whoStarts}`);
             console.log(`[CREATE_ROOM] New room object created:`, newRoom);
             
             // Manually set initial score for the first player
@@ -183,15 +186,24 @@ function initializeSocket(io, gameManager, auth) {
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
 room.game = new X01Game(gameOptions);
+            console.log(`[DEBUG] Initialisiere Spiel mit currentPlayerIndex: ${currentPlayerIndex}`);
             room.game.initializePlayers(room.players, currentPlayerIndex);
+            console.log(`[DEBUG] Nach initializePlayers - game.currentPlayerIndex: ${room.game.currentPlayerIndex}`);
             room.gameStarted = true;
             
 // whoStarts-Logik implementieren
             let currentPlayerIndex = 0;
+            console.log(`[DEBUG] whoStarts-Einstellung: ${room.whoStarts}`);
+            console.log(`[DEBUG] Spieler im Raum:`, room.players.map(p => ({ id: p.id, name: p.name })));
+            
             if (room.whoStarts === 'opponent' && room.players.length >= 2) {
                 currentPlayerIndex = 1; // Gegner beginnt
+                console.log(`[DEBUG] Gegner beginnt - currentPlayerIndex: ${currentPlayerIndex}`);
             } else if (room.whoStarts === 'random') {
                 currentPlayerIndex = Math.random() < 0.5 ? 0 : 1; // Zufällig
+                console.log(`[DEBUG] Zufälliger Start - currentPlayerIndex: ${currentPlayerIndex}`);
+            } else {
+                console.log(`[DEBUG] Host beginnt (Standard) - currentPlayerIndex: ${currentPlayerIndex}`);
             }
             // 'me' → currentPlayerIndex = 0 (Standard, Host beginnt)
 
@@ -214,6 +226,9 @@ room.game = new X01Game(gameOptions);
                 hostId: room.hostId,
                 turns: {} // Initialisiere turns hier
             };
+            
+            console.log(`[DEBUG] Final gameState currentPlayerIndex: ${room.gameState.currentPlayerIndex}`);
+            console.log(`[DEBUG] Aktiver Spieler:`, room.gameState.players[room.gameState.currentPlayerIndex]);
 
             room.game.playerIds = room.players.map(p => p.id);
 
