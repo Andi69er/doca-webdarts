@@ -281,9 +281,12 @@ function Game() {
     const [connectionError, setConnectionError] = useState(null);
     const [user, setUser] = useState({ id: null, name: 'Gast' });
     const [gameState, setGameState] = useState(null);
-const [localGameStarted, setLocalGameStarted] = useState(false);
+    const [localGameStarted, setLocalGameStarted] = useState(false);
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
+    
+    // NEU: State für Startspieler
+    const [startingPlayerId, setStartingPlayerId] = useState(null);
     
     // Video / Camera State - Vereinfacht
     const [localStream, setLocalStream] = useState(null);
@@ -312,7 +315,7 @@ const [localGameStarted, setLocalGameStarted] = useState(false);
     const expectedLocalScore = useRef(null);
     const localVideoRef = useRef(null);
     const peerConnections = useRef({});
-const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidates
+    const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidates
 
 // Callbacks - Device Enumeration
     const refreshDevices = useCallback(async () => {
@@ -372,7 +375,12 @@ const iceCandidateQueue = useRef({}); // WICHTIG: Puffer für zu frühe Candidat
 
     useEffect(() => { refreshDevices(); }, [refreshDevices]);
 
-
+    // NEU: Standard-Startspieler setzen
+    useEffect(() => {
+        if (gameState?.players?.length > 0 && !startingPlayerId) {
+            setStartingPlayerId(gameState.players[0].id);
+        }
+    }, [gameState?.players, startingPlayerId]);
 
 
     // Game State Handling
@@ -1150,9 +1158,10 @@ socket.on('camera-ice', async (data) => {
         const payload = {
             roomId,
             userId: user.id,
-            resetScores: true
+            resetScores: true,
+            startingPlayerId: startingPlayerId // <--- WICHTIG: Auswahl mitsenden!
         };
-socket.emit('start-game', payload);
+        socket.emit('start-game', payload);
         // Wenn Host startet, setze automatisch Vollbild für Host
         if (user.id === gameState?.hostId) {
             setVideoLayout({
@@ -1212,9 +1221,29 @@ const isHost = gameState.hostId === user.id;
                                 {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
                             </div>
                             {isHost ? (
-                                <button className="start-game-button" onClick={handleStartGame}>
-                                    SPIEL STARTEN 🎯
-                                </button>
+                                <>
+                                    {/* NEU: Dropdown Menü Startspieler */}
+                                    {gameState.players.length > 1 && (
+                                        <div style={{ marginBottom: '15px', textAlign: 'center' }}>
+                                            <label style={{ color: '#ccc', marginRight: '10px' }}>Wer beginnt?</label>
+                                            <select 
+                                                value={startingPlayerId || ''} 
+                                                onChange={(e) => setStartingPlayerId(e.target.value)}
+                                                style={{ padding: '5px', borderRadius: '4px', color: 'black' }}
+                                            >
+                                                {gameState.players.map(p => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <button className="start-game-button" onClick={handleStartGame}>
+                                        SPIEL STARTEN 🎯
+                                    </button>
+                                </>
                             ) : (
                                 <div className="waiting-message">Warte auf Host...</div>
                             )}
