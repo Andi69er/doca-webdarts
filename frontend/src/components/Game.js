@@ -290,6 +290,8 @@ function Game() {
     const [startingPlayerId, setStartingPlayerId] = useState(null);
     const [showBullOffModal, setShowBullOffModal] = useState(false);
     const [bullOffModalShown, setBullOffModalShown] = useState(false);
+    const [bullOffCompleted, setBullOffCompleted] = useState(false);
+    const [gameStarted, setGameStarted] = useState(false);
     
     // Video / Camera State - Vereinfacht
     const [localStream, setLocalStream] = useState(null);
@@ -378,7 +380,7 @@ function Game() {
 
     useEffect(() => { refreshDevices(); }, [refreshDevices]);
 
-    // Initialisiere startingPlayerId basierend auf Lobby-Einstellung, solange das Spiel nicht läuft
+// Initialisiere startingPlayerId basierend auf Lobby-Einstellung, solange das Spiel nicht läuft
     useEffect(() => {
         if (gameState && gameState.players && gameState.players.length >= 2 && !localGameStarted) {
             const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
@@ -391,11 +393,11 @@ function Game() {
             } else if (gameState.whoStarts === 'me' && hostPlayer) {
                 // Wenn "Ich" ausgewählt ist, soll der Host (Ersteller) als Startspieler markiert werden
                 initialStarterId = hostPlayer.id;
-} else if (gameState.whoStarts === 'random') {
+            } else if (gameState.whoStarts === 'random') {
                 initialStarterId = 'bull-off'; // Zeige Ausbullen an
                 // Wenn "Ausbullen" ausgewählt ist, zeige das Modal automatisch bei BEIDEN Spielern
-                // Aber nur einmal, nicht jedes Mal wenn das Modal geschlossen wird
-                if (!bullOffModalShown && gameState.players.length >= 2) {
+                // Aber nur beim ersten Mal, nicht nach Abbrechen oder erfolgreichem Ausbullen
+                if (!bullOffModalShown && !bullOffCompleted && gameState.players.length >= 2) {
                     setShowBullOffModal(true);
                     setBullOffModalShown(true);
                 }
@@ -1463,6 +1465,7 @@ const isHost = gameState.hostId === user.id;
                     onClose={() => {
                         setShowBullOffModal(false);
                         setBullOffModalShown(false);
+                        setBullOffCompleted(true); // Markiere als abgeschlossen, auch bei Abbrechen
                     }}
                     players={gameState.players}
                     onBullOffComplete={handleBullOffComplete}
