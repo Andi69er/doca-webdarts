@@ -284,8 +284,8 @@ function Game() {
     const [localGameStarted, setLocalGameStarted] = useState(false);
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
-    
-    // NEU: State für Startspieler
+
+    // NEU: State für Startspieler-Auswahl
     const [startingPlayerId, setStartingPlayerId] = useState(null);
     
     // Video / Camera State - Vereinfacht
@@ -375,7 +375,7 @@ function Game() {
 
     useEffect(() => { refreshDevices(); }, [refreshDevices]);
 
-    // NEU: Standard-Startspieler setzen
+    // NEU: Standard-Startspieler setzen, sobald Spieldaten geladen sind
     useEffect(() => {
         if (gameState?.players?.length > 0 && !startingPlayerId) {
             setStartingPlayerId(gameState.players[0].id);
@@ -1159,14 +1159,20 @@ socket.on('camera-ice', async (data) => {
             roomId,
             userId: user.id,
             resetScores: true,
-            startingPlayerId: startingPlayerId // <--- WICHTIG: Auswahl mitsenden!
+            startingPlayerId: startingPlayerId // WICHTIG: Auswahl mitsenden!
         };
         socket.emit('start-game', payload);
-        // Wenn Host startet, setze automatisch Vollbild für Host
-        if (user.id === gameState?.hostId) {
+        
+        // HIER WAR DER FEHLER: Korrekte Ansicht basierend auf der Auswahl setzen
+        if (user.id === startingPlayerId) {
             setVideoLayout({
                 mode: 'fullscreen',
                 currentPlayerId: 'local'
+            });
+        } else {
+            setVideoLayout({
+                mode: 'fullscreen',
+                currentPlayerId: startingPlayerId
             });
         }
     };
