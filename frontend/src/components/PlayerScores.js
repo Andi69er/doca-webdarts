@@ -138,9 +138,9 @@ const isActive = gameState &&
             </div>
         );
 
-        return (
+return (
             <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ 
-                border: isActive ? '2px solid yellow' : '1px solid #333', 
+                border: isActive ? '2px solid yellow' : isStartingPlayer ? '2px solid #4CAF50' : '1px solid #333', 
                 backgroundColor: '#1f2937', // Dunkler Hintergrund
                 padding: '10px', 
                 borderRadius: '8px', 

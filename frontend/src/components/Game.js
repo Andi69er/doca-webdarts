@@ -289,6 +289,7 @@ function Game() {
     // NEU: State für Startspieler-Auswahl
     const [startingPlayerId, setStartingPlayerId] = useState(null);
     const [showBullOffModal, setShowBullOffModal] = useState(false);
+    const [bullOffModalShown, setBullOffModalShown] = useState(false);
     
     // Video / Camera State - Vereinfacht
     const [localStream, setLocalStream] = useState(null);
@@ -390,10 +391,14 @@ function Game() {
             } else if (gameState.whoStarts === 'me' && hostPlayer) {
                 // Wenn "Ich" ausgewählt ist, soll der Host (Ersteller) als Startspieler markiert werden
                 initialStarterId = hostPlayer.id;
-            } else if (gameState.whoStarts === 'random') {
+} else if (gameState.whoStarts === 'random') {
                 initialStarterId = 'bull-off'; // Zeige Ausbullen an
                 // Wenn "Ausbullen" ausgewählt ist, zeige das Modal automatisch bei beiden Spielern
-                setShowBullOffModal(true);
+                // Aber nur einmal, nicht jedes Mal wenn das Modal geschlossen wird
+                if (!bullOffModalShown) {
+                    setShowBullOffModal(true);
+                    setBullOffModalShown(true);
+                }
             } else {
                 // Standard: Host beginnt
                 initialStarterId = hostPlayer?.id;
@@ -1271,6 +1276,9 @@ const isHost = gameState.hostId === user.id;
 
     const handleBullOffComplete = (winnerId) => {
         // Start the game with the bull-off winner
+        setShowBullOffModal(false);
+        setBullOffModalShown(false);
+        
         if (socket) {
             const payload = {
                 roomId,
@@ -1470,7 +1478,10 @@ const isHost = gameState.hostId === user.id;
             {showBullOffModal && (
                 <BullOffModal
                     isOpen={showBullOffModal}
-                    onClose={() => setShowBullOffModal(false)}
+                    onClose={() => {
+                        setShowBullOffModal(false);
+                        setBullOffModalShown(false);
+                    }}
                     players={gameState.players}
                     onBullOffComplete={handleBullOffComplete}
                     socket={socket}
