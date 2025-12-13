@@ -1169,16 +1169,31 @@ socket.on('camera-ice', async (data) => {
     const handleStartGame = () => {
         if (!socket) return;
         setLocalGameStarted(true);
+
+        // Stelle sicher, dass startingPlayerId gesetzt ist (entweder aus Dropdown oder Lobby-Einstellung)
+        let finalStartingPlayerId = startingPlayerId;
+        if (!finalStartingPlayerId && gameState?.players?.length >= 2) {
+            const hostPlayer = gameState.players.find(p => p.id === gameState.hostId);
+            const opponentPlayer = gameState.players.find(p => p.id !== gameState.hostId);
+            if (gameState.whoStarts === 'opponent') {
+                finalStartingPlayerId = opponentPlayer.id;
+            } else if (gameState.whoStarts === 'random') {
+                finalStartingPlayerId = Math.random() < 0.5 ? hostPlayer.id : opponentPlayer.id;
+            } else {
+                finalStartingPlayerId = hostPlayer.id;
+            }
+        }
+
         const payload = {
             roomId,
             userId: user.id,
             resetScores: true,
-            startingPlayerId: startingPlayerId // WICHTIG: Auswahl mitsenden!
+            startingPlayerId: finalStartingPlayerId
         };
         socket.emit('start-game', payload);
-        
-        // HIER WAR DER FEHLER: Korrekte Ansicht basierend auf der Auswahl setzen
-        if (user.id === startingPlayerId) {
+
+        // Korrekte Ansicht basierend auf der Auswahl setzen
+        if (user.id === finalStartingPlayerId) {
             setVideoLayout({
                 mode: 'fullscreen',
                 currentPlayerId: 'local'
@@ -1186,7 +1201,7 @@ socket.on('camera-ice', async (data) => {
         } else {
             setVideoLayout({
                 mode: 'fullscreen',
-                currentPlayerId: startingPlayerId
+                currentPlayerId: finalStartingPlayerId
             });
         }
     };
