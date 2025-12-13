@@ -656,7 +656,7 @@ const stopCamera = () => {
         }
     };
 
-    // ROBUSTE automatische Verbindung mit allen Gegnern
+    // ROBUSTE automatische Verbindung mit allen Gegnern (Reihenfolge-unabhängig)
     const autoConnectToOpponents = useCallback(() => {
         console.log(`[AutoConnect] 🔄 Versuche automatische Verbindung...`);
         console.log(`[AutoConnect] localStream:`, !!localStream);
@@ -683,18 +683,30 @@ const stopCamera = () => {
             return;
         }
         
+        // Reihenfolge-unabhängige Verbindung: Alle gleichzeitig versuchen
         opponents.forEach((opponent, index) => {
             if (!peerConnections.current[opponent.id]) {
                 console.log(`[AutoConnect] Initiating call to:`, opponent.name, opponent.id);
-                // Verzögerung für bessere Stabilität
+                // Kürzere, gleichzeitige Verzögerung für bessere Verbindungslogik
                 setTimeout(() => {
                     console.log(`[AutoConnect] 🔌 Führe Anruf aus für:`, opponent.name);
                     initiateCall(opponent.id);
-                }, (index + 1) * 1000); // 1s, 2s, 3s Verzögerung
+                }, 500); // Alle nach 500ms gleichzeitig
             } else {
                 console.log(`[AutoConnect] ✅ Bereits verbunden mit:`, opponent.name);
             }
         });
+        
+        // Zusätzlicher Verbindungsversuch nach 3 Sekunden für Stabilität
+        setTimeout(() => {
+            console.log(`[AutoConnect] 🔄 Zusätzlicher Verbindungsversuch...`);
+            opponents.forEach((opponent, index) => {
+                if (!peerConnections.current[opponent.id]) {
+                    console.log(`[AutoConnect] 🔌 Retry für:`, opponent.name);
+                    initiateCall(opponent.id);
+                }
+            });
+        }, 3000);
     }, [gameState?.players, user.id, isCameraEnabled, localStream]);
 
     // Automatische Verbindung nur wenn Kamera bereits aktiviert ist
