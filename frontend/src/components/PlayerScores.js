@@ -62,8 +62,8 @@ const PlayerScores = ({ gameState, user }) => {
             );
         }
 
-        const isActive = gameState.gameState &&
-            gameState.players[gameState.gameState.currentPlayerIndex]?.id === player.id;
+const isActive = gameState &&
+            gameState.players[gameState.currentPlayerIndex]?.id === player.id;
         const checkoutText = getCheckoutText(player.score);
 
         // --- Block: Sets & Legs (Graue Box) ---
