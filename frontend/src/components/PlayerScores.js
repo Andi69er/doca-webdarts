@@ -62,7 +62,8 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             );
         }
 
-const isActive = gameState &&
+const isActive = gameState && 
+            gameState.gameStatus === 'active' &&
             gameState.players[gameState.currentPlayerIndex]?.id === player.id;
 
         // Show starting player indicator before game starts

@@ -393,9 +393,9 @@ function Game() {
                 initialStarterId = hostPlayer.id;
 } else if (gameState.whoStarts === 'random') {
                 initialStarterId = 'bull-off'; // Zeige Ausbullen an
-                // Wenn "Ausbullen" ausgewählt ist, zeige das Modal automatisch bei beiden Spielern
+                // Wenn "Ausbullen" ausgewählt ist, zeige das Modal automatisch bei BEIDEN Spielern
                 // Aber nur einmal, nicht jedes Mal wenn das Modal geschlossen wird
-                if (!bullOffModalShown) {
+                if (!bullOffModalShown && gameState.players.length >= 2) {
                     setShowBullOffModal(true);
                     setBullOffModalShown(true);
                 }
@@ -1311,24 +1311,6 @@ const isHost = gameState.hostId === user.id;
                             </div>
                             {isHost ? (
                                 <>
-                                    {/* NEU: Dropdown Menü Startspieler */}
-                                    {gameState.players.length > 1 && (
-                                        <div style={{ marginBottom: '15px', textAlign: 'center' }}>
-                                            <label style={{ color: '#ccc', marginRight: '10px' }}>Wer beginnt?</label>
-                                            <select
-                                                value={startingPlayerId || getDefaultStartingPlayerId() || ''}
-                                                onChange={(e) => setStartingPlayerId(e.target.value)}
-                                                style={{ padding: '5px', borderRadius: '4px', color: 'black' }}
-                                            >
-                                                {gameState.players.map(p => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {p.name}
-                                                    </option>
-                                                ))}
-                                                <option value="bull-off">Ausbullen</option>
-                                            </select>
-                                        </div>
-                                    )}
 
                                     <button className="start-game-button" onClick={handleStartGame}>
                                         SPIEL STARTEN 🎯
