@@ -12,12 +12,12 @@ class X01Game {
       this.checkoutDarts = null;
     }
   
-    initializePlayers(players) {
+    initializePlayers(players, startPlayerIndex = 0) {
         this.players = players.map(p => p.id); // Store player IDs
         this.players.forEach(playerId => {
             this.scores[playerId] = this.startingScore;
         });
-        this.currentPlayerIndex = 0; // Start with the first player
+        this.currentPlayerIndex = startPlayerIndex; // Start with the specified player
     }
   
     processThrow(playerId, score) {

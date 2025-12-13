@@ -182,8 +182,8 @@ function initializeSocket(io, gameManager, auth) {
             const gameOptions = room.gameOptions || {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
-            room.game = new X01Game(gameOptions);
-            room.game.initializePlayers(room.players);
+room.game = new X01Game(gameOptions);
+            room.game.initializePlayers(room.players, currentPlayerIndex);
             room.gameStarted = true;
             
 // whoStarts-Logik implementieren
