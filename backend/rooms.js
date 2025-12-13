@@ -1,26 +1,11 @@
 // Room management module
 const db = require('./index').db;
 
-<<<<<<< HEAD
-=======
-// Room management module
-const db = require('./index').db;
-
->>>>>>> d529c9d5df0cd4ede503fb3b5016b270e0ffaf2e
 class RoomManager {
   constructor() {
     this.rooms = new Map(); // roomId -> roomData
   }
 
-<<<<<<< HEAD
-  createRoom(roomData) {
-    const roomId = `room_${Date.now()}`;
-    const room = {
-      id: roomId,
-      name: roomData.name,
-      host: roomData.host,
-      players: [roomData.host],
-=======
   createRoom(socket, io, roomData) {
     console.log('RoomManager.createRoom called with roomData:', roomData);
     const roomId = `room_${Date.now()}`;
@@ -30,11 +15,11 @@ class RoomManager {
       name: roomData.name,
       host: userId,
       players: [],
->>>>>>> d529c9d5df0cd4ede503fb3b5016b270e0ffaf2e
       spectators: [],
       maxPlayers: roomData.maxPlayers || 4,
       gameMode: roomData.gameMode || 'x01',
       gameOptions: roomData.gameOptions || {},
+      whoStarts: roomData.whoStarts || 'random', // WICHTIG: whoStarts speichern
       isPrivate: roomData.isPrivate || false,
       password: roomData.password || null,
       createdAt: new Date(),
@@ -44,11 +29,6 @@ class RoomManager {
       gameState: null
     };
     this.rooms.set(roomId, room);
-<<<<<<< HEAD
-    return room;
-  }
-
-=======
     console.log('Room created:', room);
 
     // Join the creator to the room
@@ -88,7 +68,7 @@ class RoomManager {
     socket.emit('roomsUpdated', rooms);
   }
 
-  joinRoomInternal(roomId, userId, password = null) {
+joinRoomInternal(roomId, userId, password = null) {
     const room = this.getRoom(roomId);
     if (!room) return { success: false, message: 'Room not found' };
 
@@ -114,35 +94,12 @@ class RoomManager {
     return Array.from(this.rooms.values()).filter(room => !room.isPrivate);
   }
 
->>>>>>> d529c9d5df0cd4ede503fb3b5016b270e0ffaf2e
   getRooms() {
     return Array.from(this.rooms.values()).filter(room => !room.isPrivate);
   }
 
   getRoom(roomId) {
     return this.rooms.get(roomId);
-  }
-
-  joinRoom(roomId, userId, password = null) {
-    const room = this.getRoom(roomId);
-    if (!room) return { success: false, message: 'Room not found' };
-
-    if (room.isPrivate && room.password !== password) {
-      return { success: false, message: 'Invalid password' };
-    }
-
-    if (room.players.length >= room.maxPlayers) {
-      // Add as spectator
-      if (!room.spectators.includes(userId)) {
-        room.spectators.push(userId);
-      }
-      return { success: true, role: 'spectator' };
-    }
-
-    if (!room.players.includes(userId)) {
-      room.players.push(userId);
-    }
-    return { success: true, role: 'player' };
   }
 
   leaveRoom(roomId, userId) {

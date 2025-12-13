@@ -186,6 +186,15 @@ function initializeSocket(io, gameManager, auth) {
             room.game.initializePlayers(room.players);
             room.gameStarted = true;
             
+// whoStarts-Logik implementieren
+            let currentPlayerIndex = 0;
+            if (room.whoStarts === 'opponent' && room.players.length >= 2) {
+                currentPlayerIndex = 1; // Gegner beginnt
+            } else if (room.whoStarts === 'random') {
+                currentPlayerIndex = Math.random() < 0.5 ? 0 : 1; // Zufällig
+            }
+            // 'me' → currentPlayerIndex = 0 (Standard, Host beginnt)
+
             room.gameState = {
                 players: room.players.map((p, index) => ({
                     ...p,
@@ -193,12 +202,12 @@ function initializeSocket(io, gameManager, auth) {
                     dartsThrown: 0,
                     dartsThrownBeforeLeg: 0, // Add this line
                     avg: '0.00',
-                    isActive: index === 0,
+                    isActive: index === currentPlayerIndex,
                     legs: 0,
                     scores: [],
                     turns: []
                 })),
-                currentPlayerIndex: 0,
+                currentPlayerIndex: currentPlayerIndex,
                 gameStatus: 'active',
                 lastThrow: null,
                 history: [],
