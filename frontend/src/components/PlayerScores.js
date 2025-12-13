@@ -1,9 +1,10 @@
 import React from 'react';
 import DartsPerLegTable from './DartsPerLegTable';
 
+// Hilfsfunktion für Checkout-Wege
 const getCheckoutText = (score) => {
     if (score === undefined || score === null) return "";
-    if (score > 170 || score < 2) return ""; // No checkout possible
+    if (score > 170 || score < 2) return "";
 
     const checkouts = {
         170: "T20 T20 BULL", 167: "T20 T19 BULL", 164: "T20 T18 BULL", 161: "T20 T17 BULL",
@@ -42,95 +43,122 @@ const getCheckoutText = (score) => {
         9: "1 D4", 8: "D4", 7: "S3 D2", 6: "D3", 5: "S1 D2", 4: "D2",
         3: "S1 D1", 2: "D1"
     };
-
     return checkouts[score] || "";
 };
 
 const PlayerScores = ({ gameState, user }) => {
-  if (!gameState || !gameState.players) return null;
+    if (!gameState || !gameState.players) return null;
 
-  const players = gameState.players;
-  const player1 = players[0];
-  const player2 = players[1]; 
+    const players = gameState.players;
+    const player1 = players[0];
+    const player2 = players[1];
 
-// Neue Funktion: isRightSide bestimmt, ob wir die Elemente tauschen
-  const renderPlayerCard = (player, label, isRightSide = false) => {
-    if (!player) {
-      return (
-        <div className="player-card empty">
-          <h3>{label}</h3>
-          <div className="waiting-text">Warte...</div>
-        </div>
-      );
-    }
+    const renderPlayerCard = (player, label, isRightSide = false) => {
+        if (!player) {
+            return (
+                <div className="player-card empty">
+                    <h3>{label}</h3>
+                    <div className="waiting-text">Warte...</div>
+                </div>
+            );
+        }
 
-    const isActive = gameState.gameState && 
-                     gameState.players[gameState.gameState.currentPlayerIndex]?.id === player.id;
-    const checkoutText = getCheckoutText(player.score);
-    
-    // DEBUG: Prüfe dartsThrown Daten
-    console.log(`[layerScores] Player ${player.name}:`, {
-      dartsThrown: player.dartsThrown,
-      lastScore: player.lastScore,
-      score: player.score
-    });
+        const isActive = gameState.gameState &&
+            gameState.players[gameState.gameState.currentPlayerIndex]?.id === player.id;
+        const checkoutText = getCheckoutText(player.score);
 
-    // Wir definieren die Blöcke als Variablen, damit wir sie unten leicht tauschen können
-    const LegsBlock = (
-        <div className="legs-section-bild1">
-            <div className="legs-label-bild1">Legs</div>
-            <div className="legs-count-bild1">{player.legs}</div>
-        </div>
-    );
+        // --- Block: Legs (Graue Box) ---
+        const LegsBlock = (
+            <div className="legs-section-bild1">
+                <div className="legs-label-bild1">Legs</div>
+                <div className="legs-count-bild1">{player.legs}</div>
+            </div>
+        );
 
-[object ]
+        // --- Block: Score (Grüne Zahl) ---
+        const ScoreBlock = (
+            <div className="player-score" style={{ fontSize: '4em', fontWeight: 'bold', color: '#4ade80', margin: '0 20px' }}>
+                {player.score}
+            </div>
+        );
+
+        // --- Block: Letzter Wurf (Dartscheibe + Punkte) ---
+        const LastScoreBlock = (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 10px' }}>
+                <span style={{ fontSize: '24px' }}>🎯</span>
+                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{player.lastScore || 0}</span>
+            </div>
+        );
+
+        // --- NEUER Block: Anzahl Darts (Pfeil + Anzahl) ---
+        const DartsThrownBlock = (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 10px' }}>
+                {/* SVG Icon für Dartpfeil */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12.8 2.2L2.2 12.8L2 16L10 14L10.6 13.4L20.8 23.6L22.2 22.2L12.8 2.2ZM11.4 12.6L4.8 13.8L3.6 12.6L4.8 6L11.4 12.6ZM19.4 19.4L13.4 13.4L20.6 6.2L20.8 6.4L19.4 19.4Z" fill="#3b82f6"/>
+                </svg>
+                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
+                    {player.dartsThrown || 0}
+                </span>
+            </div>
+        );
+
+        return (
+            <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ border: isActive ? '2px solid yellow' : 'none', padding: '10px', borderRadius: '8px', position: 'relative' }}>
+                {/* Roter Punkt für aktiven Spieler */}
+                {isActive && <div style={{ position: 'absolute', top: '10px', left: '10px', width: '10px', height: '10px', backgroundColor: 'red', borderRadius: '50%' }}></div>}
+                
+                <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>
+                    {player.name} {user && user.id === player.id ? '(Du)' : ''}
+                </h3>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isRightSide ? (
+                        // RECHTE Seite (Spieler 2): Pfeil | Scheibe | Score | Legs
+                        <>
+                            {DartsThrownBlock}
+                            {LastScoreBlock}
+                            {ScoreBlock}
+                            {LegsBlock}
+                        </>
+                    ) : (
+                        // LINKE Seite (Spieler 1): Legs | Score | Scheibe | Pfeil
+                        <>
+                            {LegsBlock}
+                            {ScoreBlock}
+                            {LastScoreBlock}
+                            {DartsThrownBlock}
+                        </>
+                    )}
+                </div>
+
+                {/* Checkout Anzeige unter dem Score */}
+                <div style={{ textAlign: 'center', height: '20px', marginTop: '5px', color: '#aaa', fontSize: '14px' }}>
+                    {checkoutText}
+                </div>
+            </div>
+        );
+    };
 
     return (
-      <div className={`player-card-bild1 ${isActive ? 'active-turn' : ''}`}>
-        {isActive && <div className="active-dot"></div>}
-        
-        <div className="player-name-bild1">
-            {player.name} {user?.id === player.id ? '(Du)' : ''}
+        <div className="player-scores-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+            {/* Linker Spieler */}
+            <div className="player-score-section" style={{ flex: 1 }}>
+                {renderPlayerCard(player1, "Player 1", false)}
+            </div>
+
+            {/* Mitte: Tabelle */}
+            <div className="player-history-section" style={{ flex: 1, padding: '0 10px' }}>
+                <div className="history-wrapper" style={{ width: '100%', height: '100%' }}>
+                    <DartsPerLegTable gameState={gameState} />
+                </div>
+            </div>
+
+            {/* Rechter Spieler */}
+            <div className="player-score-section" style={{ flex: 1 }}>
+                {renderPlayerCard(player2, "Player 2", true)}
+            </div>
         </div>
-
-        <div className="score-details-bild1">
-          {/* LOGIK: Wenn es der rechte Spieler ist, kommt DartsInfo ZUERST (links) */}
-          {isRightSide ? DartsInfoBlock : LegsBlock}
-
-          {/* Der Score ist immer in der Mitte */}
-          <div className="main-score-wrapper-bild1">
-            <div className="main-score-bild1">{player.score}</div>
-            {checkoutText && (
-              <div className="checkout-path-bild1">{checkoutText}</div>
-            )}
-          </div>
-
-          {/* LOGIK: Wenn es der rechte Spieler ist, kommt Legs ZULETZT (rechts) */}
-          {isRightSide ? LegsBlock : DartsInfoBlock}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-      <div className="player-scores-container">
-        {/* Linker Spieler (Player 1) - Standard Layout */}
-        <div className="player-score-section">
-          {renderPlayerCard(player1, "Player 1", false)}
-        </div>
-
-        {/* Mitte: Tabelle */}
-        <div className="player-history-section">
-           <div className="history-wrapper" style={{ width: '100%', height: '100%', padding: 0, display: 'flex' }}>
-              <DartsPerLegTable gameState={gameState} />
-           </div>
-        </div>
-
-        {/* Rechter Spieler (Player 2) - isRightSide = true (Spiegelverkehrt) */}
-        <div className="player-score-section">
-          {renderPlayerCard(player2, "Player 2", true)}
-        </div>
-      </div>
     );
 };
 
