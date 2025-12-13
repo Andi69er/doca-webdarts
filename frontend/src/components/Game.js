@@ -610,8 +610,15 @@ const stopCamera = () => {
     const autoConnectToOpponents = useCallback(() => {
         console.log(`[AutoConnect] 🔄 Versuche automatische Verbindung...`);
         console.log(`[AutoConnect] localStream:`, !!localStream);
+        console.log(`[AutoConnect] isCameraEnabled:`, isCameraEnabled);
         console.log(`[AutoConnect] gameState.players:`, !!gameState?.players);
         console.log(`[AutoConnect] user.id:`, user.id);
+        
+        // WICHTIG: Nur verbinden wenn Kamera bereits aktiviert ist
+        if (!isCameraEnabled || !localStream) {
+            console.log(`[AutoConnect] ❌ Übersprungen - Kamera nicht aktiviert`);
+            return;
+        }
         
         if (!gameState?.players) {
             console.log(`[AutoConnect] ❌ Übersprungen - keine Spieler`);
@@ -638,15 +645,15 @@ const stopCamera = () => {
                 console.log(`[AutoConnect] ✅ Bereits verbunden mit:`, opponent.name);
             }
         });
-    }, [gameState?.players, user.id]);
+    }, [gameState?.players, user.id, isCameraEnabled, localStream]);
 
-    // Automatische Verbindung wenn localStream verfügbar wird
+    // Automatische Verbindung nur wenn Kamera bereits aktiviert ist
     useEffect(() => {
-        if (gameState?.players) {
-            console.log("🚀 gameState.players verfügbar - starte automatische Verbindung");
+        if (gameState?.players && isCameraEnabled) {
+            console.log("🚀 gameState.players verfügbar UND Kamera aktiv - starte automatische Verbindung");
             setTimeout(() => autoConnectToOpponents(), 2000); // 2s Verzögerung
         }
-    }, [gameState?.players, autoConnectToOpponents]);
+    }, [gameState?.players, isCameraEnabled, autoConnectToOpponents]);
 
     // Hilfsfunktion zum Verarbeiten der Queue (Race Condition Fix)
     const processIceQueue = async (socketId, pc) => {
