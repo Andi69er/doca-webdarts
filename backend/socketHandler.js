@@ -61,7 +61,7 @@ function initializeSocket(io, gameManager, auth) {
             const gameOptions = (roomData && roomData.gameOptions) ? roomData.gameOptions : {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
-const newRoom = {
+            const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
                 name: roomData.roomName,
                 gameMode: roomData.gameMode,
@@ -147,9 +147,11 @@ const newRoom = {
             }
         });
 
+        // --- HIER IST DIE KORRIGIERTE START-GAME FUNKTION ---
         socket.on('start-game', (data) => {
             console.log(`[SERVER] Received 'start-game' event with data:`, data);
-            const { roomId, userId } = data;
+            // startingPlayerId aus den Daten holen
+            const { roomId, userId, startingPlayerId } = data;
             const room = rooms.find(r => r.id === roomId);
 
             if (!room) {
@@ -158,21 +160,11 @@ const newRoom = {
                 return;
             }
             
-            console.log(`[SERVER] Start-Game: Raum ${roomId} gefunden. HostId: ${room.hostId}, UserId: ${userId}, Players:`, room.players.map(p => p.id));
-            
             const isHost = room.players[0]?.id === userId || room.hostId === userId;
             
             if (!isHost) {
                 console.log(`[SERVER] Start-Game Fehler: User ${userId} ist nicht der Host von Raum ${roomId}.`);
                 socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
-                return;
-            }
-            
-            console.log(`[SERVER] Start-Game: User ${userId} ist der Host.`);
-            
-            if (room.game) {
-                console.log(`[SERVER] Start-Game Fehler: Spiel in Raum ${roomId} bereits gestartet.`);
-                socket.emit('gameError', { error: 'Spiel bereits gestartet' });
                 return;
             }
             
@@ -185,27 +177,32 @@ const newRoom = {
             const gameOptions = room.gameOptions || {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
-room.game = new X01Game(gameOptions);
+            room.game = new X01Game(gameOptions);
             
-// whoStarts-Logik implementieren - WICHTIG: VOR initializePlayers!
+            // --- LOGIK ZUR BESTIMMUNG DES STARTSPIELERS ---
             let currentPlayerIndex = 0;
-            console.log(`[DEBUG] whoStarts-Einstellung: ${room.whoStarts}`);
-            console.log(`[DEBUG] Spieler im Raum:`, room.players.map(p => ({ id: p.id, name: p.name })));
-            
-            if (room.whoStarts === 'opponent' && room.players.length >= 2) {
-                currentPlayerIndex = 1; // Gegner beginnt
-                console.log(`[DEBUG] Gegner beginnt - currentPlayerIndex: ${currentPlayerIndex}`);
-            } else if (room.whoStarts === 'random') {
-                currentPlayerIndex = Math.random() < 0.5 ? 0 : 1; // Zufällig
-                console.log(`[DEBUG] Zufälliger Start - currentPlayerIndex: ${currentPlayerIndex}`);
+
+            if (startingPlayerId) {
+                // 1. Wenn Frontend explizit eine ID sendet (Auswahlmenü)
+                const foundIndex = room.players.findIndex(p => p.id === startingPlayerId);
+                if (foundIndex !== -1) {
+                    currentPlayerIndex = foundIndex;
+                    console.log(`[START-GAME] Startspieler explizit gewählt: ${startingPlayerId} (Index: ${currentPlayerIndex})`);
+                }
             } else {
-                console.log(`[DEBUG] Host beginnt (Standard) - currentPlayerIndex: ${currentPlayerIndex}`);
+                // 2. Fallback auf alte Logik (Einstellungen)
+                console.log(`[DEBUG] whoStarts-Einstellung (Fallback): ${room.whoStarts}`);
+                if (room.whoStarts === 'opponent' && room.players.length >= 2) {
+                    currentPlayerIndex = 1; 
+                } else if (room.whoStarts === 'random') {
+                    currentPlayerIndex = Math.random() < 0.5 ? 0 : 1;
+                }
             }
-            // 'me' → currentPlayerIndex = 0 (Standard, Host beginnt)
             
             console.log(`[DEBUG] Initialisiere Spiel mit currentPlayerIndex: ${currentPlayerIndex}`);
+            // WICHTIG: Index an die Klasse übergeben
             room.game.initializePlayers(room.players, currentPlayerIndex);
-            console.log(`[DEBUG] Nach initializePlayers - game.currentPlayerIndex: ${room.game.currentPlayerIndex}`);
+            
             room.gameStarted = true;
 
             room.gameState = {
@@ -213,9 +210,9 @@ room.game = new X01Game(gameOptions);
                     ...p,
                     score: startScore,
                     dartsThrown: 0,
-                    dartsThrownBeforeLeg: 0, // Add this line
+                    dartsThrownBeforeLeg: 0, 
                     avg: '0.00',
-                    isActive: index === currentPlayerIndex,
+                    isActive: index === currentPlayerIndex, // UI Status setzen
                     legs: 0,
                     scores: [],
                     turns: []
@@ -225,21 +222,18 @@ room.game = new X01Game(gameOptions);
                 lastThrow: null,
                 history: [],
                 hostId: room.hostId,
-                turns: {} // Initialisiere turns hier
+                turns: {} 
             };
             
-            console.log(`[DEBUG] Final gameState currentPlayerIndex: ${room.gameState.currentPlayerIndex}`);
-            console.log(`[DEBUG] Aktiver Spieler:`, room.gameState.players[room.gameState.currentPlayerIndex]);
-
             room.game.playerIds = room.players.map(p => p.id);
 
-            console.log(`[START-GAME] Sende game-started Event an alle Spieler in Raum ${roomId}`, room.gameState);
+            console.log(`[START-GAME] Sende game-started Event an alle Spieler in Raum ${roomId}`);
             io.to(roomId).emit('game-started', room.gameState);
             console.log(`Spiel in Raum ${roomId} gestartet von Host ${userId} mit Startscore ${startScore}`);
         });
 
         socket.on('score-input', (data) => {
-            const { roomId, score, userId, nextPlayerIndex } = data;
+            const { roomId, score, userId } = data;
             const room = rooms.find(r => r.id === roomId);
             
             if (!room || !room.game) {
@@ -256,7 +250,6 @@ room.game = new X01Game(gameOptions);
             }
 
             console.log(`[SCORE-INPUT] Eingabe von ${userId} in Raum ${roomId}: ${score} Punkte`);
-            console.log(`[SCORE-INPUT] Aktueller Score vor Wurf: ${room.game.scores[userId]}`);
             
             try {
                 const result = room.game.processThrow(userId, parseInt(score));
@@ -265,9 +258,6 @@ room.game = new X01Game(gameOptions);
                     console.log(`[SCORE-INPUT] Ungültiger Wurf: ${result.reason}`);
                     return socket.emit('gameError', { error: result.reason });
                 }
-
-                console.log(`[SCORE-INPUT] Score nach Wurf: ${room.game.scores[userId]}`);
-                console.log(`[SCORE-INPUT] Nächster Spieler Index: ${room.game.currentPlayerIndex}`);
                 
                 const gameOptions = room.gameOptions || {};
                 const startScore = parseInt(gameOptions.startingScore, 10) || 501;
@@ -365,11 +355,6 @@ room.game = new X01Game(gameOptions);
                     ...updateData
                 };
 
-                console.log(`[SCORE-INPUT] Sende Update an alle Spieler in Raum ${roomId}:`, {
-                    currentPlayerIndex: updateData.currentPlayerIndex,
-                    scores: updatedPlayers.map(p => ({ id: p.id, score: p.score }))
-                });
-
                 io.to(roomId).emit('game-state-update', updateData);
             } catch (error) {
                 console.error(`[SCORE-INPUT] Fehler bei der Verarbeitung des Wurfs:`, error);
@@ -382,7 +367,7 @@ room.game = new X01Game(gameOptions);
             const room = rooms.find(r => r.id === roomId);
             if(room) {
                 console.log(`Raum ${roomId} gefunden. Sende gameState an ${socket.id}.`);
-                socket.emit('gameState', room); // FIX: Send the full room object
+                socket.emit('gameState', room); 
             } else {
                 console.log(`WARNUNG: Raum ${roomId} wurde anfragt, aber nicht gefunden.`);
             }
@@ -391,13 +376,11 @@ room.game = new X01Game(gameOptions);
         socket.on('sendMessage', (message) => {
             console.log('!!! sendMessage EVENT VOM CLIENT EMPFANGEN !!! Nachricht:', message);
             if (message.roomId) {
-                // In-game message
                 io.to(message.roomId).emit('receiveMessage', message);
             } else {
-                // Lobby message, needs user name
                 const lobbyMessage = {
                     ...message,
-                    user: `User_${socket.id.substring(0, 4)}` // Add a generic user name
+                    user: `User_${socket.id.substring(0, 4)}` 
                 };
                 io.emit('receiveMessage', lobbyMessage);
             }
@@ -413,7 +396,6 @@ room.game = new X01Game(gameOptions);
 
             console.log(`!!! checkout-selection EVENT in Raum ${roomId} von ${userId} mit ${dartCount} Darts !!!`);
 
-            // Store the checkout darts in the game state
             if (room.game.setCheckoutDarts) {
                 room.game.setCheckoutDarts(dartCount);
             }
@@ -436,10 +418,6 @@ room.game = new X01Game(gameOptions);
 
             // Reverse players (switch starter)
             room.players.reverse();
-
-            // Keep same game options for automatic takeover
-            // The game settings are preserved
-
             // Reset game state
             room.gameState = null;
             room.game = null;
@@ -452,49 +430,25 @@ room.game = new X01Game(gameOptions);
         socket.on('camera-offer', (data) => {
             const { roomId, from, to, offer } = data;
             const room = rooms.find(r => r.id === roomId);
-
-            if (!room) {
-                return console.error("Camera-Offer: Room not found");
-            }
-
-            console.log(`!!! camera-offer EVENT in Raum ${roomId} von ${from} zu ${to} !!!`);
-
-            // Send offer to the target player
+            if (!room) return;
             io.to(to).emit('camera-offer', data);
         });
 
         socket.on('camera-answer', (data) => {
             const { roomId, from, to, answer } = data;
             const room = rooms.find(r => r.id === roomId);
-
-            if (!room) {
-                return console.error("Camera-Answer: Room not found");
-            }
-
-            console.log(`!!! camera-answer EVENT in Raum ${roomId} von ${from} zu ${to} !!!`);
-
-            // Send answer to the target player
+            if (!room) return;
             io.to(to).emit('camera-answer', data);
         });
 
         socket.on('camera-ice', (data) => {
             const { roomId, from, to, candidate } = data;
             const room = rooms.find(r => r.id === roomId);
-
-            if (!room) {
-                return console.error("Camera-ICE: Room not found");
-            }
-
-            console.log(`!!! camera-ice EVENT in Raum ${roomId} von ${from} zu ${to} !!!`);
-
-            // Send ICE candidate to the target player
+            if (!room) return;
             io.to(to).emit('camera-ice', data);
         });
 
-
-
         socket.on('disconnect', () => {
-            // Remove user from connected users list
             connectedUsers = connectedUsers.filter(user => user.id !== socket.id);
 
             onlineUsers--;
