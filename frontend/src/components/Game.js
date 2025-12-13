@@ -485,9 +485,11 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 gameState: {
                     ...(prev?.gameState || {}),
                     ...(newState.gameState || {}),
-                    currentPlayerIndex: currentPlayerIndex
+                    currentPlayerIndex: currentPlayerIndex,
+                    whoStarts: newState.whoStarts || prev?.whoStarts  // WICHTIG: whoStarts erhalten
                 },
-                currentPlayerIndex: currentPlayerIndex
+                currentPlayerIndex: currentPlayerIndex,
+                whoStarts: newState.whoStarts || prev?.whoStarts  // whoStarts auch auf oberster Ebene
             };
         });
     }, [socket?.id, user?.id]);
