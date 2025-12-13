@@ -385,11 +385,16 @@ function Game() {
             
             let initialStarterId = null;
             if (gameState.whoStarts === 'opponent' && opponentPlayer) {
+                // Wenn "Gegner" ausgewählt ist, soll der Gegner als Startspieler markiert werden
                 initialStarterId = opponentPlayer.id;
             } else if (gameState.whoStarts === 'me' && hostPlayer) {
+                // Wenn "Ich" ausgewählt ist, soll der Host (Ersteller) als Startspieler markiert werden
                 initialStarterId = hostPlayer.id;
             } else if (gameState.whoStarts === 'random') {
                 initialStarterId = 'bull-off'; // Zeige Ausbullen an
+            } else {
+                // Standard: Host beginnt
+                initialStarterId = hostPlayer?.id;
             }
             
             if (initialStarterId && startingPlayerId === null) {

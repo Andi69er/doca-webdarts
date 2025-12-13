@@ -54,22 +54,29 @@ const BullOffModal = ({ isOpen, onClose, players, onBullOffComplete, socket, roo
         }
     }, [submitted, throws, players]);
 
-    const determineWinner = () => {
+const determineWinner = () => {
         const p1Throws = throws[players[0]?.id];
         const p2Throws = throws[players[1]?.id];
 
+        // Jeder Spieler wirft 3 Darts - wer als erster Bull (25 oder 50) trifft gewinnt
         for (let i = 0; i < 3; i++) {
-            const p1Hit = p1Throws[i] > 0;
-            const p2Hit = p2Throws[i] > 0;
+            const p1Hit = p1Throws[i] === 25 || p1Throws[i] === 50; // Bull-Treffer
+            const p2Hit = p2Throws[i] === 25 || p2Throws[i] === 50; // Bull-Treffer
 
-            if (p1Hit && !p2Hit) return players[0]?.id;
-            if (p2Hit && !p1Hit) return players[1]?.id;
-            // If both hit or both miss, continue to next dart
+            if (p1Hit && !p2Hit) {
+                // P1 trifft Bull, P2 nicht -> P1 gewinnt
+                return players[0]?.id;
+            }
+            if (p2Hit && !p1Hit) {
+                // P2 trifft Bull, P1 nicht -> P2 gewinnt
+                return players[1]?.id;
+            }
+            // Wenn beide treffen oder beide verfehlen, weiter zum nächsten Dart
         }
 
-        // If still tied after 3 darts, sudden death - but for now, return null to indicate tie
-        // In a real implementation, you might want to continue until someone wins
-        return null;
+        // Wenn nach 3 Darts noch unentschieden (beide haben gleiche Treffer oder beide missen)
+        // Dann geht es in die Sudden Death Phase - weiter werfen bis jemand gewinnt
+        return null; // Unentschieden - beide müssen erneut werfen
     };
 
     const handleThrowChange = (playerId, dartIndex, value) => {
@@ -111,8 +118,8 @@ const BullOffModal = ({ isOpen, onClose, players, onBullOffComplete, socket, roo
     return (
         <div className="bull-off-modal-overlay">
             <div className="bull-off-modal">
-                <h2>Ausbullen - Wer beginnt?</h2>
-                <p>Jeder Spieler wirft 3 Darts auf das Bullseye. Der erste Treffer (25 oder 50) gewinnt!</p>
+<h2>Ausbullen - Wer beginnt?</h2>
+                <p>Jeder Spieler wirft 3 Darts auf das Bullseye. Wer als erster Bull (25 oder 50) trifft, beginnt das Spiel!</p>
 
                 <div className="bull-off-players">
                     {players.map(player => (
@@ -155,13 +162,27 @@ const BullOffModal = ({ isOpen, onClose, players, onBullOffComplete, socket, roo
                     </button>
                 )}
 
-                {bothSubmitted && !winner && (
+{bothSubmitted && !winner && (
                     <div className="tie-message">
-                        Unentschieden! Beide Spieler müssen erneut werfen.
-                        <button onClick={() => {
-                            setSubmitted({ [players[0]?.id]: false, [players[1]?.id]: false });
-                        }}>
-                            Erneut werfen
+                        <p><strong>Unentschieden!</strong></p>
+                        <p>Beide Spieler haben das gleiche Ergebnis. Es geht in die Sudden Death Phase!</p>
+                        <p>Wer als erster Bull trifft, gewinnt das Ausbullen.</p>
+                        <button 
+                            className="retry-bull-off-btn"
+                            onClick={() => {
+                                // Reset throws für Sudden Death Phase
+                                setThrows({
+                                    [players[0]?.id]: [0, 0, 0],
+                                    [players[1]?.id]: [0, 0, 0]
+                                });
+                                setSubmitted({ 
+                                    [players[0]?.id]: false, 
+                                    [players[1]?.id]: false 
+                                });
+                                setWinner(null);
+                            }}
+                        >
+                            Sudden Death - Erneut werfen
                         </button>
                     </div>
                 )}
