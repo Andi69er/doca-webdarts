@@ -386,8 +386,8 @@ function Game() {
         if (gameState.whoStarts === 'opponent') {
             return opponentPlayer.id;
         } else if (gameState.whoStarts === 'random') {
-            // Für 'random' (Ausbullen) keine Vorab-Auswahl, da es zufällig ist
-            return null;
+            // Für 'random' (Ausbullen) - zufällige Auswahl
+            return Math.random() < 0.5 ? hostPlayer.id : opponentPlayer.id;
         } else {
             // 'me' oder undefined → Host beginnt
             return hostPlayer.id;
@@ -1182,6 +1182,12 @@ socket.on('camera-ice', async (data) => {
             } else {
                 finalStartingPlayerId = hostPlayer.id;
             }
+        }
+
+        // Wenn Ausbullen ausgewählt, zeige Modal und starte nicht das Spiel
+        if (finalStartingPlayerId === 'bull-off') {
+            setShowBullOffModal(true);
+            return;
         }
 
         const payload = {

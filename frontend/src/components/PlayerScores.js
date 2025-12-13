@@ -45,7 +45,7 @@ const getCheckoutText = (score) => {
     return checkouts[score] || "";
 };
 
-const PlayerScores = ({ gameState, user }) => {
+const PlayerScores = ({ gameState, user, startingPlayerId }) => {
     if (!gameState || !gameState.players) return null;
 
     const players = gameState.players;
@@ -64,6 +64,9 @@ const PlayerScores = ({ gameState, user }) => {
 
 const isActive = gameState &&
             gameState.players[gameState.currentPlayerIndex]?.id === player.id;
+
+        // Show starting player indicator before game starts
+        const isStartingPlayer = !gameState.gameStatus && startingPlayerId === player.id;
         const checkoutText = getCheckoutText(player.score);
 
         // --- Block: Sets & Legs (Graue Box) ---
