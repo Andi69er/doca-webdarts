@@ -85,7 +85,18 @@ const determineWinner = () => {
                 // P2 trifft Bull, P1 nicht -> P2 gewinnt
                 return players[1]?.id;
             }
-            // Wenn beide treffen oder beide verfehlen, weiter zum nächsten Dart
+            if (p1Hit && p2Hit) {
+                // BEIDE treffen Bull -> wer hat den höheren Wert?
+                if (p1Throws[i] > p2Throws[i]) {
+                    // P1 hat höheren Wert (50 > 25) -> P1 gewinnt
+                    return players[0]?.id;
+                } else if (p2Throws[i] > p1Throws[i]) {
+                    // P2 hat höheren Wert (50 > 25) -> P2 gewinnt
+                    return players[1]?.id;
+                }
+                // Beide haben gleichen Wert (beide 25 oder beide 50) -> weiter zum nächsten Dart
+            }
+            // Wenn beide verfehlen, weiter zum nächsten Dart
         }
 
         // Wenn nach 3 Darts noch unentschieden (beide haben gleiche Treffer oder beide missen)
