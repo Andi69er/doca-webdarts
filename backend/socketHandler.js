@@ -108,7 +108,10 @@ function initializeSocket(io, gameManager, auth) {
                     }
 
                     console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten.`);
-                    io.to(room.id).emit('game-state-update', room);
+                    // Only emit game-state-update if there's an active game
+                    if (room.game && room.gameState) {
+                        io.to(room.id).emit('game-state-update', room.gameState);
+                    }
                     io.emit('updateRooms', rooms);
                 } else {
                     socket.emit('gameError', { error: 'Room is full' });
@@ -149,7 +152,12 @@ function initializeSocket(io, gameManager, auth) {
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
             // Spielinstanz neu erstellen
-            room.game = new X01Game(gameOptions);
+            if (room.gameMode === 'cricket') {
+                const { CricketGame } = require('./gameModes');
+                room.game = new CricketGame(gameOptions);
+            } else {
+                room.game = new X01Game(gameOptions);
+            }
             
             // 2. Startspieler bestimmen (mit ausführlichem Debugging)
             let currentPlayerIndex = 0; // Standard: Host fängt an
@@ -190,26 +198,46 @@ function initializeSocket(io, gameManager, auth) {
             room.gameStarted = true;
 
 // 4. GameState für Frontend bauen
-            room.gameState = {
-                players: room.players.map((p, index) => ({
-                    ...p,
-                    score: startScore,
-                    dartsThrown: 0,
-                    dartsThrownBeforeLeg: 0, 
-                    avg: '0.00',
-                    isActive: index === currentPlayerIndex, // <--- WICHTIG: Bestimmt wer grün leuchtet
-                    legs: 0,
-                    scores: [],
-                    turns: []
-                })),
-                currentPlayerIndex: currentPlayerIndex,
-                gameStatus: 'active',
-                lastThrow: null,
-                history: [],
-                hostId: room.hostId,
-                whoStarts: room.whoStarts, // WICHTIG: Lobby-Einstellung an Frontend weitergeben
-                turns: {} 
-            };
+            if (room.gameMode === 'cricket') {
+                room.gameState = {
+                    mode: 'cricket',
+                    players: room.players.map((p, index) => ({
+                        ...p,
+                        points: 0,
+                        marks: {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
+                        dartsThrown: 0,
+                        isActive: index === currentPlayerIndex,
+                        legs: 0
+                    })),
+                    currentPlayerIndex: currentPlayerIndex,
+                    gameStatus: 'active',
+                    lastThrow: null,
+                    hostId: room.hostId,
+                    whoStarts: room.whoStarts
+                };
+            } else {
+                room.gameState = {
+                    mode: 'x01',
+                    players: room.players.map((p, index) => ({
+                        ...p,
+                        score: startScore,
+                        dartsThrown: 0,
+                        dartsThrownBeforeLeg: 0,
+                        avg: '0.00',
+                        isActive: index === currentPlayerIndex,
+                        legs: 0,
+                        scores: [],
+                        turns: []
+                    })),
+                    currentPlayerIndex: currentPlayerIndex,
+                    gameStatus: 'active',
+                    lastThrow: null,
+                    history: [],
+                    hostId: room.hostId,
+                    whoStarts: room.whoStarts,
+                    turns: {}
+                };
+            }
             
             room.game.playerIds = room.players.map(p => p.id);
 
@@ -220,84 +248,116 @@ function initializeSocket(io, gameManager, auth) {
         socket.on('score-input', (data) => {
             const { roomId, score, userId } = data;
             const room = rooms.find(r => r.id === roomId);
-            
+
             if (!room || !room.game) {
                 return socket.emit('gameError', { error: 'Spiel nicht gestartet oder Raum nicht gefunden' });
             }
 
             const currentPlayerIndex = room.game.currentPlayerIndex || 0;
             const currentPlayer = room.players[currentPlayerIndex];
-            
+
             if (currentPlayer?.id !== userId) {
                 return socket.emit('gameError', { error: 'Nicht dein Zug' });
             }
-            
+
             try {
-                const result = room.game.processThrow(userId, parseInt(score));
+                const result = room.game.processThrow(userId, score);
 
                 if (!result.valid) {
                     return socket.emit('gameError', { error: result.reason });
                 }
-                
-                const gameOptions = room.gameOptions || {};
-                const startScore = parseInt(gameOptions.startingScore, 10) || 501;
-                
+
                 let legWinnerId = null;
                 if (result.winner) {
                     legWinnerId = result.winner;
                 }
 
-                const updatedPlayers = room.players.map((p, idx) => {
-                    const isCurrentPlayer = idx === currentPlayerIndex;
-                    const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 3 : 0);
-                    
-                    const newScores = isCurrentPlayer ? [...(p.scores || []), parseInt(score)] : (p.scores || []);
-                    const newScores180 = isCurrentPlayer && parseInt(score) === 180 ? (p.scores180 || 0) + 1 : (p.scores180 || 0);
+                let updatedPlayers;
+                let updateData;
 
-                    const pointsScored = startScore - room.game.scores[p.id];
-                    const average = newDartsThrown > 0 ? ((pointsScored / newDartsThrown) * 3).toFixed(2) : "0.00";
-                    
-                    let first9Avg = p.first9Avg || "0.00";
-                    if (newDartsThrown >= 9) {
-                        const first9Scores = newScores.slice(0, 3);
-                        const totalPointsFirst9 = first9Scores.reduce((acc, s) => acc + s, 0);
-                        first9Avg = ((totalPointsFirst9 / 9) * 3).toFixed(2);
-                    }
+                if (room.gameMode === 'cricket') {
+                    // Cricket-specific player updates
+                    updatedPlayers = room.players.map((p, idx) => {
+                        const isCurrentPlayer = idx === currentPlayerIndex;
+                        const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 3 : 0);
 
-                    return {
-                        ...p,
-                        score: room.game.scores[p.id],
-                        dartsThrown: newDartsThrown,
-                        avg: average,
-                        average: average,
-                        isActive: idx === room.game.currentPlayerIndex, // Hier wird aktualisiert wer dran ist
-                        lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
-                        scores: newScores,
-                        first9Avg: first9Avg,
-                        scores180: newScores180,
-                        legs: p.legs || 0
-                    };
-                });
-                
-                room.players = updatedPlayers;
-                
-                const updateData = {
-                    players: updatedPlayers,
-                    gameStatus: 'active',
-                    currentPlayerIndex: room.game.currentPlayerIndex,
-                    lastThrow: { playerId: userId, score },
-                    gameState: {
+                        return {
+                            ...p,
+                            points: room.game.scores[p.id] || 0,
+                            marks: room.game.marks[p.id] || {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
+                            dartsThrown: newDartsThrown,
+                            isActive: idx === room.game.currentPlayerIndex,
+                            legs: p.legs || 0
+                        };
+                    });
+
+                    updateData = {
+                        mode: 'cricket',
+                        players: updatedPlayers,
+                        gameStatus: 'active',
                         currentPlayerIndex: room.game.currentPlayerIndex,
-                        lastThrow: { playerId: userId, score }
-                    },
-                    hostId: room.hostId,
-                    turns: room.gameState.turns || {}
-                };
+                        lastThrow: { playerId: userId, score },
+                        hostId: room.hostId
+                    };
+                } else {
+                    // X01-specific player updates
+                    const gameOptions = room.gameOptions || {};
+                    const startScore = parseInt(gameOptions.startingScore, 10) || 501;
+
+                    updatedPlayers = room.players.map((p, idx) => {
+                        const isCurrentPlayer = idx === currentPlayerIndex;
+                        const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 3 : 0);
+
+                        const newScores = isCurrentPlayer ? [...(p.scores || []), parseInt(score)] : (p.scores || []);
+                        const newScores180 = isCurrentPlayer && parseInt(score) === 180 ? (p.scores180 || 0) + 1 : (p.scores180 || 0);
+
+                        const pointsScored = startScore - room.game.scores[p.id];
+                        const average = newDartsThrown > 0 ? ((pointsScored / newDartsThrown) * 3).toFixed(2) : "0.00";
+
+                        let first9Avg = p.first9Avg || "0.00";
+                        if (newDartsThrown >= 9) {
+                            const first9Scores = newScores.slice(0, 3);
+                            const totalPointsFirst9 = first9Scores.reduce((acc, s) => acc + s, 0);
+                            first9Avg = ((totalPointsFirst9 / 9) * 3).toFixed(2);
+                        }
+
+                        return {
+                            ...p,
+                            score: room.game.scores[p.id],
+                            dartsThrown: newDartsThrown,
+                            avg: average,
+                            average: average,
+                            isActive: idx === room.game.currentPlayerIndex,
+                            lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
+                            scores: newScores,
+                            first9Avg: first9Avg,
+                            scores180: newScores180,
+                            legs: p.legs || 0
+                        };
+                    });
+
+                    updateData = {
+                        mode: 'x01',
+                        players: updatedPlayers,
+                        gameStatus: 'active',
+                        currentPlayerIndex: room.game.currentPlayerIndex,
+                        lastThrow: { playerId: userId, score },
+                        gameState: {
+                            currentPlayerIndex: room.game.currentPlayerIndex,
+                            lastThrow: { playerId: userId, score }
+                        },
+                        hostId: room.hostId,
+                        turns: room.gameState.turns || {}
+                    };
+                }
+
+                room.players = updatedPlayers;
 
                 if (legWinnerId) {
                     const winnerPlayer = room.players.find(p => p.id === legWinnerId);
                     const dartsThisLeg = winnerPlayer.dartsThrown - (winnerPlayer.dartsThrownBeforeLeg || 0);
 
+                    if (!updateData.turns) updateData.turns = {};
                     if (!updateData.turns[legWinnerId]) {
                         updateData.turns[legWinnerId] = [];
                     }
@@ -311,20 +371,36 @@ function initializeSocket(io, gameManager, auth) {
                         updateData.gameStatus = 'finished';
                         updateData.winner = legWinnerId;
                     } else {
-                        // Reset for next leg
-                        room.players.forEach(p => {
-                            p.score = startScore;
-                            p.dartsThrownBeforeLeg = p.dartsThrown;
-                        });
-                        
-                        room.game.scores = {};
-                        room.players.forEach(p => {
-                            room.game.scores[p.id] = startScore;
-                        });
+                        // Reset for next leg - different logic for cricket vs X01
+                        if (room.gameMode === 'cricket') {
+                            room.players.forEach(p => {
+                                p.points = 0;
+                                p.marks = {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0};
+                                p.dartsThrownBeforeLeg = p.dartsThrown;
+                            });
+
+                            room.game.scores = {};
+                            room.game.marks = {};
+                            room.players.forEach(p => {
+                                room.game.scores[p.id] = 0;
+                                room.game.marks[p.id] = {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0};
+                            });
+                        } else {
+                            const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                            room.players.forEach(p => {
+                                p.score = startScore;
+                                p.dartsThrownBeforeLeg = p.dartsThrown;
+                            });
+
+                            room.game.scores = {};
+                            room.players.forEach(p => {
+                                room.game.scores[p.id] = startScore;
+                            });
+                        }
                     }
                     updateData.players = room.players;
                 }
-                
+
                 room.gameState = { ...updateData };
 
                 io.to(roomId).emit('game-state-update', updateData);
@@ -375,7 +451,15 @@ function initializeSocket(io, gameManager, auth) {
             room.gameState = null;
             room.game = null;
 
-            io.to(room.id).emit('game-state-update', room);
+            // Send a waiting state gameState instead of the room object
+            const waitingState = {
+                mode: room.gameMode, // Preserve the game mode
+                players: room.players,
+                gameStatus: 'waiting',
+                hostId: room.hostId,
+                whoStarts: room.whoStarts
+            };
+            io.to(room.id).emit('game-state-update', waitingState);
         });
 
 // Bull-off logic

@@ -82,12 +82,120 @@ class X01Game {
         this.checkoutDarts = dartCount;
     }
 }
+
+class CricketGame {
+    constructor(options = {}) {
+        this.players = [];
+        this.scores = {}; // Points for each player
+        this.marks = {}; // Marks for each number (15,16,17,18,19,20,25)
+        this.currentPlayerIndex = 0;
+        this.dartsThrownInTurn = 0;
+        this.history = [];
+        this.winner = null;
+        this.gameOptions = options;
+    }
+
+    initializePlayers(players, startPlayerIndex = 0) {
+        this.players = players.map(p => p.id);
+        this.players.forEach(playerId => {
+            this.scores[playerId] = 0;
+            this.marks[playerId] = {
+                15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0
+            };
+        });
+        this.currentPlayerIndex = startPlayerIndex;
+    }
+
+    processThrow(playerId, score) {
+        if (this.winner) {
+            return { valid: false, reason: 'Game has already ended' };
+        }
+        if (playerId !== this.players[this.currentPlayerIndex]) {
+            return { valid: false, reason: 'Not your turn' };
+        }
+
+        // Cricket scoring logic - score should be an object with number and multiplier
+        const number = score.number || score;
+        const multiplier = score.multiplier || 1;
+
+        if (!this.marks[playerId][number]) {
+            this.marks[playerId][number] = 0;
+        }
+
+        // Check if number is closed for this player
+        const isClosed = this.marks[playerId][number] >= 3;
+
+        // Add marks
+        if (!isClosed) {
+            this.marks[playerId][number] = Math.min(3, this.marks[playerId][number] + multiplier);
+        }
+
+        // Add points if number is closed for opponent but not for this player
+        const opponentId = this.players.find(p => p !== playerId);
+        const opponentClosed = this.marks[opponentId][number] >= 3;
+
+        if (opponentClosed && !isClosed) {
+            this.scores[playerId] += number * multiplier;
+        }
+
+        this.history.push({
+            playerId,
+            number,
+            multiplier,
+            points: opponentClosed && !isClosed ? number * multiplier : 0,
+            marks: this.marks[playerId][number]
+        });
+
+        // Check for winner - all numbers closed and higher or equal points
+        const allNumbers = [15, 16, 17, 18, 19, 20, 25];
+        const playerClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
+        const opponentClosedAll = allNumbers.every(num => this.marks[opponentId][num] >= 3);
+
+        if (playerClosedAll) {
+            if (opponentClosedAll) {
+                // Both closed - higher points win
+                if (this.scores[playerId] > this.scores[opponentId]) {
+                    this.winner = playerId;
+                } else if (this.scores[playerId] < this.scores[opponentId]) {
+                    this.winner = opponentId;
+                }
+                // If equal points, continue playing
+            } else {
+                // Player closed all, opponent hasn't
+                this.winner = playerId;
+            }
+        }
+
+        this.nextTurn();
+        return { valid: true, winner: this.winner };
+    }
+
+    nextTurn() {
+        this.dartsThrownInTurn = 0;
+        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+    }
+
+    getGameState() {
+        return {
+            scores: this.scores,
+            marks: this.marks,
+            currentPlayer: this.players[this.currentPlayerIndex],
+            winner: this.winner,
+            history: this.history
+        };
+    }
+}
+
 const gameModes = {
     X01Game: {
         name: 'X01',
+    },
+    CricketGame: {
+        name: 'Cricket',
     }
 };
 module.exports = {
     gameModes,
-    X01Game
+    X01Game,
+    CricketGame
 };
