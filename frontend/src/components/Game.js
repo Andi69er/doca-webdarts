@@ -1331,7 +1331,7 @@ const isHost = gameState.hostId === user.id;
                         <div style={{ flex: 1, display: 'flex', padding: '15px', gap: '15px', overflowY: 'auto', minHeight: 0, backgroundColor: '#0f0f1a' }}>
                             
                             {/* Spalte 1: Input */}
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                 <CricketInputPanel
                                     onScoreInput={handleScoreInput}
                                     isActive={isMyTurn && !numpadState.isLocked}
@@ -1342,12 +1342,12 @@ const isHost = gameState.hostId === user.id;
                             </div>
 
                             {/* Spalte 2: Board */}
-                            <div style={{ flex: 1, overflowY: 'auto' }}>
+                            <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
                                 <CricketBoard gameState={gameState} user={user} />
                             </div>
 
                             {/* Spalte 3: Chat */}
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                 <GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} />
                             </div>
                         </div>
