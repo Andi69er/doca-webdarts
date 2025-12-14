@@ -193,14 +193,14 @@ class CricketGame {
         const opponentClosed = this.marks[opponentId][number] >= 3;
 
         if (isClosed && !opponentClosed) {
-            this.scores[playerId] += number * multiplier;
+            this.scores[opponentId] += number * multiplier;
         }
 
         this.history.push({
             playerId,
             number,
             multiplier,
-            points: opponentClosed && !isClosed ? number * multiplier : 0,
+            points: isClosed && !opponentClosed ? number * multiplier : 0,
             marks: this.marks[playerId][number]
         });
 
