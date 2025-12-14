@@ -5,7 +5,7 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
 
     const targets = [20, 19, 18, 17, 16, 15];
     const multipliers = [
-        { label: '', value: 1 }, // Single
+        { label: 'Single', value: 1 }, 
         { label: 'D', value: 2 }, // Double
         { label: 'T', value: 3 }  // Triple
     ];
@@ -16,31 +16,34 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
         const throwData = { target, multiplier };
         const newThrows = [...currentThrows, throwData];
 
-        // If we have 3 throws, submit them all
-        if (newThrows.length >= 3) {
-            // Calculate total score for cricket input
-            const totalScore = newThrows.reduce((sum, throw_) => {
-                return sum + (throw_.target * throw_.multiplier);
-            }, 0);
-
-            onScoreInput(totalScore.toString());
-            setCurrentThrows([]);
-        } else {
-            setCurrentThrows(newThrows);
-        }
+        submitOrUpdate(newThrows);
     };
 
     const handleSpecialClick = (score) => {
         if (!isActive || isLocked) return;
 
-        const newThrows = [...currentThrows, { target: score, multiplier: 1 }];
+        // Logik für Spezialwürfe:
+        // Bull (25) ist Target 25, Multiplikator 1
+        // Bullseye (50) ist eigentlich Target 25, Multiplikator 2 (Double Bull)
+        // Miss (0) ist Target 0, Multiplikator 1
+        
+        let throwData;
+        if (score === 50) {
+            throwData = { target: 25, multiplier: 2 }; // Bullseye als Double Bull speichern
+        } else {
+            throwData = { target: score, multiplier: 1 };
+        }
 
+        const newThrows = [...currentThrows, throwData];
+        submitOrUpdate(newThrows);
+    };
+
+    // Hilfsfunktion zum Prüfen, ob 3 Würfe voll sind
+    const submitOrUpdate = (newThrows) => {
         if (newThrows.length >= 3) {
-            const totalScore = newThrows.reduce((sum, throw_) => {
-                return sum + (throw_.target * throw_.multiplier);
-            }, 0);
-
-            onScoreInput(totalScore.toString());
+            // WICHTIG: Wir senden jetzt das Array der Würfe, nicht die Summe!
+            // Das Backend muss wissen, WELCHE Segmente getroffen wurden.
+            onScoreInput(newThrows); 
             setCurrentThrows([]);
         } else {
             setCurrentThrows(newThrows);
@@ -84,7 +87,7 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                 EINGABE
             </h3>
 
-            {/* Current throws indicator */}
+            {/* Anzeige der aktuellen Würfe (1 von 3 etc.) */}
             <div style={{
                 marginBottom: '15px',
                 padding: '10px',
@@ -96,17 +99,29 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                 Wurf {currentThrows.length + 1} von 3
                 {currentThrows.length > 0 && (
                     <div style={{ marginTop: '5px', fontSize: '12px', color: '#ccc' }}>
-                        {currentThrows.map((throw_, index) => (
-                            <span key={index}>
-                                {throw_.multiplier > 1 ? `${['D','T'][throw_.multiplier-2]}${throw_.target}` : throw_.target}
-                                {index < currentThrows.length - 1 ? ', ' : ''}
-                            </span>
-                        ))}
+                        {currentThrows.map((throw_, index) => {
+                            // Schöne Anzeige für den User generieren
+                            let displayText = throw_.target;
+                            if (throw_.target === 25) {
+                                displayText = throw_.multiplier === 2 ? 'BULLSEYE' : 'BULL';
+                            } else if (throw_.target === 0) {
+                                displayText = 'MISS';
+                            } else {
+                                displayText = (throw_.multiplier === 3 ? 'T' : throw_.multiplier === 2 ? 'D' : '') + throw_.target;
+                            }
+                            
+                            return (
+                                <span key={index}>
+                                    {displayText}
+                                    {index < currentThrows.length - 1 ? ', ' : ''}
+                                </span>
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
-            {/* Target buttons grid - horizontal layout per target */}
+            {/* Grid für die Zahlen 20-15 */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {targets.map(target => (
                     <div key={target} style={{
@@ -114,39 +129,40 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                         alignItems: 'center',
                         gap: '4px'
                     }}>
+                        {/* Label für die Zahl (z.B. "20") */}
                         <span style={{
-                            minWidth: '35px',
+                            minWidth: '30px',
                             textAlign: 'right',
                             fontSize: '14px',
                             fontWeight: 'bold',
-                            color: '#ccc'
+                            color: '#ccc',
+                            marginRight: '5px'
                         }}>
                             {target}
                         </span>
+                        
+                        {/* Buttons: Single, Double, Triple */}
                         {multipliers.map(multiplier => {
-                            const isAvailable = multiplier.value === 1 || (target !== 25 && target !== 50);
-                            const buttonText = multiplier.label ? `${multiplier.label}${target}` : `${target}`;
-
                             return (
                                 <button
                                     key={`${target}-${multiplier.value}`}
                                     style={{
-                                        ...getButtonStyle(isAvailable),
+                                        ...getButtonStyle(true),
                                         flex: 1,
                                         fontSize: '13px',
                                         padding: '6px 8px'
                                     }}
                                     onClick={() => handleThrowClick(target, multiplier.value)}
-                                    disabled={!isAvailable || !isActive || isLocked}
+                                    disabled={!isActive || isLocked}
                                 >
-                                    {multiplier.label || 'Single'}
+                                    {multiplier.label}
                                 </button>
                             );
                         })}
                     </div>
                 ))}
 
-                {/* Special buttons */}
+                {/* Spezial Buttons unten (Bull, Bullseye, Miss) */}
                 <div style={{
                     marginTop: '10px',
                     display: 'flex',
@@ -181,7 +197,8 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                             ...getButtonStyle(true),
                             flex: 1,
                             fontSize: '13px',
-                            padding: '8px'
+                            padding: '8px',
+                            backgroundColor: '#ef4444' // Rötlich für Miss
                         }}
                         onClick={() => handleSpecialClick(0)}
                         disabled={!isActive || isLocked}
@@ -191,7 +208,7 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                 </div>
             </div>
 
-            {/* Undo button */}
+            {/* Undo Button */}
             <button
                 onClick={handleUndo}
                 disabled={!canUseUndo && currentThrows.length === 0}
@@ -208,7 +225,7 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                     opacity: (canUseUndo || currentThrows.length > 0) ? 1 : 0.6
                 }}
             >
-                {currentThrows.length > 0 ? 'WURF RÜCKGÄNGIG' : 'UNDO'}
+                {currentThrows.length > 0 ? 'WURF LÖSCHEN' : 'UNDO'}
             </button>
         </div>
     );
