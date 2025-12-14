@@ -8,6 +8,7 @@ import BullOffModal from './BullOffModal';
 import './Game.css';
 import LiveStatistics from "./LiveStatistics";
 import PlayerScores from "./PlayerScores";
+import CricketBoard from "./CricketBoard";
 
 // --- AUDIO HELPERS ---
 const playAlarmSound = () => {
@@ -1298,7 +1299,11 @@ const isHost = gameState.hostId === user.id;
             {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
             <div className="game-layout">
                 <div className="game-main-area">
-                    <PlayerScores gameState={gameState} user={user} />
+                    {gameState.mode === 'cricket' ? (
+                        <CricketBoard gameState={gameState} user={user} />
+                    ) : (
+                        <PlayerScores gameState={gameState} user={user} />
+                    )}
                     {isGameRunning ? (
                         <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`}>
                             <div className="status-text">{isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}</div>

@@ -107,6 +107,10 @@ const Lobby = memo(() => {
                 setStartingScore('501');
                 setSets('0');
                 setLegs(winType === 'firstTo' ? '1' : '3');
+            } else if (gameMode === 'CricketGame') {
+                setWinType('firstTo'); // Default for Cricket
+                setSets('0');
+                setLegs('1');
             }
             setWhoStartsUI(currentMode.whoStarts ? currentMode.whoStarts[0] : 'random');
         }
@@ -228,32 +232,34 @@ const Lobby = memo(() => {
                                 </div>
                             )}
 
-                            <div className="form-row">
-                                <label>Best Of / First to:</label>
-                                <select className="lobby-input" value={winType} onChange={(e) => setWinType(e.target.value)}>
-                                    <option value="firstTo">First to</option>
-                                    <option value="bestOf">Best Of</option>
-                                </select>
-                            </div>
+                            {gameMode !== 'CricketGame' && (
+                                <>
+                                    <div className="form-row">
+                                        <label>Best Of / First to:</label>
+                                        <select className="lobby-input" value={winType} onChange={(e) => setWinType(e.target.value)}>
+                                            <option value="firstTo">First to</option>
+                                            <option value="bestOf">Best Of</option>
+                                        </select>
+                                    </div>
 
+                                    <div className="form-row">
+                                        <label>Modus Start:</label>
+                                        <select className="lobby-input" value={inMode} onChange={(e) => setInMode(e.target.value)}>
+                                            <option value="single">Single In</option>
+                                            <option value="double">Double In</option>
+                                        </select>
+                                    </div>
 
-
-                            <div className="form-row">
-                                <label>Modus Start:</label>
-                                <select className="lobby-input" value={inMode} onChange={(e) => setInMode(e.target.value)}>
-                                    <option value="single">Single In</option>
-                                    <option value="double">Double In</option>
-                                </select>
-                            </div>
-
-                            <div className="form-row">
-                                <label>Modus Ende:</label>
-                                <select className="lobby-input" value={outMode} onChange={(e) => setOutMode(e.target.value)}>
-                                    <option value="single">Single Out</option>
-                                    <option value="double">Double Out</option>
-                                    <option value="master">Master Out</option>
-                                </select>
-                            </div>
+                                    <div className="form-row">
+                                        <label>Modus Ende:</label>
+                                        <select className="lobby-input" value={outMode} onChange={(e) => setOutMode(e.target.value)}>
+                                            <option value="single">Single Out</option>
+                                            <option value="double">Double Out</option>
+                                            <option value="master">Master Out</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="form-row">
                                 <label>Wer beginnt:</label>
