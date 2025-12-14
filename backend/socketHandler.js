@@ -89,7 +89,15 @@ function initializeSocket(io, gameManager, auth) {
                 if (existingPlayerIndex !== -1) {
                     socket.join(room.id);
                     console.log(`Spieler ${socket.id} bereits im Raum ${room.id}, reconnection behandelt.`);
-                    socket.emit('gameState', room);
+                    // Send proper gameState format instead of raw room object
+                    const gameState = room.gameState || {
+                        mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
+                        players: room.players,
+                        gameStatus: 'waiting',
+                        hostId: room.hostId,
+                        whoStarts: room.whoStarts
+                    };
+                    socket.emit('gameState', gameState);
                 } else if (room.players.length < room.maxPlayers) {
                     const gameOptions = room.gameOptions || {};
                     const startScore = parseInt(gameOptions.startingScore, 10) || 501;
