@@ -496,7 +496,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 }
 
 // Für Cricket: Immer entsperren wenn ich dran bin (auch nach eigenem Wurf)
-                if (gameState.mode === 'cricket' && newIsMyTurn) {
+                if (newState.mode === 'cricket' && newIsMyTurn) {
                     setNumpadState(prev => ({
                         ...prev,
                         isLocked: false,
