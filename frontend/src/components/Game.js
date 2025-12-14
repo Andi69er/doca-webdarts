@@ -543,26 +543,34 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
         });
     }, []);
 
-// VEREINFACHTE Nummernpad-Sperrlogik
     const handleScoreInput = (scoreInput) => {
         if (!isMyTurn || numpadState.isLocked) return;
         const currentIndex = gameState?.currentPlayerIndex || 0;
         const currentPlayer = gameState?.players?.[currentIndex];
-        
-        if (!currentPlayer) return;
+        if (!currentPlayer || !socket || !user?.id) return;
 
-        const isHost = gameState?.hostId === user.id;
+        let scorePayload;
 
-        if (!socket || !user?.id || numpadState.isLocked) return;
-        // Die Eingabe soll nur erlaubt sein, wenn es der eigene Zug ist.
-        if (!isMyTurn) return;
-
-        const points = parseInt(scoreInput, 10);
-        if (isNaN(points)) return;
+        if (gameState.mode === 'cricket') {
+            // For Cricket, scoreInput is an object like { number: 20, multiplier: 3 }
+            if (typeof scoreInput !== 'object' || scoreInput === null) {
+                console.error("Invalid score input for Cricket:", scoreInput);
+                return;
+            }
+            scorePayload = scoreInput;
+        } else {
+            // For X01, scoreInput is a number
+            const points = parseInt(scoreInput, 10);
+            if (isNaN(points)) {
+                console.error("Invalid score input for X01:", scoreInput);
+                return;
+            }
+            scorePayload = points;
+        }
 
         setLocalGameStarted(true);
-        
-        // Nummernpad für 5 Sekunden entsperren (für Undo)
+
+        // Lock numpad for 5 seconds for undo
         setNumpadState(prev => ({
             ...prev,
             isLocked: false,
@@ -570,7 +578,6 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             lockedPlayerId: user.id
         }));
 
-        // Timer für 5 Sekunden starten
         if (numpadState.lockTimer) {
             clearTimeout(numpadState.lockTimer);
         }
@@ -583,20 +590,17 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 lockedPlayerId: null,
                 lockTimer: null
             }));
-            console.log('Nummernpad nach 5 Sekunden gesperrt');
-        }, 5000); // 5 Sekunden
+        }, 5000); // 5 seconds
         
-        setNumpadState(prev => ({
-            ...prev,
-            lockTimer: lockTimer
-        }));
+        setNumpadState(prev => ({ ...prev, lockTimer }));
         
         const payload = {
             roomId,
             userId: currentPlayer.id,
-            score: points
+            score: scorePayload
         };
         
+        console.log("Emitting score-input with payload:", payload);
         socket.emit('score-input', payload);
     };
 
