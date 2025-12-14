@@ -142,13 +142,11 @@ class CricketGame {
             this.marks[playerId][number] = 0;
         }
 
-        // Check if number is closed for this player
-        const isClosed = this.marks[playerId][number] >= 3;
+        // Add marks first
+        this.marks[playerId][number] = Math.min(3, this.marks[playerId][number] + multiplier);
 
-        // Add marks
-        if (!isClosed) {
-            this.marks[playerId][number] = Math.min(3, this.marks[playerId][number] + multiplier);
-        }
+        // Check if number is closed for this player (after adding marks)
+        const isClosed = this.marks[playerId][number] >= 3;
 
         // Add points if number is closed for opponent but not for this player
         const opponentId = this.players.find(p => p !== playerId);
