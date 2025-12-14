@@ -152,7 +152,7 @@ function initializeSocket(io, gameManager, auth) {
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
             // Spielinstanz neu erstellen
-            if (room.gameMode === 'cricket') {
+            if (room.gameMode === 'CricketGame') {
                 const { CricketGame } = require('./gameModes');
                 room.game = new CricketGame(gameOptions);
             } else {
@@ -275,7 +275,7 @@ function initializeSocket(io, gameManager, auth) {
                 let updatedPlayers;
                 let updateData;
 
-                if (room.gameMode === 'cricket') {
+                if (room.gameMode === 'CricketGame') {
                     // Cricket-specific player updates
                     updatedPlayers = room.players.map((p, idx) => {
                         const isCurrentPlayer = idx === currentPlayerIndex;
