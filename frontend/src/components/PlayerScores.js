@@ -118,6 +118,27 @@ const isActive = gameState &&
             </div>
         );
 
+        // --- Block: Letzter Wurf (Dartscheibe + Punkte) ---
+        const LastScoreBlock = (
+            <div className="icon-stat-block">
+                <span className="icon-stat-icon">🎯</span>
+                <span className="icon-stat-value">{player.lastScore || 0}</span>
+            </div>
+        );
+
+        // --- Block: Anzahl Darts (Pfeil + Zahl) ---
+        const DartsThrownBlock = (
+            <div className="icon-stat-block">
+                <svg className="icon-stat-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19.4 19.4L22 22L20.5 23.5L19 22L17.5 23.5L16 22L18.6 19.4C18.6 19.4 19 19 19.4 19.4Z" fill="#ef4444"/>
+                    <path d="M22 16L23.5 17.5L22 19L23.5 20.5L22 22L19.4 19.4L22 16Z" fill="#ef4444"/>
+                    <path d="M12.8 2.2L2.2 12.8L4 16L11.5 14L10 12.5L20 2.5L21.5 4L19.4 19.4L13.4 13.4L6 14.5L12.8 2.2Z" fill="#cbd5e1"/>
+                    <path d="M2.2 12.8L2 16L4 16L12.8 2.2L2.2 12.8Z" fill="#64748b"/>
+                </svg>
+                <span className="icon-stat-value">{player.dartsThrown || 0}</span>
+            </div>
+        );
+
 return (
             <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ 
                 border: isActive ? '2px solid yellow' : isStartingPlayer ? '2px solid #4CAF50' : '1px solid #333'
@@ -161,19 +182,19 @@ return (
 
                 <div className="score-details-bild1">
                     {isRightSide ? (
-                        <div className="dart-info-bild1">
-                            <div className="last-score-bild1"><span className="last-score-label">Last:</span><span className="last-score-value">{player.lastScore ?? '-'}</span></div>
-                            <div className="avg-bild1"><span className="avg-label">Avg:</span><span className="avg-value">{player.avg ?? '0.00'}</span></div>
-                        </div>
+                        <>
+                            {DartsThrownBlock}
+                            {LastScoreBlock}
+                        </>
                     ) : LegsBlock}
                     <div className="main-score-wrapper-bild1">
                         <div className="main-score-bild1">{player.score}</div>
                     </div>
                     {isRightSide ? LegsBlock : (
-                        <div className="dart-info-bild1">
-                            <div className="last-score-bild1"><span className="last-score-label">Last:</span><span className="last-score-value">{player.lastScore ?? '-'}</span></div>
-                            <div className="avg-bild1"><span className="avg-label">Avg:</span><span className="avg-value">{player.avg ?? '0.00'}</span></div>
-                        </div>
+                        <>
+                            {LastScoreBlock}
+                            {DartsThrownBlock}
+                        </>
                     )}
                 </div>
 

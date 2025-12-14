@@ -1196,4 +1196,26 @@
   align-items: center !important;
   width: 30% !important; /* Sollte genauso breit sein wie die Legs-Box für Symmetrie */
 }
+
+/* NEU: Styles für die Icon-Blöcke */
+.icon-stat-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 10px;
+  width: 50px;
+}
+
+.icon-stat-icon {
+  font-size: 28px;
+  line-height: 30px;
+}
+
+.icon-stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+  margin-top: 2px;
+}
 }
