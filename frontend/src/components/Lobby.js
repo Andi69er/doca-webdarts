@@ -226,30 +226,6 @@ const Lobby = memo(() => {
                             )}
 
                             <div className="form-row">
-                                <label>Sets:</label>
-                                <input
-                                    type="number"
-                                    className="lobby-input"
-                                    value={sets}
-                                    onChange={(e) => setSets(e.target.value)}
-                                    min="0"
-                                    placeholder="Anzahl Sets"
-                                />
-                            </div>
-
-                            <div className="form-row">
-                                <label>Legs:</label>
-                                <input
-                                    type="number"
-                                    className="lobby-input"
-                                    value={legs}
-                                    onChange={(e) => setLegs(e.target.value)}
-                                    min="1"
-                                    placeholder="Anzahl Legs"
-                                />
-                            </div>
-
-                            <div className="form-row">
                                 <label>Best Of / First to:</label>
                                 <select className="lobby-input" value={winType} onChange={(e) => setWinType(e.target.value)}>
                                     <option value="firstTo">First to</option>
@@ -278,6 +254,30 @@ const Lobby = memo(() => {
                                         style={{marginTop: '5px'}}
                                     />
                                 )}
+                            </div>
+
+                            <div className="form-row">
+                                <label>Sets:</label>
+                                <input
+                                    type="number"
+                                    className="lobby-input"
+                                    value={sets}
+                                    onChange={(e) => setSets(e.target.value)}
+                                    min="0"
+                                    placeholder="Anzahl Sets"
+                                />
+                            </div>
+
+                            <div className="form-row">
+                                <label>Legs:</label>
+                                <input
+                                    type="number"
+                                    className="lobby-input"
+                                    value={legs}
+                                    onChange={(e) => setLegs(e.target.value)}
+                                    min="1"
+                                    placeholder="Anzahl Legs"
+                                />
                             </div>
 
                             <div className="form-row">
