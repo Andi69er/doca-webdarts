@@ -139,7 +139,7 @@ const CricketBoard = ({ gameState, user }) => {
                     padding: '15px', backgroundColor: '#333', borderRadius: '5px',
                     fontSize: '1.5em', fontWeight: 'bold', color: '#4ade80', marginTop: '10px'
                 }}>
-                    {player1?.score || 0}
+                    {player1?.points || 0}
                 </div>
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -153,7 +153,7 @@ const CricketBoard = ({ gameState, user }) => {
                     padding: '15px', backgroundColor: '#333', borderRadius: '5px',
                     fontSize: '1.5em', fontWeight: 'bold', color: '#4ade80', marginTop: '10px'
                 }}>
-                    {player2?.score || 0}
+                    {player2?.points || 0}
                 </div>
 
             </div>
