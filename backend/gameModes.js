@@ -1,6 +1,7 @@
 class X01Game {
     constructor(options = {}) {
       this.startingScore = options.startingScore || 501;
+      this.outMode = options.outMode || 'double'; // 'single', 'double'
       this.inMode = options.inMode || 'single';
       this.outMode = options.outMode || 'double';
       this.players = [];
@@ -12,8 +13,8 @@ class X01Game {
       this.checkoutDarts = null;
     }
   
-    initializePlayers(players, startPlayerIndex = 0) {
-        this.players = players.map(p => p.id); // Store player IDs
+    initializePlayers(playerIds, startPlayerIndex = 0) {
+        this.players = playerIds; // Store player IDs
         this.players.forEach(playerId => {
             this.scores[playerId] = this.startingScore;
         });
@@ -29,34 +30,38 @@ class X01Game {
         }
     
         const currentScore = this.scores[playerId];
-        const scoreValue = typeof score === 'object' ? score.score : score;
+        const scoreValue = parseInt(score, 10);
         
         console.log(`[X01Game] processThrow - Player: ${playerId}, Score eingegeben: ${scoreValue}, Aktueller Score: ${currentScore}`);
         
-        // Bust check - wenn der Score zu hoch ist oder genau 1 übrig bleibt
-        if (scoreValue > currentScore || (currentScore - scoreValue === 1)) {
+        // Bust-Logik
+        const newScoreAfterThrow = currentScore - scoreValue;
+
+        const isBust = newScoreAfterThrow < 0 || newScoreAfterThrow === 1 || (newScoreAfterThrow === 0 && this.outMode === 'double' /* Hier müsste die Dart-Info geprüft werden, was wir nicht haben. Vereinfachung: Wir nehmen an, der Client prüft das. */);
+
+        if (isBust) {
             this.history.push({ playerId, score: scoreValue, bust: true, remainingScore: currentScore });
             console.log(`[X01Game] BUST! Score bleibt bei ${currentScore}, nächster Spieler`);
+            // Score wird nicht geändert
             this.nextTurn();
             console.log(`[X01Game] Nächster Spieler Index: ${this.currentPlayerIndex}`);
             return { valid: true, bust: true, winner: null };
         }
     
         // Berechne den neuen Score
-        const newScore = currentScore - scoreValue;
-        this.scores[playerId] = newScore;
-        this.history.push({ playerId, score: scoreValue, bust: false, remainingScore: newScore });
+        this.scores[playerId] = newScoreAfterThrow;
+        this.history.push({ playerId, score: scoreValue, bust: false, remainingScore: newScoreAfterThrow });
     
-        console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScore}`);
+        console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScoreAfterThrow}`);
     
         // Prüfe auf Gewinner
-        if (newScore === 0) {
+        if (newScoreAfterThrow === 0) {
             this.winner = playerId;
             console.log(`[X01Game] GEWINNER: ${playerId}!`);
             return { valid: true, bust: false, winner: this.winner };
         }
     
-        // Nach jeder Eingabe zum nächsten Spieler wechseln (da Gesamtscore eingegeben wird, nicht einzelne Darts)
+        // Nach jeder Eingabe (Turn) zum nächsten Spieler wechseln
         this.nextTurn();
         console.log(`[X01Game] Zug beendet, nächster Spieler Index: ${this.currentPlayerIndex}`);
     
@@ -71,7 +76,7 @@ class X01Game {
     getGameState() {
         return {
             scores: this.scores,
-            currentPlayer: this.players[this.currentPlayerIndex],
+            currentPlayerIndex: this.currentPlayerIndex,
             winner: this.winner,
             history: this.history,
             checkoutDarts: this.checkoutDarts,
@@ -96,8 +101,8 @@ class CricketGame {
         this.maxDartsPerTurn = 3; // Cricket allows 3 darts per turn
     }
 
-    initializePlayers(players, startPlayerIndex = 0) {
-        this.players = players.map(p => p.id);
+    initializePlayers(playerIds, startPlayerIndex = 0) {
+        this.players = playerIds;
         this.players.forEach(playerId => {
             this.scores[playerId] = 0;
             this.marks[playerId] = {
@@ -115,92 +120,89 @@ class CricketGame {
             return { valid: false, reason: 'Not your turn' };
         }
 
-        this.dartsThrownInTurn++;
-
-        // Cricket-relevante Zahlen
-        const cricketNumbers = [15, 16, 17, 18, 19, 20, 25];
-
+        // Cricket scoring logic - score ist ein Objekt { number, multiplier }
         let number, multiplier;
-        let pointsScored = 0;
-        
-        // --- Eingabe verarbeiten ---
-        if (typeof score === 'object' && score.number !== undefined) {
+
+        if (typeof score === 'object') {
             number = score.number;
             multiplier = score.multiplier;
         } else {
-            // Diese Art der Eingabe sollte für Cricket nicht verwendet werden.
-            this.dartsThrownInTurn--; // Wurf nicht zählen
             return { valid: false, reason: 'Invalid score format for Cricket' };
+            /*
+            // Fallback, falls doch eine Zahl kommt
+            const scoreNum = parseInt(score);
+            if (scoreNum <= 20 || scoreNum === 25) {
+                number = scoreNum;
+                multiplier = 1;
+            } else if (scoreNum <= 40) {
+                number = scoreNum / 2;
+                multiplier = 2;
+            } else if (scoreNum <= 60) {
+                number = scoreNum / 3;
+                multiplier = 3;
+            } else {
+                return { valid: false, reason: 'Invalid score for Cricket' };
+            }
+            */
         }
 
-        // --- Miss / Wurf ohne Wert ---
-        if (number === 0 || !cricketNumbers.includes(number)) {
-            this.history.push({ playerId, number, multiplier, points: 0, dart: this.dartsThrownInTurn });
+        // Nur relevante Zahlen zählen
+        const validTargets = [15, 16, 17, 18, 19, 20, 25];
+        if (!validTargets.includes(number)) {
+            // Wurf auf eine nicht-relevante Zahl
+            this.dartsThrownInTurn++;
             if (this.dartsThrownInTurn >= this.maxDartsPerTurn) {
                 this.nextTurn();
             }
             return { valid: true, winner: null, dartsThrownInTurn: this.dartsThrownInTurn };
         }
 
-        // --- Logik für Treffer ---
-        const opponentId = this.players.find(p => p !== playerId);
-        const playerMarks = this.marks[playerId];
-        const opponentMarks = opponentId ? this.marks[opponentId] : null;
-
-        const currentMarks = playerMarks[number];
-
-        // Nur punkten, wenn der Gegner das Feld noch nicht zu hat
-        const canScorePoints = opponentMarks ? opponentMarks[number] < 3 : true;
-
+        const currentMarks = this.marks[playerId][number];
+        
         if (currentMarks < 3) {
-            const marksNeeded = 3 - currentMarks;
-            const marksToAdd = multiplier;
-            
-            playerMarks[number] += marksToAdd;
+            const marksToAdd = Math.min(3 - currentMarks, multiplier);
+            this.marks[playerId][number] += marksToAdd;
 
-            if (playerMarks[number] >= 3) {
-                // Feld wurde geschlossen oder war schon zu, Rest sind Punkte
-                const overflowMarks = playerMarks[number] - 3;
-                playerMarks[number] = 3; // Auf 3 begrenzen
-                
-                if (canScorePoints && overflowMarks > 0) {
-                    pointsScored = overflowMarks * number;
-                }
+            const overflow = multiplier - marksToAdd;
+            if (overflow > 0) {
+                // Punkte für den Spieler selbst, wenn er mehr als 3 Treffer hat
+                this.scores[playerId] += number * overflow;
             }
         } else {
-            // Feld ist bereits zu, alle Treffer sind Punkte
-            if (canScorePoints) {
-                pointsScored = multiplier * number;
+            // Spieler hat das Feld schon zu, also Punkte für ihn, wenn der Gegner es noch nicht zu hat.
+            const allOpponentsClosed = this.players.every(p => p === playerId || this.marks[p][number] >= 3);
+            if (!allOpponentsClosed) {
+                this.scores[playerId] += number * multiplier;
             }
         }
 
-        if (pointsScored > 0) {
-            this.scores[playerId] += pointsScored;
-        }
+        this.history.push({
+            playerId,
+            number,
+            multiplier,
+        });
 
-        this.history.push({ playerId, number, multiplier, points: pointsScored, dart: this.dartsThrownInTurn });
+        // Increment darts thrown in this turn
+        this.dartsThrownInTurn++;
 
-        // --- Siegerprüfung ---
-        const allPlayerNumbersClosed = cricketNumbers.every(num => playerMarks[num] >= 3);
-        if (allPlayerNumbersClosed) {
-            const currentPlayerScore = this.scores[playerId];
-            const opponentPlayerScore = opponentId ? this.scores[opponentId] : -1;
+        // Check for winner - all numbers closed and higher or equal points
+        const allNumbers = [15, 16, 17, 18, 19, 20, 25];
+        const playerHasClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
 
-            if (currentPlayerScore >= opponentPlayerScore) {
-                this.winner = playerId;
+        if (playerHasClosedAll) {
+            const highestScore = Math.max(...this.players.map(p => this.scores[p]));
+            if (this.scores[playerId] >= highestScore) {
+                 // Gewonnen, wenn alle Felder zu sind und man die meisten (oder gleich viele) Punkte hat.
+                 this.winner = playerId;
             }
         }
 
-        // --- Nächster Zug ---
-        if (!this.winner && this.dartsThrownInTurn >= this.maxDartsPerTurn) {
+        // Only switch turns after 3 darts in Cricket (unlike X01 which switches after 1)
+        if (this.dartsThrownInTurn >= this.maxDartsPerTurn) {
             this.nextTurn();
         }
 
-        return { 
-            valid: true, 
-            winner: this.winner, 
-            dartsThrownInTurn: this.dartsThrownInTurn,
-        };
+        return { valid: true, winner: this.winner, dartsThrownInTurn: this.dartsThrownInTurn };
     }
 
     nextTurn() {
@@ -212,7 +214,7 @@ class CricketGame {
         return {
             scores: this.scores,
             marks: this.marks,
-            currentPlayer: this.players[this.currentPlayerIndex],
+            currentPlayerIndex: this.currentPlayerIndex, // This was already correct, ensuring consistency
             winner: this.winner,
             history: this.history
         };

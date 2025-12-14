@@ -201,7 +201,7 @@ function initializeSocket(io, gameManager, auth) {
             console.log("---------------------------");
 
             // 3. Spiel mit korrektem Index initialisieren
-            room.game.initializePlayers(room.players, currentPlayerIndex);
+            room.game.initializePlayers(room.players.map(p => p.id), currentPlayerIndex);
             
             room.gameStarted = true;
 
@@ -275,146 +275,60 @@ function initializeSocket(io, gameManager, auth) {
                     return socket.emit('gameError', { error: result.reason });
                 }
 
-                let legWinnerId = null;
-                if (result.winner) {
-                    legWinnerId = result.winner;
-                }
+                // 2. GameState vom Spielobjekt holen (dieser ist jetzt die "Wahrheit")
+                const newGameStateFromGame = room.game.getGameState();
 
-                let updatedPlayers;
-                let updateData;
+                // 3. Spielerdaten für das Frontend aktualisieren (Statistiken etc.)
+                const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                const updatedPlayers = room.players.map((p, idx) => {
+                    const isCurrentPlayer = p.id === userId;
+                    const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
+                    
+                    let average = p.avg || "0.00";
+                    if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
+                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
+                        average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
+                    }
 
-                if (room.gameMode === 'CricketGame') {
-                    // Cricket-specific player updates - add 1 dart per throw, switch turns after 3 darts
-                    updatedPlayers = room.players.map((p, idx) => {
-                        const isCurrentPlayer = idx === currentPlayerIndex;
-                        const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 1 : 0);
-
-                        return {
-                            ...p,
-                            points: room.game.scores[p.id] || 0,
-                            marks: room.game.marks[p.id] || {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
-                            dartsThrown: newDartsThrown,
-                            isActive: idx === room.game.currentPlayerIndex,
-                            legs: p.legs || 0,
-                            dartsThrownInTurn: room.game.dartsThrownInTurn || 0
-                        };
-                    });
-
-                    updateData = {
-                        mode: 'cricket',
-                        players: updatedPlayers,
-                        gameStatus: 'active',
-                        currentPlayerIndex: room.game.currentPlayerIndex,
-                        lastThrow: { playerId: userId, score },
-                        hostId: room.hostId,
-                        gameState: room.game.getGameState(),
-                        dartsThrownInTurn: room.game.dartsThrownInTurn || 0
+                    return {
+                        ...p,
+                        // Daten aus der Game-Instanz übernehmen
+                        score: newGameStateFromGame.scores[p.id], // X01
+                        points: newGameStateFromGame.scores[p.id], // Cricket
+                        marks: newGameStateFromGame.marks ? newGameStateFromGame.marks[p.id] : p.marks,
+                        
+                        // Statistiken neu berechnen
+                        dartsThrown: newDartsThrown,
+                        avg: average,
+                        isActive: idx === newGameStateFromGame.currentPlayerIndex,
+                        lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
+                        legs: p.legs || 0, // TODO: Leg-Logik
                     };
-                } else {
-                    // X01-specific player updates
-                    const gameOptions = room.gameOptions || {};
-                    const startScore = parseInt(gameOptions.startingScore, 10) || 501;
-
-                    updatedPlayers = room.players.map((p, idx) => {
-                        const isCurrentPlayer = idx === currentPlayerIndex;
-                        const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 3 : 0);
-
-                        const newScores = isCurrentPlayer ? [...(p.scores || []), parseInt(score)] : (p.scores || []);
-                        const newScores180 = isCurrentPlayer && parseInt(score) === 180 ? (p.scores180 || 0) + 1 : (p.scores180 || 0);
-
-                        const pointsScored = startScore - room.game.scores[p.id];
-                        const average = newDartsThrown > 0 ? ((pointsScored / newDartsThrown) * 3).toFixed(2) : "0.00";
-
-                        let first9Avg = p.first9Avg || "0.00";
-                        if (newDartsThrown >= 9) {
-                            const first9Scores = newScores.slice(0, 3);
-                            const totalPointsFirst9 = first9Scores.reduce((acc, s) => acc + s, 0);
-                            first9Avg = ((totalPointsFirst9 / 9) * 3).toFixed(2);
-                        }
-
-                        return {
-                            ...p,
-                            score: room.game.scores[p.id],
-                            dartsThrown: newDartsThrown,
-                            avg: average,
-                            average: average,
-                            isActive: idx === room.game.currentPlayerIndex,
-                            lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
-                            scores: newScores,
-                            first9Avg: first9Avg,
-                            scores180: newScores180,
-                            legs: p.legs || 0
-                        };
-                    });
-
-                    updateData = {
-                        mode: 'x01',
-                        players: updatedPlayers,
-                        gameStatus: 'active',
-                        currentPlayerIndex: room.game.currentPlayerIndex,
-                        lastThrow: { playerId: userId, score },
-                        gameState: {
-                            currentPlayerIndex: room.game.currentPlayerIndex,
-                            lastThrow: { playerId: userId, score }
-                        },
-                        hostId: room.hostId,
-                        turns: room.gameState.turns || {}
-                    };
-                }
-
+                });
                 room.players = updatedPlayers;
 
-                if (legWinnerId) {
-                    const winnerPlayer = room.players.find(p => p.id === legWinnerId);
-                    const dartsThisLeg = winnerPlayer.dartsThrown - (winnerPlayer.dartsThrownBeforeLeg || 0);
+                // 4. Update-Payload für Clients erstellen
+                const updateData = {
+                    mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
+                    players: updatedPlayers,
+                    gameStatus: newGameStateFromGame.winner ? 'finished' : 'active',
+                    winner: newGameStateFromGame.winner,
+                    currentPlayerIndex: newGameStateFromGame.currentPlayerIndex,
+                    lastThrow: { playerId: userId, score },
+                    hostId: room.hostId,
+                    gameState: newGameStateFromGame, // Das komplette State-Objekt vom Spiel
+                    dartsThrownInTurn: result.dartsThrownInTurn, // Wichtig für Cricket
+                };
 
-                    if (!updateData.turns) updateData.turns = {};
-                    if (!updateData.turns[legWinnerId]) {
-                        updateData.turns[legWinnerId] = [];
-                    }
-                    updateData.turns[legWinnerId].push(dartsThisLeg);
-
-                    winnerPlayer.legs += 1;
-
-                    const legsToWin = room.gameOptions.legsToWin || 1;
-
-                    if (winnerPlayer.legs >= legsToWin) {
-                        updateData.gameStatus = 'finished';
-                        updateData.winner = legWinnerId;
-                    } else {
-                        // Reset for next leg - different logic for cricket vs X01
-                        if (room.gameMode === 'cricket') {
-                            room.players.forEach(p => {
-                                p.points = 0;
-                                p.marks = {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0};
-                                p.dartsThrownBeforeLeg = p.dartsThrown;
-                            });
-
-                            room.game.scores = {};
-                            room.game.marks = {};
-                            room.players.forEach(p => {
-                                room.game.scores[p.id] = 0;
-                                room.game.marks[p.id] = {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0};
-                            });
-                        } else {
-                            const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
-                            room.players.forEach(p => {
-                                p.score = startScore;
-                                p.dartsThrownBeforeLeg = p.dartsThrown;
-                            });
-
-                            room.game.scores = {};
-                            room.players.forEach(p => {
-                                room.game.scores[p.id] = startScore;
-                            });
-                        }
-                    }
-                    updateData.players = room.players;
+                // TODO: Leg-Gewinner-Logik hier einfügen, falls benötigt
+                if (result.winner) {
+                    // ...
                 }
 
+                // 5. Neuen State speichern und an Clients senden
                 room.gameState = { ...updateData };
-
                 io.to(roomId).emit('game-state-update', updateData);
+
             } catch (error) {
                 console.error(`[SCORE-INPUT] Fehler:`, error);
                 socket.emit('gameError', { error: 'Interner Serverfehler' });

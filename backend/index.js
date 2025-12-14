@@ -13,22 +13,7 @@ const { generateJWT, verifyJWT, mockOAuthLogin, mockOAuthCallback, refreshJWT } 
 // Load environment variables
 dotenv.config();
 
-// --- Platzhalter-Klassen (bleiben wie sie sind) ---
-class X01Game { initializePlayers(players) { this.players = players; this.turns = {}; } getGameState() { return { message: "X01 Game State" }; } processThrow(userId, throwData) { return { valid: true }; } }
-class CricketGame { initializePlayers(players) { this.players = players; this.turns = {}; } getGameState() { return { message: "Cricket Game State" }; } processThrow(userId, throwData) { return { valid: true }; } }
-class BullOffGame { initializePlayers(players) { this.players = players; this.turns = {}; } getGameState() { return { message: "Bull-Off State" }; } }
-class RoomManager { constructor() { this.rooms = new Map(); } createRoom(roomData) { const roomId = Math.random().toString(36).substring(2, 9); const room = { id: roomId, ...roomData, players: [], host: null, gameStarted: false, gameEnded: false, gameState: null }; this.rooms.set(roomId, room); return room; } getRooms() { return Array.from(this.rooms.values()); } getRoom(roomId) { return this.rooms.get(roomId); } joinRoom(roomId, userId, password) { const room = this.getRoom(roomId); if (!room) return { success: false, message: 'Room not found' }; if (room.password && room.password !== password) return { success: false, message: 'Invalid password' }; if (room.players.length >= 2) return { success: false, message: 'Room is full' }; room.players.push(userId); if (!room.host) { room.host = userId; } return { success: true, room }; } leaveRoom(roomId, userId) { const room = this.getRoom(roomId); if (room) { room.players = room.players.filter(p => p !== userId); if (room.players.length === 0) { this.rooms.delete(roomId); } else if (room.host === userId) { room.host = room.players[0]; } } } }
-class GameManager { constructor() { this.roomManager = new RoomManager(); this.games = new Map(); } createRoom(roomData) { return this.roomManager.createRoom(roomData); } getRooms() { return this.roomManager.getRooms(); } getRoom(roomId) { return this.roomManager.getRoom(roomId); } joinRoom(roomId, userId, password) { return this.roomManager.joinRoom(roomId, userId, password); } leaveRoom(roomId, userId) { const room = this.getRoom(roomId); if (room && room.gameStarted && !room.gameEnded) { room.gameEnded = true; room.gameWinner = room.players.filter(p => p !== userId).length === 1 ? room.players.filter(p => p !== userId)[0] : null; } this.roomManager.leaveRoom(roomId, userId); if (!this.roomManager.getRoom(roomId)) { this.games.delete(roomId); } } startGame(roomId, userId) { const room = this.getRoom(roomId); if (!room || room.host !== userId || room.players.length < 2) { return { success: false, message: 'Cannot start game' }; } const bullOffGame = new BullOffGame(); bullOffGame.initializePlayers(room.players); this.games.set(roomId, bullOffGame); room.gameStarted = true; room.gameState = bullOffGame.getGameState(); return { success: true, gameState: room.gameState, mode: 'bull-off' }; } startActualGame(roomId, userId, bullOffWinner) { const room = this.getRoom(roomId); if (!room || room.host !== userId || !room.players.includes(bullOffWinner)) { return { success: false, message: 'Cannot start actual game' }; } if (bullOffWinner === room.players[1]) { room.players.reverse(); } let gameInstance; switch (room.gameMode) { case 'x01': gameInstance = new X01Game(room.gameOptions); break; case 'cricket': gameInstance = new CricketGame(room.gameOptions); break; default: return { success: false, message: 'Invalid game mode' }; } gameInstance.initializePlayers(room.players); this.games.set(roomId, gameInstance); room.gameState = gameInstance.getGameState(); room.bullOffWinner = bullOffWinner; return { success: true, gameState: room.gameState }; } processThrow(roomId, userId, throwData) { const game = this.games.get(roomId); const room = this.getRoom(roomId); if (!game || !room || room.gameEnded) { return { valid: false, reason: 'Game not active' }; } const result = game.processThrow(userId, throwData); room.gameState = game.getGameState(); if (game.gameWinner) { room.gameEnded = true; room.gameWinner = game.gameWinner; this.saveGameResult(roomId, room); } return result; } setCheckoutDarts(roomId, darts) { return { success: true }; } rematch(roomId, userId) { const room = this.getRoom(roomId); if (!room) return { success: false }; room.players.reverse(); room.gameStarted = false; room.gameEnded = false; room.gameWinner = null; return { success: true, players: room.players }; } async saveGameResult(roomId, room) { console.log(`Simulating: Game result for room ${roomId} would be saved to the database now.`); return; } }
-const gameManager = new GameManager();
-// --- ENDE Platzhalter-Klassen ---
-
 const app = express();
-
-// Explicit health check route for Render
-app.get('/', (req, res) => {
-  res.status(200).send('OK');
-});
-
 const server = http.createServer(app);
 
 // =================================================================
@@ -88,11 +73,11 @@ const io = new Server(server, {
 
 // Übergebe das 'io'-Objekt an unsere ausgelagerte Logik
 // Die Logik in socketHandler muss jetzt die Funktionen von gameManager und auth benötigen
-initializeSocket(io, gameManager, { generateJWT, verifyJWT });
+initializeSocket(io, null, { generateJWT, verifyJWT }); // gameManager ist null, da es nicht verwendet wird
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-module.exports = { app, server, io, gameManager, generateJWT, verifyJWT, mockOAuthLogin, mockOAuthCallback, refreshJWT };
+module.exports = { app, server, io, generateJWT, verifyJWT, mockOAuthLogin, mockOAuthCallback, refreshJWT };
