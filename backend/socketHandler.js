@@ -55,8 +55,7 @@ function initializeSocket(io, gameManager, auth) {
             console.log('!!! createRoom EVENT VOM CLIENT EMPFANGEN !!! Daten:', roomData);
             
             const gameOptions = (roomData && roomData.gameOptions) ? roomData.gameOptions : {};
-            const isCricket = roomData.gameMode === 'CricketGame';
-            const startScore = isCricket ? 0 : (parseInt(gameOptions.startingScore, 10) || 501);
+            const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
             const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
@@ -101,8 +100,7 @@ function initializeSocket(io, gameManager, auth) {
                     socket.emit('gameState', gameState);
                 } else if (room.players.length < room.maxPlayers) {
                     const gameOptions = room.gameOptions || {};
-                    const isCricket = room.gameMode === 'CricketGame';
-                    const startScore = isCricket ? 0 : (parseInt(gameOptions.startingScore, 10) || 501);
+                    const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
                     const newPlayer = {
                         id: socket.id,
@@ -213,7 +211,7 @@ function initializeSocket(io, gameManager, auth) {
                     mode: 'cricket',
                     players: room.players.map((p, index) => ({
                         ...p,
-                        score: 0,
+                        points: 0,
                         marks: {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
                         dartsThrown: 0,
                         isActive: index === currentPlayerIndex,
@@ -293,7 +291,7 @@ function initializeSocket(io, gameManager, auth) {
 
                         return {
                             ...p,
-                            score: room.game.scores[p.id] || 0,
+                            points: room.game.scores[p.id] || 0,
                             marks: room.game.marks[p.id] || {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
                             dartsThrown: newDartsThrown,
                             isActive: idx === room.game.currentPlayerIndex,
