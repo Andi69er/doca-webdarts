@@ -66,6 +66,8 @@ function initializeSocket(io, gameManager, auth) {
                 hostId: socket.id, 
                 maxPlayers: 2,
                 players: [{ id: socket.id, name: `Player ${Math.floor(Math.random() * 1000)}`}],
+                // NEU: Array für Zuschauer
+                spectators: [],
                 gameState: null, 
                 game: null 
             };
@@ -109,6 +111,13 @@ function initializeSocket(io, gameManager, auth) {
                     };
                     room.players.push(newPlayer);
                     socket.join(room.id);
+
+                    // Systemnachricht an den Raum senden
+                    io.to(room.id).emit('receiveMessage', {
+                        user: 'System',
+                        text: `${newPlayer.name} ist dem Raum beigetreten.`
+                    });
+
                     socket.emit('roomJoined', { roomId: room.id });
                     
                     if (room.game) {
@@ -116,17 +125,98 @@ function initializeSocket(io, gameManager, auth) {
                     }
 
                     console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten.`);
-                    // Only emit game-state-update if there's an active game
-                    if (room.game && room.gameState) {
-                        io.to(room.id).emit('game-state-update', room.gameState);
-                    }
+                    // Send game state to all in room, including the new player
+                    io.to(room.id).emit('game-state-update', room.gameState);
                     io.emit('updateRooms', rooms);
                 } else {
-                    socket.emit('gameError', { error: 'Room is full' });
+                    // Raum ist voll, als Zuschauer hinzufügen
+                    if (!room.spectators) room.spectators = [];
+                    
+                    const newSpectator = {
+                        id: socket.id,
+                        name: `Zuschauer_${socket.id.substring(0, 4)}`
+                    };
+                    room.spectators.push(newSpectator);
+                    socket.join(room.id);
+
+                    // Systemnachricht an den Raum senden
+                    io.to(room.id).emit('receiveMessage', {
+                        user: 'System',
+                        text: `${newSpectator.name} schaut jetzt zu.`
+                    });
+                    
+                    // Informiere den Client, dass er Zuschauer ist und sende den aktuellen Spielstand
+                    socket.emit('joinedAsSpectator', { roomId: room.id });
+                    socket.emit('game-state-update', room.gameState);
+                    console.log(`Zuschauer ${socket.id} ist Raum ${room.id} beigetreten.`);
                 }
             } else {
                 socket.emit('gameError', { error: 'Room not found' });
             }
+        });
+
+        socket.on('changePlayerName', (data) => {
+            const { roomId, userId, newName } = data;
+            if (!newName || newName.trim().length < 3 || newName.trim().length > 15) {
+                return socket.emit('gameError', { error: 'Name muss zwischen 3 und 15 Zeichen lang sein.' });
+            }
+
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) {
+                return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
+            }
+
+            const player = room.players.find(p => p.id === userId);
+            if (!player) {
+                // Maybe the user is a spectator
+                const spectator = room.spectators.find(s => s.id === userId);
+                if (spectator) spectator.name = newName.trim();
+            } else {
+                const oldName = player.name;
+                player.name = newName.trim();
+
+                // Update the name in the gameState as well
+                if (room.gameState && room.gameState.players) {
+                    const playerInGameState = room.gameState.players.find(p => p.id === userId);
+                    if (playerInGameState) {
+                        playerInGameState.name = newName.trim();
+                    }
+                }
+                io.to(room.id).emit('receiveMessage', { user: 'System', text: `${oldName} heißt jetzt ${player.name}.` });
+            }
+            io.to(room.id).emit('game-state-update', room.gameState);
+        });
+
+        socket.on('kickPlayer', (data) => {
+            const { roomId, playerIdToKick } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room) {
+                return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
+            }
+
+            // Check if the user sending the request is the host
+            if (room.hostId !== socket.id) {
+                return socket.emit('gameError', { error: 'Nur der Host kann Spieler kicken.' });
+            }
+
+            const playerToKick = room.players.find(p => p.id === playerIdToKick);
+            if (!playerToKick) {
+                return socket.emit('gameError', { error: 'Spieler nicht im Raum gefunden.' });
+            }
+
+            // Find the socket of the player to be kicked
+            const kickedSocket = io.sockets.sockets.get(playerIdToKick);
+            if (kickedSocket) {
+                kickedSocket.leave(roomId);
+                kickedSocket.emit('youHaveBeenKicked', { message: 'Du wurdest vom Host aus dem Raum entfernt.' });
+            }
+
+            room.players = room.players.filter(p => p.id !== playerIdToKick);
+
+            io.to(roomId).emit('receiveMessage', { user: 'System', text: `${playerToKick.name} wurde vom Host entfernt.` });
+            io.to(roomId).emit('game-state-update', { ...room.gameState, players: room.players });
+            io.emit('updateRooms', rooms);
         });
 
         // ==========================================
@@ -335,6 +425,69 @@ function initializeSocket(io, gameManager, auth) {
             }
         });
         
+        socket.on('undo', (data) => {
+            const { roomId, userId } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room || !room.game) {
+                return socket.emit('gameError', { error: 'Spiel nicht aktiv oder Raum nicht gefunden.' });
+            }
+
+            try {
+                // 1. Führe die Undo-Aktion in der Spiellogik aus
+                const result = room.game.undoLastThrow();
+
+                if (!result.success) {
+                    return socket.emit('gameError', { error: result.reason });
+                }
+
+                // 2. Hole den neuen, korrigierten Spielstand
+                const newGameStateFromGame = room.game.getGameState();
+
+                // 3. Aktualisiere die Spieler-Statistiken (Darts, Average etc.)
+                const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                const playerWhoUndidThrow = room.players[newGameStateFromGame.currentPlayerIndex];
+
+                const updatedPlayers = room.players.map((p, idx) => {
+                    let newDartsThrown = p.dartsThrown || 0;
+                    if (p.id === playerWhoUndidThrow.id) {
+                        newDartsThrown = Math.max(0, newDartsThrown - (room.gameMode === 'CricketGame' ? 1 : 3));
+                    }
+
+                    let average = p.avg || "0.00";
+                    if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
+                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
+                        average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
+                    } else if (newDartsThrown === 0) {
+                        average = "0.00";
+                    }
+
+                    return {
+                        ...p,
+                        score: newGameStateFromGame.scores[p.id],
+                        dartsThrown: newDartsThrown,
+                        avg: average,
+                        isActive: idx === newGameStateFromGame.currentPlayerIndex,
+                        lastScore: 0, // Letzten Wurf zurücksetzen
+                    };
+                });
+                room.players = updatedPlayers;
+
+                // 4. Erstelle das Update-Paket und sende es an alle
+                const updateData = {
+                    ...room.gameState, // Nimm den alten State als Basis
+                    players: updatedPlayers,
+                    gameState: newGameStateFromGame,
+                };
+                room.gameState = updateData;
+                io.to(roomId).emit('game-state-update', updateData);
+
+            } catch (error) {
+                console.error(`[UNDO] Fehler:`, error);
+                socket.emit('gameError', { error: 'Interner Serverfehler beim Rückgängigmachen.' });
+            }
+        });
+
         socket.on('getGameState', (roomId) => {
             const room = rooms.find(r => r.id === roomId);
             if(room) {
@@ -384,12 +537,27 @@ function initializeSocket(io, gameManager, auth) {
 
             // Reverse players (switch starter)
             room.players.reverse();
+            
+            // Reset game state and instance
             room.gameState = null;
             room.game = null;
+            room.gameStarted = false;
 
             // Send a waiting state gameState instead of the room object
+            // Reset player stats for the new game, but keep names and IDs
+            const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+            room.players.forEach(player => {
+                player.score = startScore;
+                player.dartsThrown = 0;
+                player.avg = '0.00';
+                player.legs = 0;
+                player.sets = 0;
+                player.marks = {}; // For cricket
+                player.lastScore = 0;
+            });
+
             const waitingState = {
-                mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01', // Preserve the game mode
+                mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                 players: room.players,
                 gameStatus: 'waiting',
                 hostId: room.hostId,
@@ -449,12 +617,20 @@ function initializeSocket(io, gameManager, auth) {
 
             rooms.forEach(room => {
                 const playerIndex = room.players.findIndex(p => p.id === socket.id);
+                const spectatorIndex = room.spectators.findIndex(s => s.id === socket.id);
+
                 if (playerIndex !== -1) {
+                    const leavingPlayer = room.players[playerIndex];
                     room.players.splice(playerIndex, 1);
                     if (room.players.length === 0) {
                         rooms = rooms.filter(r => r.id !== room.id);
                     }
                     io.to(room.id).emit('game-state-update', room);
+                    io.to(room.id).emit('receiveMessage', { user: 'System', text: `${leavingPlayer.name} hat den Raum verlassen.` });
+                } else if (spectatorIndex !== -1) {
+                    const leavingSpectator = room.spectators[spectatorIndex];
+                    room.spectators.splice(spectatorIndex, 1);
+                    io.to(room.id).emit('receiveMessage', { user: 'System', text: `${leavingSpectator.name} schaut nicht mehr zu.` });
                 }
             });
             io.emit('updateRooms', rooms);

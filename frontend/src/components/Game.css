@@ -155,6 +155,60 @@
   box-shadow: none;
 }
 
+.player-card {
+  background-color: #1f2937; /* Dunkler Hintergrund */
+  padding: 10px; 
+  border-radius: 8px; 
+  position: relative;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.player-name-title {
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  margin-top: 0;
+}
+
+.player-name-input {
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  margin-top: 0;
+  background-color: #444;
+  color: white;
+  border: 1px solid #ffd700;
+  border-radius: 4px;
+  padding: 5px;
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.kick-player-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.kick-player-button:hover {
+  opacity: 1;
+}
+
 .history-wrapper h4 {
   margin-top: 0;
   color: #ffd700;
@@ -897,6 +951,14 @@
   color: #ccc;
 }
 
+.checkout-path {
+  text-align: center;
+  height: 20px;
+  margin-top: 10px;
+  color: #9ca3af;
+  font-size: 16px;
+  font-weight: 500;
+}
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .game-layout {

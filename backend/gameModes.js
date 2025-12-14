@@ -3,9 +3,10 @@ class X01Game {
       this.startingScore = options.startingScore || 501;
       this.inMode = options.inMode || 'single';
       this.outMode = options.outMode || 'double';
-      this.legsToWin = options.legs || 1;
-      this.setsToWin = options.sets || 1;
-
+      this.distance = options.distance || 'legs'; // 'legs' or 'sets'
+      this.length = options.length || { type: 'firstTo', value: 1 }; // { type: 'firstTo'|'bestOf', value: number }
+      this.gameOptions = options; // WICHTIG: Optionen speichern für späteren Zugriff
+      
       this.players = [];
       this.scores = {};
       this.currentPlayerIndex = 0;
@@ -70,16 +71,45 @@ class X01Game {
             this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
             console.log(`[X01Game] LEG GEWONNEN: ${playerId}!`);
 
-            // Prüfen, ob das ganze Spiel gewonnen wurde
-            if (this.legsWon[playerId] >= this.legsToWin) {
+            // Prüfen, ob das ganze Spiel gewonnen wurde (mit "Best Of" / "First To" Logik)
+            let gameHasBeenWon = false;
+            if (this.distance === 'legs') {
+                if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+                    gameHasBeenWon = true;
+                } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+                    gameHasBeenWon = true;
+                }
+            } else if (this.distance === 'sets') {
+                // Set-Logik: Prüfen, ob ein Set gewonnen wurde
+                if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
+                    this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
+                    console.log(`[X01Game] SET GEWONNEN: ${playerId}!`);
+
+                    // Prüfen, ob das ganze Spiel durch den Set-Gewinn gewonnen wurde
+                    if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                        gameHasBeenWon = true;
+                    } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                        gameHasBeenWon = true;
+                    }
+
+                    if (!gameHasBeenWon) {
+                        // Wenn das Spiel nicht vorbei ist, starte das nächste Set
+                        this.startNextSet();
+                    }
+                }
+            }
+
+            if (gameHasBeenWon) {
                 this.gameWinner = playerId;
                 this.winner = playerId; // Setze den finalen Gewinner
                 console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
                 return { valid: true, bust: false, winner: this.gameWinner, legWinner: this.legWinner };
             }
-
-            // Nächstes Leg vorbereiten
-            this.startNextLeg();
+            
+            // Wenn kein Set gewonnen wurde, aber ein Leg, starte das nächste Leg
+            if (!this.winner) {
+                this.startNextLeg();
+            }
             return { valid: true, bust: false, winner: null, legWinner: this.legWinner };
         }
     
@@ -106,12 +136,47 @@ class X01Game {
         this.legWinner = null;
         this.history.push({ type: 'new_leg' });
     }
+
+    startNextSet() {
+        console.log("[X01Game] Starte nächstes Set...");
+        // Setze Leg-Zähler für alle Spieler zurück
+        this.players.forEach(playerId => {
+            this.legsWon[playerId] = 0;
+        });
+        this.startNextLeg(); // Ein neues Set startet auch mit einem neuen Leg
+    }
   
     nextTurn() {
         this.dartsThrownInTurn = 0;
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
     }
   
+    undoLastThrow() {
+        if (this.history.length === 0) {
+            return { success: false, reason: "Keine Züge zum Rückgängigmachen." };
+        }
+
+        // Finde den letzten Zug, der kein "new_leg" Event ist
+        const lastThrowIndex = this.history.map(h => h.type !== 'new_leg').lastIndexOf(true);
+        if (lastThrowIndex === -1) {
+            return { success: false, reason: "Keine Würfe in diesem Leg zum Rückgängigmachen." };
+        }
+
+        const lastThrow = this.history[lastThrowIndex];
+        const { playerId, score, bust, remainingScore } = lastThrow;
+
+        // Setze den Score des Spielers auf den Stand vor dem Wurf zurück
+        this.scores[playerId] = bust ? remainingScore : remainingScore + score;
+
+        // Setze den aktiven Spieler auf den Spieler zurück, der den Wurf gemacht hat
+        this.currentPlayerIndex = this.players.findIndex(p => p === playerId);
+
+        // Entferne den letzten Wurf aus der Historie
+        this.history.splice(lastThrowIndex, 1);
+
+        return { success: true };
+    }
+
     getGameState() {
         return {
             scores: this.scores,
@@ -132,9 +197,9 @@ class X01Game {
 class CricketGame {
     constructor(options = {}) {
         this.players = [];
-        this.legsToWin = options.legs || 1;
-        this.setsToWin = options.sets || 1;
-
+        this.distance = options.distance || 'legs'; // 'legs' or 'sets'
+        this.length = options.length || { type: 'firstTo', value: 1 }; // { type: 'firstTo'|'bestOf', value: number }
+        
         this.scores = {}; // Points for each player
         this.marks = {}; // Marks for each number (15,16,17,18,19,20,25)
         this.currentPlayerIndex = 0;
@@ -206,6 +271,9 @@ class CricketGame {
             return { valid: true, winner: null, dartsThrownInTurn: this.dartsThrownInTurn };
         }
 
+        const marksBefore = this.marks[playerId][number];
+        let pointsAdded = 0;
+
         const currentMarks = this.marks[playerId][number];
         
         if (currentMarks < 3) {
@@ -215,13 +283,15 @@ class CricketGame {
             const overflow = multiplier - marksToAdd;
             if (overflow > 0) {
                 // Punkte für den Spieler selbst, wenn er mehr als 3 Treffer hat
-                this.scores[playerId] += number * overflow;
+                pointsAdded = number * overflow;
+                this.scores[playerId] += pointsAdded;
             }
         } else {
             // Spieler hat das Feld schon zu, also Punkte für ihn, wenn der Gegner es noch nicht zu hat.
             const allOpponentsClosed = this.players.every(p => p === playerId || this.marks[p][number] >= 3);
             if (!allOpponentsClosed) {
-                this.scores[playerId] += number * multiplier;
+                pointsAdded = number * multiplier;
+                this.scores[playerId] += pointsAdded;
             }
         }
 
@@ -229,6 +299,8 @@ class CricketGame {
             playerId,
             number,
             multiplier,
+            marksBefore: marksBefore,
+            pointsAdded: pointsAdded,
         });
 
         // Increment darts thrown in this turn
@@ -246,10 +318,34 @@ class CricketGame {
                 this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
                 console.log(`[CricketGame] LEG GEWONNEN: ${playerId}!`);
 
-                if (this.legsWon[playerId] >= this.legsToWin) {
+                let gameHasBeenWon = false;
+                if (this.distance === 'legs') {
+                     if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+                        gameHasBeenWon = true;
+                    } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+                        gameHasBeenWon = true;
+                    }
+                } else if (this.distance === 'sets') {
+                    if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
+                        this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
+                        console.log(`[CricketGame] SET GEWONNEN: ${playerId}!`);
+
+                        if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                            gameHasBeenWon = true;
+                        } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                            gameHasBeenWon = true;
+                        }
+
+                        if (!gameHasBeenWon) {
+                            this.startNextSet();
+                        }
+                    }
+                }
+
+                if (gameHasBeenWon) {
                     this.winner = playerId;
                     console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId}!`);
-                } else {
+                } else if (!this.winner) {
                     // Nächstes Leg vorbereiten
                     this.startNextLeg();
                 }
@@ -284,9 +380,44 @@ class CricketGame {
         this.history.push({ type: 'new_leg' });
     }
 
+    startNextSet() {
+        console.log("[CricketGame] Starte nächstes Set...");
+        // Setze Leg-Zähler für alle Spieler zurück
+        this.players.forEach(playerId => {
+            this.legsWon[playerId] = 0;
+        });
+        this.startNextLeg(); // Ein neues Set startet auch mit einem neuen Leg
+    }
+
     nextTurn() {
         this.dartsThrownInTurn = 0;
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+    }
+
+    undoLastThrow() {
+        if (this.history.length === 0) {
+            return { success: false, reason: "Keine Züge zum Rückgängigmachen." };
+        }
+
+        const lastThrow = this.history.pop();
+        if (!lastThrow || !lastThrow.playerId) {
+            return { success: false, reason: "Letzter Zug ungültig." };
+        }
+
+        const { playerId, number, pointsAdded, marksBefore } = lastThrow;
+
+        // 1. Punkte zurücksetzen
+        this.scores[playerId] -= pointsAdded;
+
+        // 2. Marks zurücksetzen
+        this.marks[playerId][number] = marksBefore;
+
+        // 3. Aktiven Spieler und Dart-Zähler zurücksetzen
+        this.currentPlayerIndex = this.players.findIndex(p => p === playerId);
+        this.dartsThrownInTurn = (this.dartsThrownInTurn - 1 + this.maxDartsPerTurn) % this.maxDartsPerTurn;
+        
+        this.winner = null; // Ein eventueller Gewinn wird rückgängig gemacht
+        return { success: true };
     }
 
     getGameState() {

@@ -73,6 +73,14 @@ const GameChat = ({ socket, roomId, user, messages }) => {
             color: '#fff',
             boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
         }),
+        systemMessageBubble: {
+            alignSelf: 'center',
+            backgroundColor: 'transparent',
+            color: '#888',
+            fontSize: '0.8rem',
+            fontStyle: 'italic',
+            padding: '5px 0'
+        },
         senderName: {
             fontSize: '0.75rem',
             color: '#aaa',
@@ -120,8 +128,14 @@ const GameChat = ({ socket, roomId, user, messages }) => {
                 {messages && messages.length > 0 ? (
                     messages.map((msg, index) => {
                         const isMe = msg.userId === user?.id;
+                        const isSystem = msg.user === 'System';
+
+                        if (isSystem) {
+                            return <div key={`sys_${index}`} style={styles.systemMessageBubble}>{msg.text}</div>;
+                        }
+
                         return (
-                            <div key={index} style={styles.messageBubble(isMe)}>
+                            <div key={msg.timestamp || index} style={styles.messageBubble(isMe)}>
                                 {!isMe && <span style={styles.senderName}>{msg.userName}</span>}
                                 <span>{msg.text}</span>
                             </div>

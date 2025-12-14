@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useSocket } from '../contexts/SocketContext';
 import DartsPerLegTable from './DartsPerLegTable';
 
 const getCheckoutText = (score) => {
@@ -51,6 +52,31 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
     const players = gameState.players;
     const player1 = players[0];
     const player2 = players[1];
+    const { socket } = useSocket();
+
+    const [editingPlayerId, setEditingPlayerId] = useState(null);
+    const [editingName, setEditingName] = useState('');
+
+    const handleNameChange = (playerId) => {
+        if (editingName.trim().length >= 3 && editingName.trim().length <= 15) {
+            if (socket && gameState.id) {
+                socket.emit('changePlayerName', {
+                    roomId: gameState.id,
+                    userId: playerId,
+                    newName: editingName
+                });
+            }
+        }
+        setEditingPlayerId(null);
+    };
+
+    const handleNameKeyDown = (e, playerId) => {
+        if (e.key === 'Enter') {
+            handleNameChange(playerId);
+        } else if (e.key === 'Escape') {
+            setEditingPlayerId(null);
+        }
+    };
 
     const renderPlayerCard = (player, label, isRightSide = false) => {
         if (!player) {
@@ -68,137 +94,110 @@ const isActive = gameState &&
 
         // Show starting player indicator before game starts
         const isStartingPlayer = !gameState.gameStatus && startingPlayerId === player.id;
+        const isMyPlayer = user && user.id === player.id;
+        const isHost = gameState.hostId === user?.id;
         const checkoutText = getCheckoutText(player.score);
 
-        // --- Block: Sets & Legs (Graue Box) ---
-        // Wenn du 'sets' im player objekt hast, werden sie hier angezeigt
+        // Ermittle, ob Sets gespielt werden, basierend auf den gameOptions vom Server
+        const isSetMode = gameState?.gameOptions?.distance === 'sets';
+
         const LegsBlock = (
-            <div className="legs-section-bild1" style={{ 
-                display: 'flex', 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                justifyContent: 'space-around',
-                backgroundColor: '#333', // Dunkelgrauer Hintergrund wie im Bild
-                borderRadius: '6px',
-                padding: '5px 10px',
-                minWidth: '80px',
-                margin: '0 10px'
-            }}>
-                {/* Sets Anzeige (Optional, falls vorhanden) */}
-                {player.sets !== undefined && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: '10px' }}>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#aaa' }}>Sets</span>
-                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>{player.sets}</span>
-                    </div>
+            <div className="legs-section-bild1">
+                {isSetMode ? (
+                    <>
+                        <span className="legs-label-bild1">Sets</span>
+                        <span className="legs-count-bild1">{gameState?.gameState?.setsWon?.[player.id] ?? 0}</span>
+                    </>
+                ) : (
+                    <>
+                        <span className="legs-label-bild1">Legs</span>
+                        <span className="legs-count-bild1">{gameState?.gameState?.legsWon?.[player.id] ?? 0}</span>
+                    </>
                 )}
-                
-                {/* Legs Anzeige */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#aaa' }}>Legs</span>
-                    <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>{player.legs || 0}</span>
-                </div>
-            </div>
-        );
-
-        // --- Block: Score (Grüne Zahl) ---
-        const ScoreBlock = (
-            <div className="player-score" style={{ fontSize: '4.5em', fontWeight: 'bold', color: '#4ade80', margin: '0 15px', lineHeight: 1 }}>
-                {player.score}
-            </div>
-        );
-
-        // --- Block: Letzter Wurf (Dartscheibe + Punkte) ---
-        const LastScoreBlock = (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 15px', width: '40px' }}>
-                {/* Standard Dartscheibe Emoji oder SVG */}
-                <span style={{ fontSize: '28px', lineHeight: '30px' }}>🎯</span>
-                <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginTop: '2px' }}>
-                    {player.lastScore || 0}
-                </span>
-            </div>
-        );
-
-        // --- NEUER Block: Anzahl Darts (Bunter Pfeil + Weiße Zahl) ---
-        const DartsThrownBlock = (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 15px', width: '40px' }}>
-                {/* SVG Icon für Dartpfeil (Diagonaler Flug, rötliche Flights) */}
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Flights (Rot) */}
-                    <path d="M19.4 19.4L22 22L20.5 23.5L19 22L17.5 23.5L16 22L18.6 19.4C18.6 19.4 19 19 19.4 19.4Z" fill="#ef4444"/>
-                    <path d="M22 16L23.5 17.5L22 19L23.5 20.5L22 22L19.4 19.4L22 16Z" fill="#ef4444"/>
-                    {/* Barrel (Grau/Silber) */}
-                    <path d="M12.8 2.2L2.2 12.8L4 16L11.5 14L10 12.5L20 2.5L21.5 4L19.4 19.4L13.4 13.4L6 14.5L12.8 2.2Z" fill="#cbd5e1"/>
-                    {/* Spitze (Dunkelgrau) */}
-                    <path d="M2.2 12.8L2 16L4 16L12.8 2.2L2.2 12.8Z" fill="#64748b"/>
-                </svg>
-                
-                {/* Ziffer in Weiß (Größe angepasst an LastScore) */}
-                <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginTop: '2px' }}>
-                    {player.dartsThrown || 0}
-                </span>
             </div>
         );
 
 return (
             <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ 
-                border: isActive ? '2px solid yellow' : isStartingPlayer ? '2px solid #4CAF50' : '1px solid #333', 
-                backgroundColor: '#1f2937', // Dunkler Hintergrund
-                padding: '10px', 
-                borderRadius: '8px', 
-                position: 'relative',
-                color: 'white'
+                border: isActive ? '2px solid yellow' : isStartingPlayer ? '2px solid #4CAF50' : '1px solid #333'
             }}>
                 {/* Roter Punkt für aktiven Spieler */}
-                {isActive && <div style={{ position: 'absolute', top: '10px', left: '10px', width: '12px', height: '12px', backgroundColor: 'red', borderRadius: '50%', boxShadow: '0 0 5px red' }}></div>}
-                
-                <h3 style={{ textAlign: 'center', marginBottom: '15px', fontSize: '1.2em' }}>
-                    {player.name} {user && user.id === player.id ? '(Du)' : ''}
-                </h3>
+                {isActive && <div className="active-dot"></div>}
+                {isHost && !isMyPlayer && (
+                    <button
+                        onClick={() => {
+                            if (window.confirm(`Möchtest du ${player.name} wirklich aus dem Raum entfernen?`)) {
+                                socket.emit('kickPlayer', { roomId: gameState.id, playerIdToKick: player.id });
+                            }
+                        }}
+                        className="kick-player-button"
+                    >
+                        ✖
+                    </button>
+                )}
+                {isMyPlayer && editingPlayerId === player.id ? (
+                    <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => handleNameChange(player.id)}
+                        onKeyDown={(e) => handleNameKeyDown(e, player.id)}
+                        autoFocus
+                        className="player-name-input"
+                    />
+                ) : (
+                    <h3 
+                        className="player-name-title"
+                        onClick={() => {
+                            if (isMyPlayer) {
+                                setEditingPlayerId(player.id);
+                                setEditingName(player.name);
+                            }
+                        }}
+                        style={{ cursor: isMyPlayer ? 'pointer' : 'default' }}
+                    >{player.name} {isMyPlayer ? '(Du)' : ''}</h3>
+                )}
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="score-details-bild1">
                     {isRightSide ? (
-                        // RECHTE Seite (Spieler 2): Pfeil | Scheibe | Score | Legs+Sets
-                        <>
-                            {DartsThrownBlock}
-                            {LastScoreBlock}
-                            {ScoreBlock}
-                            {LegsBlock}
-                        </>
-                    ) : (
-                        // LINKE Seite (Spieler 1): Legs+Sets | Score | Scheibe | Pfeil
-                        <>
-                            {LegsBlock}
-                            {ScoreBlock}
-                            {LastScoreBlock}
-                            {DartsThrownBlock}
-                        </>
+                        <div className="dart-info-bild1">
+                            <div className="last-score-bild1"><span className="last-score-label">Last:</span><span className="last-score-value">{player.lastScore ?? '-'}</span></div>
+                            <div className="avg-bild1"><span className="avg-label">Avg:</span><span className="avg-value">{player.avg ?? '0.00'}</span></div>
+                        </div>
+                    ) : LegsBlock}
+                    <div className="main-score-wrapper-bild1">
+                        <div className="main-score-bild1">{player.score}</div>
+                    </div>
+                    {isRightSide ? LegsBlock : (
+                        <div className="dart-info-bild1">
+                            <div className="last-score-bild1"><span className="last-score-label">Last:</span><span className="last-score-value">{player.lastScore ?? '-'}</span></div>
+                            <div className="avg-bild1"><span className="avg-label">Avg:</span><span className="avg-value">{player.avg ?? '0.00'}</span></div>
+                        </div>
                     )}
                 </div>
 
                 {/* Checkout Anzeige */}
-                <div style={{ textAlign: 'center', height: '20px', marginTop: '10px', color: '#9ca3af', fontSize: '16px', fontWeight: '500' }}>
-                    {checkoutText}
-                </div>
+                <div className="checkout-path">{checkoutText}</div>
             </div>
         );
     };
 
     return (
-        <div className="player-scores-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+        <div className="player-scores-container">
             {/* Linker Spieler */}
-            <div className="player-score-section" style={{ flex: 1 }}>
+            <div className="player-score-section">
                 {renderPlayerCard(player1, "Player 1", false)}
             </div>
 
             {/* Mitte: Tabelle */}
-            <div className="player-history-section" style={{ flex: 1 }}>
-                <div className="history-wrapper" style={{ width: '100%', height: '100%' }}>
+            <div className="player-history-section">
+                <div className="history-wrapper">
                     <DartsPerLegTable gameState={gameState} />
                 </div>
             </div>
 
             {/* Rechter Spieler */}
-            <div className="player-score-section" style={{ flex: 1 }}>
+            <div className="player-score-section">
                 {renderPlayerCard(player2, "Player 2", true)}
             </div>
         </div>

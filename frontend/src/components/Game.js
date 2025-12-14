@@ -304,6 +304,11 @@ function Game() {
     const [remoteStreams, setRemoteStreams] = useState({});
     const [showWinnerPopup, setShowWinnerPopup] = useState(false);
     
+    const [isSpectator, setIsSpectator] = useState(false);
+    // NEU: State für die Aufnahme
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef(null);
+    const recordedChunksRef = useRef([]);
     // Video Layout State
     const [videoLayout, setVideoLayout] = useState({
         mode: 'splitscreen', // 'splitscreen' oder 'fullscreen'
@@ -582,18 +587,19 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
 
         // Lock input for Cricket games to prevent rapid successive inputs
         if (gameState.mode === 'cricket') {
+            // For Cricket, allow undo for the last dart of the turn
             setNumpadState(prev => ({
                 ...prev,
-                isLocked: true,
-                canUndo: false,
+                isLocked: true, // Lock to prevent rapid inputs
+                canUndo: true,  // Allow undo
                 lockedPlayerId: user.id
             }));
 
             // Unlock after server response (will be unlocked when game-state-update is received)
         } else {
-            // Lock numpad for 5 seconds for undo (only for X01)
+            // For X01, allow undo for 5 seconds
             setNumpadState(prev => ({
-                ...prev,
+                ...prev, // NumpadState for X01
                 isLocked: false,
                 canUndo: true,
                 lockedPlayerId: user.id
@@ -655,7 +661,17 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
         socket.on('game-started', handleGameState);
         socket.on('gameState', handleGameState);
         socket.on('receiveMessage', handleReceiveMessage);
-socket.on('statusUpdate', handleGameState);
+        socket.on('statusUpdate', handleGameState);
+
+        socket.on('joinedAsSpectator', () => {
+            console.log("Als Zuschauer beigetreten.");
+            setIsSpectator(true);
+        });
+
+        socket.on('youHaveBeenKicked', (data) => {
+            alert(data.message || 'Du wurdest aus dem Raum entfernt.');
+            window.location.href = '/'; // Redirect to lobby
+        });
 
         socket.emit('joinRoom', { roomId });
         socket.emit('getGameState', roomId);
@@ -667,7 +683,9 @@ socket.on('statusUpdate', handleGameState);
             socket.off('game-started', handleGameState);
             socket.off('gameState', handleGameState);
             socket.off('receiveMessage', handleReceiveMessage);
-socket.off('statusUpdate', handleGameState);
+            socket.off('statusUpdate', handleGameState);
+            socket.off('joinedAsSpectator');
+            socket.off('youHaveBeenKicked');
         };
     }, [socket, roomId, handleGameState, handleReceiveMessage]);
 
@@ -1273,6 +1291,51 @@ socket.on('camera-ice', async (data) => {
         }
     };
 
+    // --- AUFNAHME-FUNKTIONEN ---
+    const startRecording = async () => {
+        try {
+            // Fordere den Bildschirm-Stream an
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: { mediaSource: "screen" },
+                audio: true
+            });
+
+            // Erstelle einen MediaRecorder
+            mediaRecorderRef.current = new MediaRecorder(displayStream, { mimeType: 'video/webm' });
+            recordedChunksRef.current = [];
+
+            mediaRecorderRef.current.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorderRef.current.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `DOCA-WebDarts-Game-${new Date().toISOString()}.webm`;
+                a.click();
+                URL.revokeObjectURL(url);
+                // Stoppe den Bildschirm-Stream
+                displayStream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+        } catch (error) {
+            console.error("Fehler beim Starten der Aufnahme:", error);
+            alert("Aufnahme konnte nicht gestartet werden. Bitte stelle sicher, dass du die Bildschirmfreigabe erlaubt hast.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
 
 
     // --- WHITESCREEN FIX ---
@@ -1446,7 +1509,7 @@ const isHost = gameState.hostId === user.id;
     // X01 Layout (original three-column layout)
     return (
         <div className="game-container">
-            {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
+            {isSpectator && <div className="spectator-banner">Zuschauer</div>}
 
             <div className="game-layout">
                 <div className="game-main-area">
@@ -1463,7 +1526,7 @@ const isHost = gameState.hostId === user.id;
                             <div className="ready-status">
                                 {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
                             </div>
-                            {isHost ? (
+                            {isHost && !isSpectator ? (
                                 <button className="start-game-button" onClick={handleStartGame}>
                                     SPIEL STARTEN 🎯
                                 </button>
@@ -1475,28 +1538,30 @@ const isHost = gameState.hostId === user.id;
 
                     <div className="game-bottom-section">
                         <div className="game-column-left">
-                            <div className="wurf-section">
-                                <h3 className="wurf-title">{isMyTurn ? 'DEIN WURF' : `${currentPlayer?.name.toUpperCase()} WIRFT`}</h3>
-                                <div className="number-pad-container">
-                                    <div className="number-pad-wrapper">
-                                        {showCountdown && (
-                                            <div className="countdown-overlay">
-                                                <div className="countdown-text">{countdown}s</div>
-                                            </div>
-                                        )}
-                                        <NumberPad
-                                            onScoreInput={handleScoreInput}
-                                            onUndo={handleUndo}
-                                            checkoutSuggestions={gameState.checkoutSuggestions}
-                                            isActive={isMyTurn && canInput}
-                                            isLocked={!isMyTurn || numpadState.isLocked}
-                                            isOpponentLocked={!isMyTurn}
-                                            isMyTurn={isMyTurn}
-                                            canUseUndo={numpadState.canUndo}
-                                        />
+                            {!isSpectator && (
+                                <div className="wurf-section">
+                                    <h3 className="wurf-title">{isMyTurn ? 'DEIN WURF' : `${currentPlayer?.name.toUpperCase()} WIRFT`}</h3>
+                                    <div className="number-pad-container">
+                                        <div className="number-pad-wrapper">
+                                            {showCountdown && (
+                                                <div className="countdown-overlay">
+                                                    <div className="countdown-text">{countdown}s</div>
+                                                </div>
+                                            )}
+                                            <NumberPad
+                                                onScoreInput={handleScoreInput}
+                                                onUndo={handleUndo}
+                                                checkoutSuggestions={gameState.checkoutSuggestions}
+                                                isActive={isMyTurn && canInput}
+                                                isLocked={!isMyTurn || numpadState.isLocked}
+                                                isOpponentLocked={!isMyTurn}
+                                                isMyTurn={isMyTurn}
+                                                canUseUndo={numpadState.canUndo}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                         <div className="game-column-center">
                             <div className="statistics-section"><LiveStatistics gameState={gameState} /></div>
@@ -1530,6 +1595,20 @@ const isHost = gameState.hostId === user.id;
                             🔌 Verbinden
                         </button>
                         <span style={{ marginLeft: '10px', fontSize: '12px', color: '#ccc' }}>
+                            {/* NEU: Aufnahme-Button */}
+                            <button
+                                onClick={isRecording ? stopRecording : startRecording}
+                                style={{
+                                    marginLeft: '10px',
+                                    padding: '5px 10px',
+                                    backgroundColor: isRecording ? '#d9534f' : '#5cb85c',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px'
+                                }}
+                            >
+                                {isRecording ? '● Aufnahme stoppen' : '○ Aufnahme starten'}
+                            </button>
                             {isCameraEnabled ? "Automatisch verbunden" : "Kamera starten für Video"}
                         </span>
                     </div>
