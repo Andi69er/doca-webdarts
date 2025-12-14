@@ -284,7 +284,7 @@ function initializeSocket(io, gameManager, auth) {
                 let updateData;
 
                 if (room.gameMode === 'CricketGame') {
-                    // Cricket-specific player updates - add 1 dart per throw (up to 3 per turn)
+                    // Cricket-specific player updates - add 1 dart per throw, switch turns after 3 darts
                     updatedPlayers = room.players.map((p, idx) => {
                         const isCurrentPlayer = idx === currentPlayerIndex;
                         const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 1 : 0);

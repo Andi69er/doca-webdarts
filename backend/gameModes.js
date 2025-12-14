@@ -115,6 +115,46 @@ class CricketGame {
             return { valid: false, reason: 'Not your turn' };
         }
 
+        // Handle MISS (number = 0)
+        if (typeof score === 'object' && score.number === 0) {
+            this.dartsThrownInTurn++;
+            this.history.push({
+                playerId,
+                number: 0,
+                multiplier: 1,
+                points: 0,
+                marks: 0
+            });
+
+            // Check for winner - all numbers closed and higher or equal points
+            const allNumbers = [15, 16, 17, 18, 19, 20, 25];
+            const playerClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
+            const opponentId = this.players.find(p => p !== playerId);
+            const opponentClosedAll = allNumbers.every(num => this.marks[opponentId][num] >= 3);
+
+            if (playerClosedAll) {
+                if (opponentClosedAll) {
+                    // Both closed - higher points win
+                    if (this.scores[playerId] > this.scores[opponentId]) {
+                        this.winner = playerId;
+                    } else if (this.scores[playerId] < this.scores[opponentId]) {
+                        this.winner = opponentId;
+                    }
+                    // If equal points, continue playing
+                } else {
+                    // Player closed all, opponent hasn't
+                    this.winner = playerId;
+                }
+            }
+
+            // Only switch turns after 3 darts in Cricket
+            if (this.dartsThrownInTurn >= this.maxDartsPerTurn) {
+                this.nextTurn();
+            }
+
+            return { valid: true, winner: this.winner, dartsThrownInTurn: this.dartsThrownInTurn };
+        }
+
         // Cricket scoring logic - parse score number into number and multiplier
         let number, multiplier;
 

@@ -495,6 +495,16 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                     }
                 }
 
+// Für Cricket: Immer entsperren wenn ich dran bin (auch nach eigenem Wurf)
+                if (gameState.mode === 'cricket' && newIsMyTurn) {
+                    setNumpadState(prev => ({
+                        ...prev,
+                        isLocked: false,
+                        canUndo: false,
+                        lockedPlayerId: null
+                    }));
+                }
+
 // Video Layout setzen basierend auf Spielphase
                 if (gameStarted && currentPlayer) {
                     // Spiel läuft: Aktueller Spieler in Vollbild
@@ -570,8 +580,18 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
 
         setLocalGameStarted(true);
 
-        // Lock numpad for 5 seconds for undo (only for X01, not Cricket)
-        if (gameState.mode !== 'cricket') {
+        // Lock input for Cricket games to prevent rapid successive inputs
+        if (gameState.mode === 'cricket') {
+            setNumpadState(prev => ({
+                ...prev,
+                isLocked: true,
+                canUndo: false,
+                lockedPlayerId: user.id
+            }));
+
+            // Unlock after server response (will be unlocked when game-state-update is received)
+        } else {
+            // Lock numpad for 5 seconds for undo (only for X01)
             setNumpadState(prev => ({
                 ...prev,
                 isLocked: false,
@@ -595,13 +615,13 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
 
             setNumpadState(prev => ({ ...prev, lockTimer }));
         }
-        
+
         const payload = {
             roomId,
             userId: currentPlayer.id,
             score: scorePayload
         };
-        
+
         console.log("Emitting score-input with payload:", payload);
         socket.emit('score-input', payload);
     };
