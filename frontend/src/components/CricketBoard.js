@@ -25,32 +25,32 @@ const CricketBoard = ({ gameState, user }) => {
             flexDirection: 'column',
             alignItems: 'center',
             width: '100%',
-            maxWidth: '800px',
-            margin: '0 auto',
+            height: '100%',
             backgroundColor: '#1a1a1a',
             borderRadius: '10px',
             padding: '20px',
             color: 'white'
         }}>
-            <h2 style={{ marginBottom: '20px', fontSize: '2em', textAlign: 'center' }}>CRICKET</h2>
-
-            {/* Scoreboard Table */}
+            {/* Cricket Targets Grid */}
             <div className="cricket-table" style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 120px 1fr',
-                gap: '10px',
+                gridTemplateColumns: '1fr 100px 1fr',
+                gap: '8px',
                 width: '100%',
-                fontSize: '1.2em'
+                fontSize: '1.1em',
+                flex: 1,
+                alignContent: 'start'
             }}>
                 {/* Header Row */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '10px',
+                    padding: '8px',
                     backgroundColor: '#333',
                     borderRadius: '5px',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    fontSize: '0.9em'
                 }}>
                     {player1?.name || 'Player 1'}
                     {user && user.id === player1?.id ? ' (Du)' : ''}
@@ -59,10 +59,11 @@ const CricketBoard = ({ gameState, user }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '10px',
+                    padding: '8px',
                     backgroundColor: '#333',
                     borderRadius: '5px',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    fontSize: '0.9em'
                 }}>
                     Target
                 </div>
@@ -70,10 +71,11 @@ const CricketBoard = ({ gameState, user }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '10px',
+                    padding: '8px',
                     backgroundColor: '#333',
                     borderRadius: '5px',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    fontSize: '0.9em'
                 }}>
                     {player2?.name || 'Player 2'}
                     {user && user.id === player2?.id ? ' (Du)' : ''}
@@ -92,12 +94,13 @@ const CricketBoard = ({ gameState, user }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '15px 10px',
+                                padding: '12px 8px',
                                 backgroundColor: targetClosed ? '#555' : (isClosed(p1Marks) ? '#4ade80' : '#333'),
                                 borderRadius: '5px',
-                                fontSize: '1.5em',
+                                fontSize: '1.4em',
                                 fontWeight: 'bold',
-                                minHeight: '50px'
+                                minHeight: '45px',
+                                transition: 'background-color 0.3s ease'
                             }}>
                                 {getMarkSymbol(p1Marks)}
                             </div>
@@ -107,12 +110,12 @@ const CricketBoard = ({ gameState, user }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '15px 10px',
+                                padding: '12px 8px',
                                 backgroundColor: '#444',
                                 borderRadius: '5px',
-                                fontSize: '1.5em',
+                                fontSize: '1.3em',
                                 fontWeight: 'bold',
-                                minHeight: '50px'
+                                minHeight: '45px'
                             }}>
                                 {target === 25 ? 'BULL' : target}
                             </div>
@@ -122,69 +125,31 @@ const CricketBoard = ({ gameState, user }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '15px 10px',
+                                padding: '12px 8px',
                                 backgroundColor: targetClosed ? '#555' : (isClosed(p2Marks) ? '#4ade80' : '#333'),
                                 borderRadius: '5px',
-                                fontSize: '1.5em',
+                                fontSize: '1.4em',
                                 fontWeight: 'bold',
-                                minHeight: '50px'
+                                minHeight: '45px',
+                                transition: 'background-color 0.3s ease'
                             }}>
                                 {getMarkSymbol(p2Marks)}
                             </div>
                         </React.Fragment>
                     );
                 })}
-
-                {/* Total Score Row */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '15px 10px',
-                    backgroundColor: '#333',
-                    borderRadius: '5px',
-                    fontSize: '1.8em',
-                    fontWeight: 'bold',
-                    color: '#4ade80'
-                }}>
-                    {player1?.points || 0}
-                </div>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '15px 10px',
-                    backgroundColor: '#444',
-                    borderRadius: '5px',
-                    fontSize: '1.2em',
-                    fontWeight: 'bold'
-                }}>
-                    TOTAL
-                </div>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '15px 10px',
-                    backgroundColor: '#333',
-                    borderRadius: '5px',
-                    fontSize: '1.8em',
-                    fontWeight: 'bold',
-                    color: '#4ade80'
-                }}>
-                    {player2?.points || 0}
-                </div>
             </div>
 
             {/* Active Player Indicator */}
             {gameState.gameStatus === 'active' && (
                 <div style={{
-                    marginTop: '20px',
-                    padding: '10px 20px',
+                    marginTop: '15px',
+                    padding: '8px 16px',
                     backgroundColor: '#4ade80',
                     borderRadius: '5px',
-                    fontSize: '1.2em',
-                    fontWeight: 'bold'
+                    fontSize: '1.1em',
+                    fontWeight: 'bold',
+                    textAlign: 'center'
                 }}>
                     {gameState.players[gameState.currentPlayerIndex]?.name} ist dran
                 </div>

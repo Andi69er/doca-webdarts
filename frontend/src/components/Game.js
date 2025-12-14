@@ -9,6 +9,7 @@ import './Game.css';
 import LiveStatistics from "./LiveStatistics";
 import PlayerScores from "./PlayerScores";
 import CricketBoard from "./CricketBoard";
+import CricketHeader from "./CricketHeader";
 
 // --- AUDIO HELPERS ---
 const playAlarmSound = () => {
@@ -1294,14 +1295,16 @@ const isHost = gameState.hostId === user.id;
     };
 
     return (
-<div className="game-container">
-            
-            {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
-            <div className="game-layout">
+ <div className="game-container">
+
+             {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
+
+             {/* Cricket Header - shown above main layout when in cricket mode */}
+             {gameState.mode === 'cricket' && <CricketHeader gameState={gameState} user={user} />}
+
+             <div className="game-layout">
                 <div className="game-main-area">
-                    {gameState.mode === 'cricket' ? (
-                        <CricketBoard gameState={gameState} user={user} />
-                    ) : (
+                    {gameState.mode === 'cricket' ? null : (
                         <PlayerScores gameState={gameState} user={user} />
                     )}
                     {isGameRunning ? (
@@ -1354,7 +1357,13 @@ const isHost = gameState.hostId === user.id;
                                 </div>
                             </div>
                         </div>
-                        <div className="game-column-center"><div className="statistics-section"><LiveStatistics gameState={gameState} /></div></div>
+                        <div className="game-column-center">
+                            {gameState.mode === 'cricket' ? (
+                                <CricketBoard gameState={gameState} user={user} />
+                            ) : (
+                                <div className="statistics-section"><LiveStatistics gameState={gameState} /></div>
+                            )}
+                        </div>
                         <div className="game-column-right"><div className="game-chat-container"><GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} /></div></div>
                     </div>
                 </div>
