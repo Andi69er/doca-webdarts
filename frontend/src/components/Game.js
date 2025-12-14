@@ -1295,162 +1295,126 @@ const isHost = gameState.hostId === user.id;
         }
     };
 
-    // Cricket-specific layout (strict 2-column split screen)
+// --- CRICKET LAYOUT START ---
     if (gameState.mode === 'cricket') {
+        const opponents = gameState.players.filter(p => p.id !== user.id);
+        const hasOpponent = opponents.length > 0;
+
         return (
-            <div className="game-container" style={{ height: '100vh', display: 'flex' }}>
-                {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
-
-                {/* Left Side - Cricket Dashboard (75% width) */}
-                <div style={{ flex: '0 0 75%', display: 'flex', flexDirection: 'column' }}>
-                    {/* Cricket Header */}
-                    <CricketHeader gameState={gameState} user={user} />
-
-                    {/* Game Status Bar */}
-                    {isGameRunning ? (
-                        <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`} style={{
-                            padding: '8px 15px',
-                            textAlign: 'center',
-                            fontSize: '1.1em',
-                            fontWeight: 'bold'
-                        }}>
-                            <div className="status-text">{isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}</div>
+            <div className="game-container">
+                <div className="game-layout">
+                    {/* --- LINKE SEITE (wird zu game-main-area) --- */}
+                    <div className="game-main-area">
+                        {/* Header */}
+                        <div style={{padding: '10px 20px', backgroundColor: '#111', borderBottom: '1px solid #222'}}>
+                            <CricketHeader gameState={gameState} user={user} />
                         </div>
-                    ) : null}
 
-                    {/* Ready Box */}
-                    {(!isGameRunning && !isGameFinished) && (
-                        <div className="ready-box" style={{
-                            padding: '20px',
-                            textAlign: 'center',
-                            backgroundColor: '#1a1a1a',
-                            margin: '10px',
-                            borderRadius: '10px'
-                        }}>
-                            <div className="ready-status" style={{ marginBottom: '15px', fontSize: '1.2em' }}>
-                                {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
+                        {/* Status Bar */}
+                        {isGameRunning && (
+                            <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`}>
+                                {isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}
                             </div>
-                            {isHost ? (
-                                <button className="start-game-button" onClick={handleStartGame} style={{
-                                    padding: '12px 24px',
-                                    fontSize: '1.1em',
-                                    backgroundColor: '#4ade80',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold'
-                                }}>
-                                    SPIEL STARTEN 🎯
-                                </button>
-                            ) : (
-                                <div className="waiting-message" style={{ color: '#ccc' }}>Warte auf Host...</div>
+                        )}
+
+                        {/* Ready / Start Area */}
+                        {(!isGameRunning && !isGameFinished) && (
+                            <div className="ready-box" style={{backgroundColor: '#111'}}>
+                                {gameState.players.length < 2 ?
+                                    <h3 style={{color: '#888'}}>Warte auf Gegner...</h3> :
+                                    (isHost ? <button onClick={handleStartGame} className="start-game-button">SPIEL STARTEN 🎯</button> : <div className="waiting-message">Warte auf Host...</div>)
+                                }
+                            </div>
+                        )}
+
+                        {/* MAIN GAME CONTENT (3 Columns: Input | Board | Chat) */}
+                        <div style={{ flex: 1, display: 'flex', padding: '15px', gap: '15px', overflowY: 'auto', minHeight: 0, backgroundColor: '#0f0f1a' }}>
+                            
+                            {/* Spalte 1: Input */}
+                            <div style={{ width: '250px', minWidth: '250px', display: 'flex', flexDirection: 'column' }}>
+                                <CricketInputPanel
+                                    onScoreInput={handleScoreInput}
+                                    isActive={isMyTurn && !numpadState.isLocked}
+                                    isLocked={!isMyTurn || numpadState.isLocked}
+                                    canUseUndo={numpadState.canUndo}
+                                    onUndo={handleUndo}
+                                />
+                            </div>
+
+                            {/* Spalte 2: Board */}
+                            <div style={{ flex: 1, overflowY: 'auto' }}>
+                                <CricketBoard gameState={gameState} user={user} />
+                            </div>
+
+                            {/* Spalte 3: Chat */}
+                            <div style={{ width: '250px', minWidth: '250px', display: 'flex', flexDirection: 'column' }}>
+                                <GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- RECHTE SEITE (wird zu camera-column) --- */}
+                    <div className="camera-column">
+                        {/* CAMERA CONTROLS */}
+                        <div className="camera-controls">
+                            <select
+                                value={selectedDeviceId}
+                                onChange={e => {
+                                    setSelectedDeviceId(e.target.value);
+                                    if(isCameraEnabled) startCamera(e.target.value);
+                                }}
+                            >
+                                {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || "Kamera"}</option>)}
+                            </select>
+                            <button
+                                onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)}
+                            >
+                                {isCameraEnabled ? "📹 Stop" : "📹 Start"}
+                            </button>
+                        </div>
+
+                        {/* VIDEOS */}
+                        <div className="video-container">
+                            {/* Lokales Video */}
+                            {isCameraEnabled && (
+                                <div className="video-player local">
+                                     <div className="video-label">DU</div>
+                                    <video ref={localVideoRef} autoPlay muted playsInline style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                </div>
                             )}
-                        </div>
-                    )}
 
-                    {/* Three Column Game Area - Side by side */}
-                    <div style={{
-                        flex: 1,
-                        display: 'flex',
-                        gap: '15px',
-                        padding: '15px',
-                        backgroundColor: '#111'
-                    }}>
-                        {/* Column 1: Cricket Input Panel */}
-                        <div style={{ flex: '0 0 300px' }}>
-                            <CricketInputPanel
-                                onScoreInput={handleScoreInput}
-                                isActive={isMyTurn && canInput}
-                                isLocked={!isMyTurn || numpadState.isLocked}
-                                canUseUndo={numpadState.canUndo}
-                                onUndo={handleUndo}
-                            />
-                        </div>
-
-                        {/* Column 2: Cricket Board */}
-                        <div style={{ flex: 1 }}>
-                            <CricketBoard gameState={gameState} user={user} />
-                        </div>
-
-                        {/* Column 3: Chat */}
-                        <div style={{ flex: '0 0 300px' }}>
-                            <GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} />
+                            {/* Remote Video (Gegner) */}
+                            {hasOpponent ? (
+                                <div className="video-player remote">
+                                    <RemoteVideoPlayer
+                                        stream={remoteStreams[opponents[0].id]}
+                                        name={opponents[0].name}
+                                        playerId={opponents[0].id}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', flexDirection: 'column', background: '#000', flex: 1}}>
+                                    <div style={{fontSize: '2em', marginBottom: '10px'}}>📷</div>
+                                    <div>Warte auf Gegner Video...</div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Right Side - Player 2 Webcam Only (25% width, full height) */}
-                <div style={{
-                    flex: '0 0 25%',
-                    backgroundColor: '#000',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative'
-                }}>
-                    {/* Remote Player Video - Full area, no controls */}
-                    {gameState.players.filter(p => p.id !== user.id).map(p => (
-                        <div key={p.id} style={{
-                            width: '100%',
-                            height: '100%',
-                            position: 'relative'
-                        }}>
-                            <div style={{
-                                position: 'absolute',
-                                top: '10px',
-                                left: '10px',
-                                background: 'rgba(0,0,0,0.7)',
-                                color: 'white',
-                                padding: '5px 10px',
-                                borderRadius: '4px',
-                                fontSize: '14px',
-                                zIndex: '10',
-                                fontWeight: 'bold'
-                            }}>
-                                {p.name} Webcam
-                            </div>
-                            <RemoteVideoPlayer
-                                stream={remoteStreams[p.id]}
-                                name={p.name}
-                                playerId={p.id}
-                            />
-                        </div>
-                    ))}
-
-                    {/* No video available message */}
-                    {gameState.players.filter(p => p.id !== user.id).length === 0 && (
-                        <div style={{
-                            color: '#666',
-                            fontSize: '1.2em',
-                            textAlign: 'center',
-                            padding: '20px'
-                        }}>
-                            Warte auf Gegner...
-                        </div>
-                    )}
-                </div>
-
+                {/* Popups (müssen auch hier gerendert werden) */}
                 {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
                 {showBullOffModal && (
                     <BullOffModal
-                        isOpen={showBullOffModal}
-                        onClose={() => {
-                            setShowBullOffModal(false);
-                            setBullOffModalShown(false);
-                            setBullOffCompleted(true);
-                        }}
-                        players={gameState.players}
-                        onBullOffComplete={handleBullOffComplete}
-                        socket={socket}
-                        roomId={roomId}
-                        user={user}
+                        isOpen={showBullOffModal} onClose={() => setShowBullOffModal(false)}
+                        players={gameState.players} onBullOffComplete={handleBullOffComplete}
+                        socket={socket} roomId={roomId} user={user}
                     />
                 )}
-                <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
             </div>
         );
     }
+    // --- CRICKET LAYOUT END ---
 
     // X01 Layout (original three-column layout)
     return (
