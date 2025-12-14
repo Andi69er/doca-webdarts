@@ -570,29 +570,31 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
 
         setLocalGameStarted(true);
 
-        // Lock numpad for 5 seconds for undo
-        setNumpadState(prev => ({
-            ...prev,
-            isLocked: false,
-            canUndo: true,
-            lockedPlayerId: user.id
-        }));
-
-        if (numpadState.lockTimer) {
-            clearTimeout(numpadState.lockTimer);
-        }
-        
-        const lockTimer = setTimeout(() => {
+        // Lock numpad for 5 seconds for undo (only for X01, not Cricket)
+        if (gameState.mode !== 'cricket') {
             setNumpadState(prev => ({
                 ...prev,
-                isLocked: true,
-                canUndo: false,
-                lockedPlayerId: null,
-                lockTimer: null
+                isLocked: false,
+                canUndo: true,
+                lockedPlayerId: user.id
             }));
-        }, 5000); // 5 seconds
-        
-        setNumpadState(prev => ({ ...prev, lockTimer }));
+
+            if (numpadState.lockTimer) {
+                clearTimeout(numpadState.lockTimer);
+            }
+
+            const lockTimer = setTimeout(() => {
+                setNumpadState(prev => ({
+                    ...prev,
+                    isLocked: true,
+                    canUndo: false,
+                    lockedPlayerId: null,
+                    lockTimer: null
+                }));
+            }, 5000); // 5 seconds
+
+            setNumpadState(prev => ({ ...prev, lockTimer }));
+        }
         
         const payload = {
             roomId,
@@ -1342,6 +1344,7 @@ const isHost = gameState.hostId === user.id;
                                     isLocked={!isMyTurn || numpadState.isLocked}
                                     canUseUndo={numpadState.canUndo}
                                     onUndo={handleUndo}
+                                    dartsThrownInTurn={gameState.dartsThrownInTurn || 0}
                                 />
                             </div>
 

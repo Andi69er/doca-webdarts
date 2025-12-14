@@ -93,6 +93,7 @@ class CricketGame {
         this.history = [];
         this.winner = null;
         this.gameOptions = options;
+        this.maxDartsPerTurn = 3; // Cricket allows 3 darts per turn
     }
 
     initializePlayers(players, startPlayerIndex = 0) {
@@ -165,6 +166,9 @@ class CricketGame {
             marks: this.marks[playerId][number]
         });
 
+        // Increment darts thrown in this turn
+        this.dartsThrownInTurn++;
+
         // Check for winner - all numbers closed and higher or equal points
         const allNumbers = [15, 16, 17, 18, 19, 20, 25];
         const playerClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
@@ -185,8 +189,12 @@ class CricketGame {
             }
         }
 
-        this.nextTurn();
-        return { valid: true, winner: this.winner };
+        // Only switch turns after 3 darts in Cricket (unlike X01 which switches after 1)
+        if (this.dartsThrownInTurn >= this.maxDartsPerTurn) {
+            this.nextTurn();
+        }
+
+        return { valid: true, winner: this.winner, dartsThrownInTurn: this.dartsThrownInTurn };
     }
 
     nextTurn() {

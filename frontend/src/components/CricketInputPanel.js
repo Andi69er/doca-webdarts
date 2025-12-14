@@ -63,7 +63,7 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                 fontWeight: 'bold',
                 color: isActive && !isLocked ? 'black' : 'white'
             }}>
-                {isActive && !isLocked ? 'Du bist dran' : 'Warte...'}
+                {isActive && !isLocked ? `Du bist dran (${dartsThrownInTurn}/3)` : 'Warte...'}
             </div>
 
             {/* Grid for numbers 20-15 */}

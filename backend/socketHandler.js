@@ -284,10 +284,10 @@ function initializeSocket(io, gameManager, auth) {
                 let updateData;
 
                 if (room.gameMode === 'CricketGame') {
-                    // Cricket-specific player updates
+                    // Cricket-specific player updates - add 1 dart per throw (up to 3 per turn)
                     updatedPlayers = room.players.map((p, idx) => {
                         const isCurrentPlayer = idx === currentPlayerIndex;
-                        const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 3 : 0);
+                        const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? 1 : 0);
 
                         return {
                             ...p,
@@ -295,7 +295,8 @@ function initializeSocket(io, gameManager, auth) {
                             marks: room.game.marks[p.id] || {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
                             dartsThrown: newDartsThrown,
                             isActive: idx === room.game.currentPlayerIndex,
-                            legs: p.legs || 0
+                            legs: p.legs || 0,
+                            dartsThrownInTurn: room.game.dartsThrownInTurn || 0
                         };
                     });
 
@@ -306,7 +307,8 @@ function initializeSocket(io, gameManager, auth) {
                         currentPlayerIndex: room.game.currentPlayerIndex,
                         lastThrow: { playerId: userId, score },
                         hostId: room.hostId,
-                        gameState: room.game.getGameState()
+                        gameState: room.game.getGameState(),
+                        dartsThrownInTurn: room.game.dartsThrownInTurn || 0
                     };
                 } else {
                     // X01-specific player updates
