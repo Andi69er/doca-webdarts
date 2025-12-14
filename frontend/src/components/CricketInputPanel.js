@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUndo }) => {
+const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUndo, dartsThrownInTurn = 0 }) => {
     // This component no longer tracks the number of throws.
     // It sends each throw event immediately.
 
