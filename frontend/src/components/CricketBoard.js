@@ -9,122 +9,186 @@ const CricketBoard = ({ gameState, user }) => {
 
     const targets = [20, 19, 18, 17, 16, 15, 25]; // 25 is bullseye
 
-    const renderPlayerCricketCard = (player, label, isRightSide = false) => {
-        if (!player) {
-            return (
-                <div className="player-card empty">
-                    <h3>{label}</h3>
-                    <div className="waiting-text">Warte...</div>
-                </div>
-            );
-        }
-
-        const isActive = gameState && gameState.gameStatus === 'active' && gameState.players[gameState.currentPlayerIndex]?.id === player.id;
-
-        // --- Block: Sets & Legs (Graue Box) ---
-        const LegsBlock = (
-            <div className="legs-section-bild1" style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-around',
-                backgroundColor: '#333',
-                borderRadius: '6px',
-                padding: '5px 10px',
-                minWidth: '80px',
-                margin: '0 10px'
-            }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#aaa' }}>Legs</span>
-                    <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>{player.legs || 0}</span>
-                </div>
-            </div>
-        );
-
-        // --- Block: Points (Grüne Zahl) ---
-        const PointsBlock = (
-            <div className="player-score" style={{ fontSize: '4.5em', fontWeight: 'bold', color: '#4ade80', margin: '0 15px', lineHeight: 1 }}>
-                {player.points || 0}
-            </div>
-        );
-
-        // --- Block: Cricket Targets ---
-        const CricketTargetsBlock = (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 15px', width: '200px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px', marginBottom: '10px' }}>
-                    {targets.map(target => {
-                        const marks = player.marks?.[target] || 0;
-                        const isClosed = marks >= 3;
-                        return (
-                            <div key={target} style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                padding: '5px',
-                                backgroundColor: isClosed ? '#4ade80' : '#333',
-                                borderRadius: '4px',
-                                minHeight: '40px',
-                                justifyContent: 'center'
-                            }}>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'white' }}>{target === 25 ? 'BULL' : target}</span>
-                                <div style={{ display: 'flex', gap: '2px', marginTop: '2px' }}>
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} style={{
-                                            width: '6px',
-                                            height: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: i <= marks ? '#fff' : '#666'
-                                        }} />
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-
-        return (
-            <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{
-                border: isActive ? '2px solid yellow' : '1px solid #333',
-                backgroundColor: '#1f2937',
-                padding: '10px',
-                borderRadius: '8px',
-                position: 'relative',
-                color: 'white'
-            }}>
-                <div style={{ position: 'absolute', top: '10px', left: '10px', width: '12px', height: '12px', backgroundColor: 'red', borderRadius: '50%', boxShadow: '0 0 5px red' }}></div>
-
-                <h3 style={{ textAlign: 'center', marginBottom: '15px', fontSize: '1.2em' }}>
-                    {player.name} {user && user.id === player.id ? '(Du)' : ''}
-                </h3>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isRightSide ? (
-                        <>{CricketTargetsBlock}{PointsBlock}{LegsBlock}</>
-                    ) : (
-                        <>{LegsBlock}{PointsBlock}{CricketTargetsBlock}</>
-                    )}
-                </div>
-            </div>
-        );
+    const getMarkSymbol = (marks) => {
+        if (marks === 0) return '';
+        if (marks === 1) return '/';
+        if (marks === 2) return 'X';
+        if (marks >= 3) return '⊗';
+        return '';
     };
 
-    return (
-        <div className="player-scores-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
-            <div className="player-score-section" style={{ flex: 1 }}>
-                {renderPlayerCricketCard(player1, "Player 1", false)}
-            </div>
+    const isClosed = (marks) => marks >= 3;
 
-            <div className="player-history-section" style={{ flex: 1 }}>
-                <div className="history-wrapper" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <h2 style={{ color: 'white', fontSize: '2em' }}>CRICKET</h2>
+    return (
+        <div className="cricket-board" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%',
+            maxWidth: '800px',
+            margin: '0 auto',
+            backgroundColor: '#1a1a1a',
+            borderRadius: '10px',
+            padding: '20px',
+            color: 'white'
+        }}>
+            <h2 style={{ marginBottom: '20px', fontSize: '2em', textAlign: 'center' }}>CRICKET</h2>
+
+            {/* Scoreboard Table */}
+            <div className="cricket-table" style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 120px 1fr',
+                gap: '10px',
+                width: '100%',
+                fontSize: '1.2em'
+            }}>
+                {/* Header Row */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px',
+                    backgroundColor: '#333',
+                    borderRadius: '5px',
+                    fontWeight: 'bold'
+                }}>
+                    {player1?.name || 'Player 1'}
+                    {user && user.id === player1?.id ? ' (Du)' : ''}
+                </div>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px',
+                    backgroundColor: '#333',
+                    borderRadius: '5px',
+                    fontWeight: 'bold'
+                }}>
+                    Target
+                </div>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px',
+                    backgroundColor: '#333',
+                    borderRadius: '5px',
+                    fontWeight: 'bold'
+                }}>
+                    {player2?.name || 'Player 2'}
+                    {user && user.id === player2?.id ? ' (Du)' : ''}
+                </div>
+
+                {/* Target Rows */}
+                {targets.map(target => {
+                    const p1Marks = player1?.marks?.[target] || 0;
+                    const p2Marks = player2?.marks?.[target] || 0;
+                    const targetClosed = isClosed(p1Marks) && isClosed(p2Marks);
+
+                    return (
+                        <React.Fragment key={target}>
+                            {/* Player 1 Marks */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '15px 10px',
+                                backgroundColor: targetClosed ? '#555' : (isClosed(p1Marks) ? '#4ade80' : '#333'),
+                                borderRadius: '5px',
+                                fontSize: '1.5em',
+                                fontWeight: 'bold',
+                                minHeight: '50px'
+                            }}>
+                                {getMarkSymbol(p1Marks)}
+                            </div>
+
+                            {/* Target Number */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '15px 10px',
+                                backgroundColor: '#444',
+                                borderRadius: '5px',
+                                fontSize: '1.5em',
+                                fontWeight: 'bold',
+                                minHeight: '50px'
+                            }}>
+                                {target === 25 ? 'BULL' : target}
+                            </div>
+
+                            {/* Player 2 Marks */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '15px 10px',
+                                backgroundColor: targetClosed ? '#555' : (isClosed(p2Marks) ? '#4ade80' : '#333'),
+                                borderRadius: '5px',
+                                fontSize: '1.5em',
+                                fontWeight: 'bold',
+                                minHeight: '50px'
+                            }}>
+                                {getMarkSymbol(p2Marks)}
+                            </div>
+                        </React.Fragment>
+                    );
+                })}
+
+                {/* Total Score Row */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '15px 10px',
+                    backgroundColor: '#333',
+                    borderRadius: '5px',
+                    fontSize: '1.8em',
+                    fontWeight: 'bold',
+                    color: '#4ade80'
+                }}>
+                    {player1?.points || 0}
+                </div>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '15px 10px',
+                    backgroundColor: '#444',
+                    borderRadius: '5px',
+                    fontSize: '1.2em',
+                    fontWeight: 'bold'
+                }}>
+                    TOTAL
+                </div>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '15px 10px',
+                    backgroundColor: '#333',
+                    borderRadius: '5px',
+                    fontSize: '1.8em',
+                    fontWeight: 'bold',
+                    color: '#4ade80'
+                }}>
+                    {player2?.points || 0}
                 </div>
             </div>
 
-            <div className="player-score-section" style={{ flex: 1 }}>
-                {renderPlayerCricketCard(player2, "Player 2", true)}
-            </div>
+            {/* Active Player Indicator */}
+            {gameState.gameStatus === 'active' && (
+                <div style={{
+                    marginTop: '20px',
+                    padding: '10px 20px',
+                    backgroundColor: '#4ade80',
+                    borderRadius: '5px',
+                    fontSize: '1.2em',
+                    fontWeight: 'bold'
+                }}>
+                    {gameState.players[gameState.currentPlayerIndex]?.name} ist dran
+                </div>
+            )}
         </div>
     );
 };

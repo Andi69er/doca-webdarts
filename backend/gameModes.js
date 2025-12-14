@@ -114,9 +114,28 @@ class CricketGame {
             return { valid: false, reason: 'Not your turn' };
         }
 
-        // Cricket scoring logic - score should be an object with number and multiplier
-        const number = score.number || score;
-        const multiplier = score.multiplier || 1;
+        // Cricket scoring logic - parse score number into number and multiplier
+        let number, multiplier;
+
+        if (typeof score === 'object') {
+            number = score.number;
+            multiplier = score.multiplier;
+        } else {
+            // Parse number score (e.g., 20 = single 20, 40 = double 20, 60 = triple 20)
+            const scoreNum = parseInt(score);
+            if (scoreNum <= 20 || scoreNum === 25) {
+                number = scoreNum;
+                multiplier = 1;
+            } else if (scoreNum <= 40) {
+                number = scoreNum / 2;
+                multiplier = 2;
+            } else if (scoreNum <= 60) {
+                number = scoreNum / 3;
+                multiplier = 3;
+            } else {
+                return { valid: false, reason: 'Invalid score for Cricket' };
+            }
+        }
 
         if (!this.marks[playerId][number]) {
             this.marks[playerId][number] = 0;

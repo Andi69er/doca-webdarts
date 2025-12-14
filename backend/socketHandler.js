@@ -198,7 +198,7 @@ function initializeSocket(io, gameManager, auth) {
             room.gameStarted = true;
 
 // 4. GameState für Frontend bauen
-            if (room.gameMode === 'cricket') {
+            if (room.gameMode === 'CricketGame') {
                 room.gameState = {
                     mode: 'cricket',
                     players: room.players.map((p, index) => ({
@@ -297,7 +297,8 @@ function initializeSocket(io, gameManager, auth) {
                         gameStatus: 'active',
                         currentPlayerIndex: room.game.currentPlayerIndex,
                         lastThrow: { playerId: userId, score },
-                        hostId: room.hostId
+                        hostId: room.hostId,
+                        gameState: room.game.getGameState()
                     };
                 } else {
                     // X01-specific player updates
