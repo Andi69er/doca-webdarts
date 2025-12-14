@@ -1,15 +1,23 @@
 class X01Game {
     constructor(options = {}) {
       this.startingScore = options.startingScore || 501;
-      this.outMode = options.outMode || 'double'; // 'single', 'double'
       this.inMode = options.inMode || 'single';
       this.outMode = options.outMode || 'double';
+      this.legsToWin = options.legs || 1;
+      this.setsToWin = options.sets || 1;
+
       this.players = [];
       this.scores = {};
       this.currentPlayerIndex = 0;
       this.dartsThrownInTurn = 0;
       this.history = []; // Unified history log
       this.winner = null;
+      this.legWinner = null;
+      this.gameWinner = null;
+
+      this.legsWon = {};
+      this.setsWon = {};
+
       this.checkoutDarts = null;
     }
   
@@ -17,6 +25,8 @@ class X01Game {
         this.players = playerIds; // Store player IDs
         this.players.forEach(playerId => {
             this.scores[playerId] = this.startingScore;
+            this.legsWon[playerId] = 0;
+            this.setsWon[playerId] = 0;
         });
         this.currentPlayerIndex = startPlayerIndex; // Start with the specified player
     }
@@ -56,9 +66,21 @@ class X01Game {
     
         // Prüfe auf Gewinner
         if (newScoreAfterThrow === 0) {
-            this.winner = playerId;
-            console.log(`[X01Game] GEWINNER: ${playerId}!`);
-            return { valid: true, bust: false, winner: this.winner };
+            this.legWinner = playerId;
+            this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
+            console.log(`[X01Game] LEG GEWONNEN: ${playerId}!`);
+
+            // Prüfen, ob das ganze Spiel gewonnen wurde
+            if (this.legsWon[playerId] >= this.legsToWin) {
+                this.gameWinner = playerId;
+                this.winner = playerId; // Setze den finalen Gewinner
+                console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
+                return { valid: true, bust: false, winner: this.gameWinner, legWinner: this.legWinner };
+            }
+
+            // Nächstes Leg vorbereiten
+            this.startNextLeg();
+            return { valid: true, bust: false, winner: null, legWinner: this.legWinner };
         }
     
         // Nach jeder Eingabe (Turn) zum nächsten Spieler wechseln
@@ -66,6 +88,23 @@ class X01Game {
         console.log(`[X01Game] Zug beendet, nächster Spieler Index: ${this.currentPlayerIndex}`);
     
         return { valid: true, bust: false, winner: null };
+    }
+
+    startNextLeg() {
+        console.log("[X01Game] Starte nächstes Leg...");
+        // Scores für alle Spieler zurücksetzen
+        this.players.forEach(playerId => {
+            this.scores[playerId] = this.startingScore;
+        });
+
+        // Den Startspieler für das nächste Leg wechseln (Verlierer beginnt)
+        const legLoserIndex = this.players.findIndex(p => p !== this.legWinner);
+        if (legLoserIndex !== -1) {
+            this.currentPlayerIndex = legLoserIndex;
+        }
+
+        this.legWinner = null;
+        this.history.push({ type: 'new_leg' });
     }
   
     nextTurn() {
@@ -78,6 +117,8 @@ class X01Game {
             scores: this.scores,
             currentPlayerIndex: this.currentPlayerIndex,
             winner: this.winner,
+            legsWon: this.legsWon,
+            setsWon: this.setsWon,
             history: this.history,
             checkoutDarts: this.checkoutDarts,
         };
@@ -91,12 +132,18 @@ class X01Game {
 class CricketGame {
     constructor(options = {}) {
         this.players = [];
+        this.legsToWin = options.legs || 1;
+        this.setsToWin = options.sets || 1;
+
         this.scores = {}; // Points for each player
         this.marks = {}; // Marks for each number (15,16,17,18,19,20,25)
         this.currentPlayerIndex = 0;
         this.dartsThrownInTurn = 0;
         this.history = [];
         this.winner = null;
+        this.legWinner = null;
+        this.legsWon = {};
+        this.setsWon = {};
         this.gameOptions = options;
         this.maxDartsPerTurn = 3; // Cricket allows 3 darts per turn
     }
@@ -105,6 +152,8 @@ class CricketGame {
         this.players = playerIds;
         this.players.forEach(playerId => {
             this.scores[playerId] = 0;
+            this.legsWon[playerId] = 0;
+            this.setsWon[playerId] = 0;
             this.marks[playerId] = {
                 15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0
             };
@@ -192,8 +241,18 @@ class CricketGame {
         if (playerHasClosedAll) {
             const highestScore = Math.max(...this.players.map(p => this.scores[p]));
             if (this.scores[playerId] >= highestScore) {
-                 // Gewonnen, wenn alle Felder zu sind und man die meisten (oder gleich viele) Punkte hat.
-                 this.winner = playerId;
+                // Leg gewonnen
+                this.legWinner = playerId;
+                this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
+                console.log(`[CricketGame] LEG GEWONNEN: ${playerId}!`);
+
+                if (this.legsWon[playerId] >= this.legsToWin) {
+                    this.winner = playerId;
+                    console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId}!`);
+                } else {
+                    // Nächstes Leg vorbereiten
+                    this.startNextLeg();
+                }
             }
         }
 
@@ -202,7 +261,27 @@ class CricketGame {
             this.nextTurn();
         }
 
-        return { valid: true, winner: this.winner, dartsThrownInTurn: this.dartsThrownInTurn };
+        return { valid: true, winner: this.winner, legWinner: this.legWinner, dartsThrownInTurn: this.dartsThrownInTurn };
+    }
+
+    startNextLeg() {
+        console.log("[CricketGame] Starte nächstes Leg...");
+        // Scores und Marks für alle Spieler zurücksetzen
+        this.players.forEach(playerId => {
+            this.scores[playerId] = 0;
+            this.marks[playerId] = {
+                15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0
+            };
+        });
+
+        // Den Startspieler für das nächste Leg wechseln (Verlierer beginnt)
+        const legLoserIndex = this.players.findIndex(p => p !== this.legWinner);
+        if (legLoserIndex !== -1) {
+            this.currentPlayerIndex = legLoserIndex;
+        }
+
+        this.legWinner = null;
+        this.history.push({ type: 'new_leg' });
     }
 
     nextTurn() {
@@ -215,6 +294,8 @@ class CricketGame {
             scores: this.scores,
             marks: this.marks,
             currentPlayerIndex: this.currentPlayerIndex, // This was already correct, ensuring consistency
+            legsWon: this.legsWon,
+            setsWon: this.setsWon,
             winner: this.winner,
             history: this.history
         };
