@@ -256,29 +256,7 @@ const Lobby = memo(() => {
                                 )}
                             </div>
 
-                            <div className="form-row">
-                                <label>Sets:</label>
-                                <input
-                                    type="number"
-                                    className="lobby-input"
-                                    value={sets}
-                                    onChange={(e) => setSets(e.target.value)}
-                                    min="0"
-                                    placeholder="Anzahl Sets"
-                                />
-                            </div>
 
-                            <div className="form-row">
-                                <label>Legs:</label>
-                                <input
-                                    type="number"
-                                    className="lobby-input"
-                                    value={legs}
-                                    onChange={(e) => setLegs(e.target.value)}
-                                    min="1"
-                                    placeholder="Anzahl Legs"
-                                />
-                            </div>
 
                             <div className="form-row">
                                 <label>Modus Start:</label>
