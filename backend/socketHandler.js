@@ -414,7 +414,18 @@ function initializeSocket(io, gameManager, auth) {
         socket.on('getGameState', (roomId) => {
             const room = rooms.find(r => r.id === roomId);
             if(room) {
-                socket.emit('gameState', room); 
+                // Return the gameState if it exists, otherwise return room info
+                if (room.gameState) {
+                    socket.emit('gameState', room.gameState);
+                } else {
+                    socket.emit('gameState', {
+                        mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
+                        players: room.players,
+                        gameStatus: 'waiting',
+                        hostId: room.hostId,
+                        whoStarts: room.whoStarts
+                    });
+                }
             }
         });
 
@@ -454,7 +465,7 @@ function initializeSocket(io, gameManager, auth) {
 
             // Send a waiting state gameState instead of the room object
             const waitingState = {
-                mode: room.gameMode, // Preserve the game mode
+                mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01', // Preserve the game mode
                 players: room.players,
                 gameStatus: 'waiting',
                 hostId: room.hostId,
