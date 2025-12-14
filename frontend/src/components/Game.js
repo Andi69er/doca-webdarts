@@ -10,6 +10,7 @@ import LiveStatistics from "./LiveStatistics";
 import PlayerScores from "./PlayerScores";
 import CricketBoard from "./CricketBoard";
 import CricketHeader from "./CricketHeader";
+import CricketInputPanel from "./CricketInputPanel";
 
 // --- AUDIO HELPERS ---
 const playAlarmSound = () => {
@@ -1294,25 +1295,268 @@ const isHost = gameState.hostId === user.id;
         }
     };
 
-    return (
- <div className="game-container">
+    // Cricket-specific layout (split screen)
+    if (gameState.mode === 'cricket') {
+        return (
+            <div className="game-container" style={{ height: '100vh', display: 'flex' }}>
+                {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
 
-             {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
+                {/* Left Side - Cricket Dashboard (75% width) */}
+                <div style={{ flex: '0 0 75%', display: 'flex', flexDirection: 'column' }}>
+                    {/* Cricket Header */}
+                    <CricketHeader gameState={gameState} user={user} />
 
-             {/* Cricket Header - shown above main layout when in cricket mode */}
-             {gameState.mode === 'cricket' && <CricketHeader gameState={gameState} user={user} />}
+                    {/* Game Status Bar */}
+                    {isGameRunning ? (
+                        <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`} style={{
+                            padding: '8px 15px',
+                            textAlign: 'center',
+                            fontSize: '1.1em',
+                            fontWeight: 'bold'
+                        }}>
+                            <div className="status-text">{isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}</div>
+                        </div>
+                    ) : null}
 
-             <div className="game-layout">
-                <div className="game-main-area">
-                    {gameState.mode === 'cricket' ? null : (
-                        <PlayerScores gameState={gameState} user={user} />
+                    {/* Ready Box */}
+                    {(!isGameRunning && !isGameFinished) && (
+                        <div className="ready-box" style={{
+                            padding: '20px',
+                            textAlign: 'center',
+                            backgroundColor: '#1a1a1a',
+                            margin: '10px',
+                            borderRadius: '10px'
+                        }}>
+                            <div className="ready-status" style={{ marginBottom: '15px', fontSize: '1.2em' }}>
+                                {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
+                            </div>
+                            {isHost ? (
+                                <button className="start-game-button" onClick={handleStartGame} style={{
+                                    padding: '12px 24px',
+                                    fontSize: '1.1em',
+                                    backgroundColor: '#4ade80',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}>
+                                    SPIEL STARTEN 🎯
+                                </button>
+                            ) : (
+                                <div className="waiting-message" style={{ color: '#ccc' }}>Warte auf Host...</div>
+                            )}
+                        </div>
                     )}
+
+                    {/* Three Column Game Area */}
+                    <div style={{
+                        flex: 1,
+                        display: 'grid',
+                        gridTemplateColumns: '300px 1fr 300px',
+                        gap: '15px',
+                        padding: '15px',
+                        backgroundColor: '#111'
+                    }}>
+                        {/* Column 1: Cricket Input Panel */}
+                        <div>
+                            <CricketInputPanel
+                                onScoreInput={handleScoreInput}
+                                isActive={isMyTurn && canInput}
+                                isLocked={!isMyTurn || numpadState.isLocked}
+                                canUseUndo={numpadState.canUndo}
+                                onUndo={handleUndo}
+                            />
+                        </div>
+
+                        {/* Column 2: Cricket Board */}
+                        <div>
+                            <CricketBoard gameState={gameState} user={user} />
+                        </div>
+
+                        {/* Column 3: Chat */}
+                        <div>
+                            <GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Side - Video Feed (25% width, full height) */}
+                <div style={{
+                    flex: '0 0 25%',
+                    backgroundColor: '#000',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderLeft: '2px solid #333'
+                }}>
+                    {/* Camera Controls */}
+                    <div className="camera-controls" style={{
+                        padding: '10px',
+                        backgroundColor: '#1a1a1a',
+                        borderBottom: '1px solid #333'
+                    }}>
+                        <select value={selectedDeviceId} onChange={e => {
+                            setSelectedDeviceId(e.target.value);
+                            if(isCameraEnabled) startCamera(e.target.value);
+                        }} style={{
+                            width: '100%',
+                            marginBottom: '8px',
+                            padding: '5px',
+                            backgroundColor: '#333',
+                            color: 'white',
+                            border: '1px solid #555',
+                            borderRadius: '4px'
+                        }}>
+                            {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || "Kamera"}</option>)}
+                        </select>
+                        <button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)} style={{
+                            width: '100%',
+                            marginBottom: '8px',
+                            padding: '8px',
+                            backgroundColor: isCameraEnabled ? '#ff6b6b' : '#4ade80',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}>
+                            {isCameraEnabled ? "📹 Stop" : "📹 Start"}
+                        </button>
+                        <button
+                            onClick={() => autoConnectToOpponents()}
+                            style={{
+                                width: '100%',
+                                padding: '6px',
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            🔌 Verbinden
+                        </button>
+                        <div style={{
+                            marginTop: '8px',
+                            fontSize: '11px',
+                            color: '#ccc',
+                            textAlign: 'center'
+                        }}>
+                            {isCameraEnabled ? "Automatisch verbunden" : "Kamera starten für Video"}
+                        </div>
+                    </div>
+
+                    {/* Video Container - Full height */}
+                    <div className="video-container" style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        padding: '10px',
+                        overflowY: 'auto'
+                    }}>
+                        {/* Local Player Video */}
+                        <div className="video-player local" style={{
+                            flex: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '1' : 'auto',
+                            height: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '100%' : '200px',
+                            border: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '3px solid #4CAF50' : '1px solid #555',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            position: 'relative'
+                        }}>
+                            <div className="video-label" style={{
+                                position: 'absolute',
+                                top: '8px',
+                                left: '8px',
+                                background: 'rgba(0,0,0,0.7)',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                zIndex: '10'
+                            }}>
+                                Du {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? ' (DU BIST DRAN)' : ''}
+                            </div>
+                            <video
+                                ref={localVideoRef}
+                                autoPlay
+                                muted
+                                playsInline
+                                webkit-playsinline="true"
+                                x-webkit-airplay="allow"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    backgroundColor: '#000'
+                                }}
+                            />
+                        </div>
+
+                        {/* Remote Players Video */}
+                        {gameState.players.filter(p => p.id !== user.id).map(p => (
+                            <div key={p.id} className="video-player remote" style={{
+                                flex: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '1' : 'auto',
+                                height: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '100%' : '200px',
+                                border: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '3px solid #4CAF50' : '1px solid #555',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                position: 'relative'
+                            }}>
+                                <div className="video-label" style={{
+                                    position: 'absolute',
+                                    top: '8px',
+                                    left: '8px',
+                                    background: 'rgba(0,0,0,0.7)',
+                                    color: 'white',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    zIndex: '10'
+                                }}>
+                                    {p.name} {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? ' (IST DRAN)' : ''}
+                                </div>
+                                <RemoteVideoPlayer stream={remoteStreams[p.id]} name={p.name} playerId={p.id} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
+                {showBullOffModal && (
+                    <BullOffModal
+                        isOpen={showBullOffModal}
+                        onClose={() => {
+                            setShowBullOffModal(false);
+                            setBullOffModalShown(false);
+                            setBullOffCompleted(true);
+                        }}
+                        players={gameState.players}
+                        onBullOffComplete={handleBullOffComplete}
+                        socket={socket}
+                        roomId={roomId}
+                        user={user}
+                    />
+                )}
+                <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }`}</style>
+            </div>
+        );
+    }
+
+    // X01 Layout (original three-column layout)
+    return (
+        <div className="game-container">
+            {!gameState.players.some(p => p.id === user.id) && <div className="spectator-banner">Zuschauer</div>}
+
+            <div className="game-layout">
+                <div className="game-main-area">
+                    <PlayerScores gameState={gameState} user={user} />
                     {isGameRunning ? (
                         <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`}>
                             <div className="status-text">{isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}</div>
                         </div>
                     ) : null}
-                    
+
                     {/* Show ready box only if game is not running AND not finished */}
                     {(!isGameRunning && !isGameFinished) && (
                         <div className="ready-box">
@@ -1320,12 +1564,9 @@ const isHost = gameState.hostId === user.id;
                                 {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
                             </div>
                             {isHost ? (
-                                <>
-
-                                    <button className="start-game-button" onClick={handleStartGame}>
-                                        SPIEL STARTEN 🎯
-                                    </button>
-                                </>
+                                <button className="start-game-button" onClick={handleStartGame}>
+                                    SPIEL STARTEN 🎯
+                                </button>
                             ) : (
                                 <div className="waiting-message">Warte auf Host...</div>
                             )}
@@ -1343,49 +1584,45 @@ const isHost = gameState.hostId === user.id;
                                                 <div className="countdown-text">{countdown}s</div>
                                             </div>
                                         )}
-<NumberPad
-                                              onScoreInput={handleScoreInput}
-                                              onUndo={handleUndo}
-                                              checkoutSuggestions={gameState.checkoutSuggestions}
-                                              isActive={isMyTurn && canInput}
-                                              isLocked={!isMyTurn || numpadState.isLocked}
-                                              isOpponentLocked={!isMyTurn}
-                                              isMyTurn={isMyTurn}
-                                              canUseUndo={numpadState.canUndo}
-                                          />
+                                        <NumberPad
+                                            onScoreInput={handleScoreInput}
+                                            onUndo={handleUndo}
+                                            checkoutSuggestions={gameState.checkoutSuggestions}
+                                            isActive={isMyTurn && canInput}
+                                            isLocked={!isMyTurn || numpadState.isLocked}
+                                            isOpponentLocked={!isMyTurn}
+                                            isMyTurn={isMyTurn}
+                                            canUseUndo={numpadState.canUndo}
+                                        />
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="game-column-center">
-                            {gameState.mode === 'cricket' ? (
-                                <CricketBoard gameState={gameState} user={user} />
-                            ) : (
-                                <div className="statistics-section"><LiveStatistics gameState={gameState} /></div>
-                            )}
+                            <div className="statistics-section"><LiveStatistics gameState={gameState} /></div>
                         </div>
                         <div className="game-column-right"><div className="game-chat-container"><GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} /></div></div>
                     </div>
                 </div>
                 <div className="camera-column">
                     <div className="camera-controls">
-                        <select value={selectedDeviceId} onChange={e => { 
-                            setSelectedDeviceId(e.target.value); 
-                            if(isCameraEnabled) startCamera(e.target.value); 
+                        <select value={selectedDeviceId} onChange={e => {
+                            setSelectedDeviceId(e.target.value);
+                            if(isCameraEnabled) startCamera(e.target.value);
                         }}>
                             {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || "Kamera"}</option>)}
                         </select>
-<button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)}>
+                        <button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)}>
                             {isCameraEnabled ? "📹 Stop" : "📹 Start"}
                         </button>
-                        <button 
-                            onClick={() => autoConnectToOpponents()} 
-                            style={{ 
-                                marginLeft: '10px', 
-                                padding: '5px 10px', 
-                                backgroundColor: '#4CAF50', 
-                                color: 'white', 
-                                border: 'none', 
+                        <button
+                            onClick={() => autoConnectToOpponents()}
+                            style={{
+                                marginLeft: '10px',
+                                padding: '5px 10px',
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
                                 borderRadius: '4px',
                                 fontSize: '12px'
                             }}
@@ -1396,9 +1633,9 @@ const isHost = gameState.hostId === user.id;
                             {isCameraEnabled ? "Automatisch verbunden" : "Kamera starten für Video"}
                         </span>
                     </div>
-{/* Video Container mit korrekter Logik */}
-                    <div className="video-container" style={{ 
-                        display: 'flex', 
+                    {/* Video Container mit korrekter Logik */}
+                    <div className="video-container" style={{
+                        display: 'flex',
                         flexDirection: videoLayout.mode === 'splitscreen' ? 'column' : 'column',
                         height: '100%',
                         gap: '10px'
@@ -1426,22 +1663,22 @@ const isHost = gameState.hostId === user.id;
                             }}>
                                 Du {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? ' (DU BIST DRAN)' : ''}
                             </div>
-                            <video 
-                                ref={localVideoRef} 
-                                autoPlay 
-                                muted 
-                                playsInline 
+                            <video
+                                ref={localVideoRef}
+                                autoPlay
+                                muted
+                                playsInline
                                 webkit-playsinline="true"
                                 x-webkit-airplay="allow"
                                 style={{
-                                    width:'100%', 
-                                    height:'100%', 
+                                    width:'100%',
+                                    height:'100%',
                                     objectFit: 'cover',
                                     backgroundColor: '#000'
-                                }} 
+                                }}
                             />
                         </div>
-                        
+
                         {/* Remote Spieler */}
                         {gameState.players.filter(p => p.id !== user.id).map(p => (
                             <div key={p.id} className="video-player remote" style={{
@@ -1479,7 +1716,7 @@ const isHost = gameState.hostId === user.id;
                     onClose={() => {
                         setShowBullOffModal(false);
                         setBullOffModalShown(false);
-                        setBullOffCompleted(true); // Markiere als abgeschlossen, auch bei Abbrechen
+                        setBullOffCompleted(true);
                     }}
                     players={gameState.players}
                     onBullOffComplete={handleBullOffComplete}

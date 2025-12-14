@@ -23,12 +23,11 @@ const CricketBoard = ({ gameState, user }) => {
         <div className="cricket-board" style={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
             width: '100%',
             height: '100%',
             backgroundColor: '#1a1a1a',
             borderRadius: '10px',
-            padding: '20px',
+            padding: '15px',
             color: 'white'
         }}>
             {/* Cricket Targets Grid */}

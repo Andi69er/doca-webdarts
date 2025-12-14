@@ -13,11 +13,10 @@ const CricketHeader = ({ gameState, user }) => {
             justifyContent: 'space-between',
             alignItems: 'center',
             width: '100%',
-            padding: '20px',
+            padding: '15px 20px',
             backgroundColor: '#1a1a1a',
-            borderRadius: '10px',
-            marginBottom: '20px',
-            color: 'white'
+            color: 'white',
+            borderBottom: '2px solid #333'
         }}>
             {/* Player 1 Section */}
             <div className="player-section" style={{
