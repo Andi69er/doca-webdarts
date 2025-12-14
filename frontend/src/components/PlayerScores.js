@@ -47,15 +47,16 @@ const getCheckoutText = (score) => {
 };
 
 const PlayerScores = ({ gameState, user, startingPlayerId }) => {
+    const { socket } = useSocket();
+
+    const [editingPlayerId, setEditingPlayerId] = useState(null);
+    const [editingName, setEditingName] = useState('');
+
     if (!gameState || !gameState.players) return null;
 
     const players = gameState.players;
     const player1 = players[0];
     const player2 = players[1];
-    const { socket } = useSocket();
-
-    const [editingPlayerId, setEditingPlayerId] = useState(null);
-    const [editingName, setEditingName] = useState('');
 
     const handleNameChange = (playerId) => {
         if (editingName.trim().length >= 3 && editingName.trim().length <= 15) {
