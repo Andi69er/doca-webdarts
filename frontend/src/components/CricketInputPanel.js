@@ -81,7 +81,7 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
             color: 'white'
         }}>
             <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1em', textAlign: 'center' }}>
-                DEINE WÜRFE
+                EINGABE
             </h3>
 
             {/* Current throws indicator */}
@@ -106,14 +106,23 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                 )}
             </div>
 
-            {/* Target buttons grid */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Target buttons grid - horizontal layout per target */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {targets.map(target => (
                     <div key={target} style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr 1fr',
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: '4px'
                     }}>
+                        <span style={{
+                            minWidth: '35px',
+                            textAlign: 'right',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            color: '#ccc'
+                        }}>
+                            {target}
+                        </span>
                         {multipliers.map(multiplier => {
                             const isAvailable = multiplier.value === 1 || (target !== 25 && target !== 50);
                             const buttonText = multiplier.label ? `${multiplier.label}${target}` : `${target}`;
@@ -121,11 +130,16 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
                             return (
                                 <button
                                     key={`${target}-${multiplier.value}`}
-                                    style={getButtonStyle(isAvailable)}
+                                    style={{
+                                        ...getButtonStyle(isAvailable),
+                                        flex: 1,
+                                        fontSize: '13px',
+                                        padding: '6px 8px'
+                                    }}
                                     onClick={() => handleThrowClick(target, multiplier.value)}
                                     disabled={!isAvailable || !isActive || isLocked}
                                 >
-                                    {buttonText}
+                                    {multiplier.label || 'Single'}
                                 </button>
                             );
                         })}
@@ -134,27 +148,41 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
 
                 {/* Special buttons */}
                 <div style={{
-                    marginTop: '15px',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
+                    marginTop: '10px',
+                    display: 'flex',
                     gap: '4px'
                 }}>
                     <button
-                        style={getButtonStyle(true)}
+                        style={{
+                            ...getButtonStyle(true),
+                            flex: 1,
+                            fontSize: '13px',
+                            padding: '8px'
+                        }}
                         onClick={() => handleSpecialClick(25)}
                         disabled={!isActive || isLocked}
                     >
                         BULL
                     </button>
                     <button
-                        style={getButtonStyle(true)}
+                        style={{
+                            ...getButtonStyle(true),
+                            flex: 1,
+                            fontSize: '13px',
+                            padding: '8px'
+                        }}
                         onClick={() => handleSpecialClick(50)}
                         disabled={!isActive || isLocked}
                     >
                         BULLSEYE
                     </button>
                     <button
-                        style={getButtonStyle(true)}
+                        style={{
+                            ...getButtonStyle(true),
+                            flex: 1,
+                            fontSize: '13px',
+                            padding: '8px'
+                        }}
                         onClick={() => handleSpecialClick(0)}
                         disabled={!isActive || isLocked}
                     >

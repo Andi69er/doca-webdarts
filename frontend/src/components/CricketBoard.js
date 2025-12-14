@@ -27,9 +27,17 @@ const CricketBoard = ({ gameState, user }) => {
             height: '100%',
             backgroundColor: '#1a1a1a',
             borderRadius: '10px',
-            padding: '15px',
+            padding: '20px',
             color: 'white'
         }}>
+            <h3 style={{
+                margin: '0 0 20px 0',
+                textAlign: 'center',
+                fontSize: '1.4em',
+                fontWeight: 'bold'
+            }}>
+                SCOREBOARD
+            </h3>
             {/* Cricket Targets Grid */}
             <div className="cricket-table" style={{
                 display: 'grid',

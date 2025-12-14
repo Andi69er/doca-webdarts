@@ -1295,7 +1295,7 @@ const isHost = gameState.hostId === user.id;
         }
     };
 
-    // Cricket-specific layout (split screen)
+    // Cricket-specific layout (strict 2-column split screen)
     if (gameState.mode === 'cricket') {
         return (
             <div className="game-container" style={{ height: '100vh', display: 'flex' }}>
@@ -1349,17 +1349,16 @@ const isHost = gameState.hostId === user.id;
                         </div>
                     )}
 
-                    {/* Three Column Game Area */}
+                    {/* Three Column Game Area - Side by side */}
                     <div style={{
                         flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: '300px 1fr 300px',
+                        display: 'flex',
                         gap: '15px',
                         padding: '15px',
                         backgroundColor: '#111'
                     }}>
                         {/* Column 1: Cricket Input Panel */}
-                        <div>
+                        <div style={{ flex: '0 0 300px' }}>
                             <CricketInputPanel
                                 onScoreInput={handleScoreInput}
                                 isActive={isMyTurn && canInput}
@@ -1370,156 +1369,66 @@ const isHost = gameState.hostId === user.id;
                         </div>
 
                         {/* Column 2: Cricket Board */}
-                        <div>
+                        <div style={{ flex: 1 }}>
                             <CricketBoard gameState={gameState} user={user} />
                         </div>
 
                         {/* Column 3: Chat */}
-                        <div>
+                        <div style={{ flex: '0 0 300px' }}>
                             <GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} />
                         </div>
                     </div>
                 </div>
 
-                {/* Right Side - Video Feed (25% width, full height) */}
+                {/* Right Side - Player 2 Webcam Only (25% width, full height) */}
                 <div style={{
                     flex: '0 0 25%',
                     backgroundColor: '#000',
                     display: 'flex',
-                    flexDirection: 'column',
-                    borderLeft: '2px solid #333'
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative'
                 }}>
-                    {/* Camera Controls */}
-                    <div className="camera-controls" style={{
-                        padding: '10px',
-                        backgroundColor: '#1a1a1a',
-                        borderBottom: '1px solid #333'
-                    }}>
-                        <select value={selectedDeviceId} onChange={e => {
-                            setSelectedDeviceId(e.target.value);
-                            if(isCameraEnabled) startCamera(e.target.value);
-                        }} style={{
+                    {/* Remote Player Video - Full area, no controls */}
+                    {gameState.players.filter(p => p.id !== user.id).map(p => (
+                        <div key={p.id} style={{
                             width: '100%',
-                            marginBottom: '8px',
-                            padding: '5px',
-                            backgroundColor: '#333',
-                            color: 'white',
-                            border: '1px solid #555',
-                            borderRadius: '4px'
-                        }}>
-                            {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || "Kamera"}</option>)}
-                        </select>
-                        <button onClick={() => isCameraEnabled ? stopCamera() : startCamera(selectedDeviceId)} style={{
-                            width: '100%',
-                            marginBottom: '8px',
-                            padding: '8px',
-                            backgroundColor: isCameraEnabled ? '#ff6b6b' : '#4ade80',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}>
-                            {isCameraEnabled ? "📹 Stop" : "📹 Start"}
-                        </button>
-                        <button
-                            onClick={() => autoConnectToOpponents()}
-                            style={{
-                                width: '100%',
-                                padding: '6px',
-                                backgroundColor: '#4CAF50',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            🔌 Verbinden
-                        </button>
-                        <div style={{
-                            marginTop: '8px',
-                            fontSize: '11px',
-                            color: '#ccc',
-                            textAlign: 'center'
-                        }}>
-                            {isCameraEnabled ? "Automatisch verbunden" : "Kamera starten für Video"}
-                        </div>
-                    </div>
-
-                    {/* Video Container - Full height */}
-                    <div className="video-container" style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        padding: '10px',
-                        overflowY: 'auto'
-                    }}>
-                        {/* Local Player Video */}
-                        <div className="video-player local" style={{
-                            flex: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '1' : 'auto',
-                            height: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '100%' : '200px',
-                            border: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? '3px solid #4CAF50' : '1px solid #555',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
+                            height: '100%',
                             position: 'relative'
                         }}>
-                            <div className="video-label" style={{
+                            <div style={{
                                 position: 'absolute',
-                                top: '8px',
-                                left: '8px',
+                                top: '10px',
+                                left: '10px',
                                 background: 'rgba(0,0,0,0.7)',
                                 color: 'white',
-                                padding: '4px 8px',
+                                padding: '5px 10px',
                                 borderRadius: '4px',
-                                fontSize: '12px',
-                                zIndex: '10'
+                                fontSize: '14px',
+                                zIndex: '10',
+                                fontWeight: 'bold'
                             }}>
-                                Du {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === 'local' ? ' (DU BIST DRAN)' : ''}
+                                {p.name} Webcam
                             </div>
-                            <video
-                                ref={localVideoRef}
-                                autoPlay
-                                muted
-                                playsInline
-                                webkit-playsinline="true"
-                                x-webkit-airplay="allow"
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    backgroundColor: '#000'
-                                }}
+                            <RemoteVideoPlayer
+                                stream={remoteStreams[p.id]}
+                                name={p.name}
+                                playerId={p.id}
                             />
                         </div>
+                    ))}
 
-                        {/* Remote Players Video */}
-                        {gameState.players.filter(p => p.id !== user.id).map(p => (
-                            <div key={p.id} className="video-player remote" style={{
-                                flex: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '1' : 'auto',
-                                height: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '100%' : '200px',
-                                border: videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? '3px solid #4CAF50' : '1px solid #555',
-                                borderRadius: '8px',
-                                overflow: 'hidden',
-                                position: 'relative'
-                            }}>
-                                <div className="video-label" style={{
-                                    position: 'absolute',
-                                    top: '8px',
-                                    left: '8px',
-                                    background: 'rgba(0,0,0,0.7)',
-                                    color: 'white',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    zIndex: '10'
-                                }}>
-                                    {p.name} {videoLayout.mode === 'fullscreen' && videoLayout.currentPlayerId === p.id ? ' (IST DRAN)' : ''}
-                                </div>
-                                <RemoteVideoPlayer stream={remoteStreams[p.id]} name={p.name} playerId={p.id} />
-                            </div>
-                        ))}
-                    </div>
+                    {/* No video available message */}
+                    {gameState.players.filter(p => p.id !== user.id).length === 0 && (
+                        <div style={{
+                            color: '#666',
+                            fontSize: '1.2em',
+                            textAlign: 'center',
+                            padding: '20px'
+                        }}>
+                            Warte auf Gegner...
+                        </div>
+                    )}
                 </div>
 
                 {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}

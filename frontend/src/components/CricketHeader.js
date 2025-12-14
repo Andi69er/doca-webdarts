@@ -16,87 +16,60 @@ const CricketHeader = ({ gameState, user }) => {
             padding: '15px 20px',
             backgroundColor: '#1a1a1a',
             color: 'white',
-            borderBottom: '2px solid #333'
+            borderBottom: '1px solid #333'
         }}>
-            {/* Player 1 Section */}
-            <div className="player-section" style={{
+            {/* Player 1 */}
+            <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                flex: 1
+                alignItems: 'center'
             }}>
-                <h2 style={{
-                    margin: '0 0 10px 0',
-                    fontSize: '2.5em',
-                    fontWeight: 'bold',
-                    color: '#4ade80'
-                }}>
-                    {player1?.points || 0}
-                </h2>
                 <div style={{
-                    fontSize: '1.2em',
+                    fontSize: '1.1em',
                     fontWeight: 'bold',
-                    textAlign: 'center'
+                    marginBottom: '5px'
                 }}>
                     {player1?.name || 'Player 1'}
                     {user && user.id === player1?.id ? ' (Du)' : ''}
                 </div>
                 <div style={{
-                    fontSize: '0.9em',
-                    color: '#ccc',
-                    marginTop: '5px'
-                }}>
-                    Sets: {player1?.legs || 0} | Legs: {player1?.sets || 0}
-                </div>
-            </div>
-
-            {/* Center Title */}
-            <div className="game-title" style={{
-                flex: 1,
-                textAlign: 'center'
-            }}>
-                <h1 style={{
-                    margin: 0,
-                    fontSize: '3em',
-                    fontWeight: 'bold',
-                    background: 'linear-gradient(45deg, #4ade80, #60a5fa)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text'
-                }}>
-                    CRICKET
-                </h1>
-            </div>
-
-            {/* Player 2 Section */}
-            <div className="player-section" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                flex: 1
-            }}>
-                <h2 style={{
-                    margin: '0 0 10px 0',
-                    fontSize: '2.5em',
+                    fontSize: '2em',
                     fontWeight: 'bold',
                     color: '#4ade80'
                 }}>
-                    {player2?.points || 0}
-                </h2>
+                    {player1?.points || 0}
+                </div>
+            </div>
+
+            {/* VS */}
+            <div style={{
+                fontSize: '1.5em',
+                fontWeight: 'bold',
+                color: '#ccc'
+            }}>
+                vs
+            </div>
+
+            {/* Player 2 */}
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+            }}>
                 <div style={{
-                    fontSize: '1.2em',
+                    fontSize: '1.1em',
                     fontWeight: 'bold',
-                    textAlign: 'center'
+                    marginBottom: '5px'
                 }}>
                     {player2?.name || 'Player 2'}
                     {user && user.id === player2?.id ? ' (Du)' : ''}
                 </div>
                 <div style={{
-                    fontSize: '0.9em',
-                    color: '#ccc',
-                    marginTop: '5px'
+                    fontSize: '2em',
+                    fontWeight: 'bold',
+                    color: '#4ade80'
                 }}>
-                    Sets: {player2?.legs || 0} | Legs: {player2?.sets || 0}
+                    {player2?.points || 0}
                 </div>
             </div>
         </div>
