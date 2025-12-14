@@ -106,15 +106,16 @@ const Lobby = memo(() => {
             if (gameMode === 'X01Game') {
                 setStartingScore('501');
                 setSets('0');
-                setLegs('1');
+                setLegs(winType === 'firstTo' ? '1' : '3');
             }
             setWhoStartsUI(currentMode.whoStarts ? currentMode.whoStarts[0] : 'random');
         }
-    }, [gameMode]);
+    }, [gameMode, winType]);
 
     const handleCreateRoom = (e) => {
         e.preventDefault();
         try {
+            const winNumber = winType === 'firstTo' ? 1 : 3;
             let gameOptions = {};
             if (gameMode === 'X01Game') {
                 gameOptions = {
@@ -124,14 +125,16 @@ const Lobby = memo(() => {
                     outMode,
                     inMode,
                     winType,
-                    winNumber: parseInt(winNumber),
+                    winNumber,
+                    length: { type: winType, value: winNumber },
                 };
             } else if (gameMode === 'CricketGame') {
                 gameOptions = {
                     sets: parseInt(sets),
                     legs: legs === 'unlimited' ? -1 : parseInt(legs),
                     winType,
-                    winNumber: parseInt(winNumber),
+                    winNumber,
+                    length: { type: winType, value: winNumber },
                 };
             }
             
@@ -231,29 +234,6 @@ const Lobby = memo(() => {
                                     <option value="firstTo">First to</option>
                                     <option value="bestOf">Best Of</option>
                                 </select>
-                                {winType === 'firstTo' && (
-                                    <input
-                                        type="number"
-                                        className="lobby-input"
-                                        value={winNumber}
-                                        onChange={(e) => setWinNumber(e.target.value)}
-                                        min="1"
-                                        placeholder="Anzahl"
-                                        style={{marginTop: '5px'}}
-                                    />
-                                )}
-                                {winType === 'bestOf' && (
-                                    <input
-                                        type="number"
-                                        className="lobby-input"
-                                        value={winNumber}
-                                        onChange={(e) => setWinNumber(e.target.value)}
-                                        min="3"
-                                        step="2"
-                                        placeholder="Anzahl (ungerade)"
-                                        style={{marginTop: '5px'}}
-                                    />
-                                )}
                             </div>
 
 
@@ -302,9 +282,10 @@ const Lobby = memo(() => {
                                         const sets = room.gameOptions?.sets || 0;
                                         const legs = room.gameOptions?.legs || 1;
                                         const winType = room.gameOptions?.winType === 'bestOf' ? 'Bo' : 'Ft';
-                                        const whoStarts = room.whoStarts === 'random' ? 'ausbullen' : 
+                                        const winNumber = room.gameOptions?.winNumber || 1;
+                                        const whoStarts = room.whoStarts === 'random' ? 'ausbullen' :
                                                          room.whoStarts === 'me' ? 'Ich' : 'Gegner';
-                                        info = `${score} ${inMode}/${outMode} ${winType} Sets:${sets} Legs:${legs} – ${whoStarts}`;
+                                        info = `${score} ${inMode}/${outMode} ${winType} ${winNumber} Sets:${sets} Legs:${legs} – ${whoStarts}`;
                                     } else if (room.gameMode === 'CricketGame' || room.gameMode === 'cricket') {
                                         const inMode = room.gameOptions?.inMode === 'double' ? 'Di' : 'Si';
                                         const outMode = room.gameOptions?.outMode === 'double' ? 'Do' : 

@@ -162,7 +162,7 @@ class X01Game {
         }
       } else if (this.distance === 'set') {
         // After leg win, check if set won
-        if (this.legsWon[playerId] >= 3) { // assuming 3 legs per set
+        if (this.legsWon[playerId] >= this.legs) { // use this.legs instead of hardcoded 3
           this.setsWon[playerId]++;
           this.legsWon[playerId] = 0; // reset for next set
           if ((this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) ||
