@@ -23,6 +23,12 @@ const gameManager = new GameManager();
 // --- ENDE Platzhalter-Klassen ---
 
 const app = express();
+
+// Explicit health check route for Render
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
+
 const server = http.createServer(app);
 
 // =================================================================
@@ -85,7 +91,7 @@ const io = new Server(server, {
 initializeSocket(io, gameManager, { generateJWT, verifyJWT });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
