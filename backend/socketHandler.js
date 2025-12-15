@@ -376,10 +376,10 @@ function initializeSocket(io, gameManager, auth) {
                     
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore); // || startScore ist wichtig
+                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
                         average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
-                    } else if (newDartsThrown === 0) {
-                        average = '0.00';
+                    } else if (newDartsThrown === 0) { // Wenn Darts 0 sind, ist der Avg auch 0.00
+                        average = "0.00";
                     }
 
                     return {
@@ -460,6 +460,8 @@ function initializeSocket(io, gameManager, auth) {
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore); // || startScore ist wichtig
                         average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
+                    } else if (newDartsThrown === 0) {
+                        average = "0.00";
                     }
 
                     return {
