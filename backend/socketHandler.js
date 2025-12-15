@@ -462,6 +462,9 @@ function initializeSocket(io, gameManager, auth) {
                         finishes: newFinishes,
                         highestFinish: newHighestFinish,
                         scores180: newScores180,
+                        scores60plus: newScores60plus,
+                        scores100plus: newScores100plus,
+                        scores140plus: newScores140plus,
                         doublesHit: newDoublesHit,
                         doublesThrown: newDoublesThrown,
                         lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
@@ -558,6 +561,10 @@ function initializeSocket(io, gameManager, auth) {
                             newScores180 = Math.max(0, newScores180 - 1);
                         }
 
+                        if (p.lastThrownScore >= 60 && p.lastThrownScore < 180) {
+                            newScores60plus = Math.max(0, newScores60plus - 1);
+                        }
+
                         if (p.lastThrownScore >= 100 && p.lastThrownScore < 180) {
                             newScores100plus = Math.max(0, newScores100plus - 1);
                         }
@@ -582,6 +589,7 @@ function initializeSocket(io, gameManager, auth) {
                         finishes: newFinishes,
                         highestFinish: newHighestFinish,
                         scores180: newScores180,
+                        scores60plus: newScores60plus,
                         scores100plus: newScores100plus,
                         scores140plus: newScores140plus,
                         doublesHit: newDoublesHit,
