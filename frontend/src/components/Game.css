@@ -1203,24 +1203,24 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 0 10px;
-  width: 70px; /* Etwas breiter für größere Icons */
+  margin: 0 5px;
+  width: 80px; /* Breiter für größere Icons */
 }
 
 .icon-stat-icon {
-  font-size: 40px; /* Größeres Icon */
+  font-size: 48px; /* a) Icon deutlich größer */
   line-height: 1;
-  height: 40px;
-  width: 40px;
+  height: 48px;
+  width: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .icon-stat-value {
-  font-size: 24px; /* Größere Zahl */
+  font-size: 28px; /* b) Ziffern größer */
   font-weight: bold;
   color: white;
-  margin-top: 8px; /* Mehr Abstand zwischen Icon und Zahl */
+  margin-top: 10px; /* b) Mehr Abstand für klare Positionierung unterhalb */
 }
 }
