@@ -413,7 +413,7 @@ function initializeSocket(io, gameManager, auth) {
                         }
 
                         // Check for 60+
-                        if (score >= 60 && score < 180) {
+                        if (score >= 60 && score < 100) {
                             newScores60plus += 1;
                         }
 
@@ -561,7 +561,7 @@ function initializeSocket(io, gameManager, auth) {
                             newScores180 = Math.max(0, newScores180 - 1);
                         }
 
-                        if (p.lastThrownScore >= 60 && p.lastThrownScore < 180) {
+                        if (p.lastThrownScore >= 60 && p.lastThrownScore < 100) {
                             newScores60plus = Math.max(0, newScores60plus - 1);
                         }
 

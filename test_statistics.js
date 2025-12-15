@@ -41,15 +41,15 @@ socket.on('game-started', (gameState) => {
     const testThrows = [
         { score: 40, expected: { scores60plus: 0, scores100plus: 0, scores140plus: 0, scores180: 0 } }, // Unter 60
         { score: 60, expected: { scores60plus: 1, scores100plus: 0, scores140plus: 0, scores180: 0 } }, // Genau 60
-        { score: 100, expected: { scores60plus: 2, scores100plus: 1, scores140plus: 0, scores180: 0 } }, // 100
-        { score: 121, expected: { scores60plus: 3, scores100plus: 2, scores140plus: 0, scores180: 0 } }, // 121
-        { score: 140, expected: { scores60plus: 4, scores100plus: 3, scores140plus: 1, scores180: 0 } }, // 140
-        { score: 160, expected: { scores60plus: 5, scores100plus: 4, scores140plus: 2, scores180: 0 } }, // 160
-        { score: 180, expected: { scores60plus: 5, scores100plus: 4, scores140plus: 2, scores180: 1 } }, // Genau 180 - sollte NICHT 60+/100+/140+ erhöhen
-        { score: 60, expected: { scores60plus: 6, scores100plus: 4, scores140plus: 2, scores180: 1 } }, // Wieder 60 - sollte 60+ erhöhen
-        { score: 179, expected: { scores60plus: 7, scores100plus: 5, scores140plus: 3, scores180: 1 } }, // 179 - sollte alle erhöhen
-        { score: 180, expected: { scores60plus: 7, scores100plus: 5, scores140plus: 3, scores180: 2 } }, // Zweiter 180 - sollte NICHT andere erhöhen
-        { score: 3, expected: { scores60plus: 7, scores100plus: 5, scores140plus: 3, scores180: 2, doublesHit: 1, finishes: 1 } } // Finish (Doppel-Finish angenommen)
+        { score: 100, expected: { scores60plus: 1, scores100plus: 1, scores140plus: 0, scores180: 0 } }, // 100 - nur 100+
+        { score: 121, expected: { scores60plus: 1, scores100plus: 2, scores140plus: 0, scores180: 0 } }, // 121 - nur 100+
+        { score: 140, expected: { scores60plus: 1, scores100plus: 3, scores140plus: 1, scores180: 0 } }, // 140 - 100+ und 140+
+        { score: 160, expected: { scores60plus: 1, scores100plus: 4, scores140plus: 2, scores180: 0 } }, // 160 - 100+ und 140+
+        { score: 180, expected: { scores60plus: 1, scores100plus: 4, scores140plus: 2, scores180: 1 } }, // Genau 180 - nur 180
+        { score: 60, expected: { scores60plus: 2, scores100plus: 4, scores140plus: 2, scores180: 1 } }, // Wieder 60 - nur 60+
+        { score: 179, expected: { scores60plus: 2, scores100plus: 5, scores140plus: 3, scores180: 1 } }, // 179 - 100+ und 140+
+        { score: 180, expected: { scores60plus: 2, scores100plus: 5, scores140plus: 3, scores180: 2 } }, // Zweiter 180 - nur 180
+        { score: 3, expected: { scores60plus: 2, scores100plus: 5, scores140plus: 3, scores180: 2, doublesHit: 1, finishes: 1 } } // Finish (Doppel-Finish angenommen)
     ];
 
     let throwIndex = 0;
