@@ -182,19 +182,19 @@ return (
 
                 <div className="score-details-bild1">
                     {isRightSide ? (
-                        <>
+                        <div className="dart-info-bild1">
                             {LastScoreBlock}
                             {DartsThrownBlock}
-                        </>
+                        </div>
                     ) : LegsBlock}
                     <div className="main-score-wrapper-bild1">
                         <div className="main-score-bild1">{player.score}</div>
                     </div>
                     {isRightSide ? LegsBlock : (
-                        <>
+                        <div className="dart-info-bild1">
                             {LastScoreBlock}
                             {DartsThrownBlock}
-                        </>
+                        </div>
                     )}
                 </div>
 

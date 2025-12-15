@@ -1191,10 +1191,12 @@
 /* 4. Das Dart-Icon auf der anderen Seite auch schön mittig */
 .dart-info-bild1 {
   display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
+  flex-direction: row !important; /* Icons nebeneinander */
+  justify-content: space-around !important; /* Bessere Verteilung der Icons */
   align-items: center !important;
-  width: 30% !important; /* Sollte genauso breit sein wie die Legs-Box für Symmetrie */
+  width: 30% !important; /* Breite an die Legs-Box anpassen für Symmetrie */
+  flex-grow: 0; /* Verhindert, dass es zu viel Platz einnimmt */
+  gap: 5px; /* Abstand zwischen den beiden Icon-Blöcken */
 }
 
 /* NEU: Styles für die Icon-Blöcke */
@@ -1203,24 +1205,23 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 0 5px;
-  width: 80px; /* Breiter für größere Icons */
+  width: auto;
 }
 
 .icon-stat-icon {
-  font-size: 48px; /* a) Icon deutlich größer */
+  font-size: 44px; /* a) Icon größer */
   line-height: 1;
-  height: 48px;
-  width: 48px;
+  height: 44px;
+  width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .icon-stat-value {
-  font-size: 28px; /* b) Ziffern größer */
+  font-size: 26px; /* b) Ziffern größer */
   font-weight: bold;
   color: white;
-  margin-top: 10px; /* b) Mehr Abstand für klare Positionierung unterhalb */
+  margin-top: 8px; /* b) Mehr Abstand für klare Positionierung unterhalb */
 }
 }
