@@ -333,14 +333,13 @@ function Game() {
 // Callbacks - Device Enumeration
     const refreshDevices = useCallback(async () => {
         try {
-            // Um Labels zu bekommen, MÜSSEN wir kurz einen Stream anfragen.
-            // Wenn die Berechtigung schon da ist, passiert das ohne User-Interaktion.
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // Um Labels zu bekommen, MÜSSEN wir kurz einen Stream anfragen. Wenn die Berechtigung schon da ist, passiert das ohne User-Interaktion.
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             const list = await navigator.mediaDevices.enumerateDevices();
             const v = list.filter(d => d.kind === 'videoinput');
             setDevices(v);
-            // WICHTIG: Temporären Stream sofort wieder stoppen!
-            tempStream.getTracks().forEach(track => track.stop());
+            // WICHTIG: Temporären Stream sofort wieder stoppen, damit die Kamera-LED ausgeht.
+            stream.getTracks().forEach(track => track.stop());
 
             // Setze das erste Gerät als Standard, falls noch keins ausgewählt ist.
             if (v.length > 0 && !selectedDeviceId) {
@@ -350,7 +349,7 @@ function Game() {
             console.error("Geräte konnten nicht geladen werden:", e);
             alert("Kamera-Zugriff wurde verweigert. Die Kamera-Funktionen sind deaktiviert.");
         }
-    }, [selectedDeviceId]);
+    }, [selectedDeviceId]); // Dependency bleibt, um bei manueller Auswahl neu laden zu können.
 
     // Socket Connection Setup
     useEffect(() => {
@@ -464,14 +463,6 @@ setGameState(prev => {
                 };
             });
 
-            const gameStarted = newState.gameStatus === 'active' || 
-                              (prev && prev.gameStatus === 'active') ||
-                              updatedPlayers.some(p => p.score < 501);
-
-            if (gameStarted) {
-                setLocalGameStarted(true);
-            }
-
 const currentPlayerIndex = newState.currentPlayerIndex !== undefined 
                 ? newState.currentPlayerIndex 
                 : (prev?.currentPlayerIndex || 0);
@@ -509,13 +500,13 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 }
 
 // Video Layout setzen basierend auf Spielphase
-                if (gameStarted && currentPlayer) {
+                if (newState.gameStatus === 'active' && currentPlayer) {
                     // Spiel läuft: Aktueller Spieler in Vollbild
                     setVideoLayout({
                         mode: 'fullscreen',
                         currentPlayerId: newIsMyTurn ? 'local' : currentPlayer.id
                     });
-                } else if (!gameStarted && newState.gameStatus !== 'finished') {
+                } else if (newState.gameStatus === 'waiting' || !newState.gameStatus) {
                     // Vor Spielstart: Splitscreen
                     setVideoLayout({
                         mode: 'splitscreen',
@@ -536,7 +527,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 ...(prev || {}),
                 ...newState,
                 players: updatedPlayers,
-                gameStatus: newState.gameStatus || (gameStarted ? 'active' : (prev?.gameStatus || 'waiting')),
+                gameStatus: newState.gameStatus || (prev?.gameStatus || 'waiting'),
                 gameState: {
                     ...(prev?.gameState || {}),
                     ...(newState.gameState || {}),
