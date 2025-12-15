@@ -378,6 +378,9 @@ function initializeSocket(io, gameManager, auth) {
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
                         average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
+                    } else if (newDartsThrown === 0) {
+                        // Korrektur für den Fall, dass Darts auf 0 zurückgesetzt werden
+                        average = "0.00";
                     }
 
                     return {
@@ -456,10 +459,8 @@ function initializeSocket(io, gameManager, auth) {
 
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
+                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore); // || startScore ist wichtig
                         average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
-                    } else if (newDartsThrown === 0) {
-                        average = "0.00";
                     }
 
                     return {
@@ -535,33 +536,31 @@ function initializeSocket(io, gameManager, auth) {
             const room = rooms.find(r => r.id === roomId);
             if (!room) return;
 
-            // Reverse players (switch starter)
-            room.players.reverse();
-            
-            // Reset game state and instance
+            // Setze das Spiel komplett zurück
             room.gameState = null;
             room.game = null;
             room.gameStarted = false;
 
-            // Send a waiting state gameState instead of the room object
-            // Reset player stats for the new game, but keep names and IDs
+            // Setze die Spielerstatistiken zurück, aber behalte Namen, IDs und die Reihenfolge bei
             const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
             room.players.forEach(player => {
                 player.score = startScore;
                 player.dartsThrown = 0;
                 player.avg = '0.00';
                 player.legs = 0;
-                player.sets = 0;
+                player.sets = 0; // Auch Sets zurücksetzen für ein komplett neues Spiel
                 player.marks = {}; // For cricket
                 player.lastScore = 0;
+                player.isActive = false;
             });
 
+            // Erstelle einen sauberen "Warte"-Zustand
             const waitingState = {
                 mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                 players: room.players,
                 gameStatus: 'waiting',
                 hostId: room.hostId,
-                whoStarts: room.whoStarts
+                whoStarts: room.whoStarts // Behalte die "Wer beginnt"-Einstellung bei
             };
             io.to(room.id).emit('game-state-update', waitingState);
         });

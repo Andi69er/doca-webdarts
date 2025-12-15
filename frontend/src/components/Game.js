@@ -333,26 +333,24 @@ function Game() {
 // Callbacks - Device Enumeration
     const refreshDevices = useCallback(async () => {
         try {
-            // Geräte direkt enumerieren ohne temporären Stream
+            // Um Labels zu bekommen, MÜSSEN wir kurz einen Stream anfragen.
+            // Wenn die Berechtigung schon da ist, passiert das ohne User-Interaktion.
+            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             const list = await navigator.mediaDevices.enumerateDevices();
             const v = list.filter(d => d.kind === 'videoinput');
             setDevices(v);
-            if (v.length > 0 && !selectedDeviceId) setSelectedDeviceId(v[0].deviceId);
+            // WICHTIG: Temporären Stream sofort wieder stoppen!
+            tempStream.getTracks().forEach(track => track.stop());
+
+            // Setze das erste Gerät als Standard, falls noch keins ausgewählt ist.
+            if (v.length > 0 && !selectedDeviceId) {
+                setSelectedDeviceId(v[0].deviceId);
+            }
         } catch(e) { 
             console.error("Geräte konnten nicht geladen werden:", e);
-            // Fallback: Versuche mit temporärem Stream nur bei Fehlern
-            try {
-                await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                    .then(s => s.getTracks().forEach(t => t.stop()));
-                const list = await navigator.mediaDevices.enumerateDevices();
-                const v = list.filter(d => d.kind === 'videoinput');
-                setDevices(v);
-                if (v.length > 0 && !selectedDeviceId) setSelectedDeviceId(v[0].deviceId);
-            } catch(e2) {
-                console.error("Auch Fallback fehlgeschlagen:", e2);
-            }
+            alert("Kamera-Zugriff wurde verweigert. Die Kamera-Funktionen sind deaktiviert.");
         }
-    }, []); // Entferne selectedDeviceId aus Dependencies für bessere Performance
+    }, [selectedDeviceId]);
 
     // Socket Connection Setup
     useEffect(() => {
@@ -691,33 +689,33 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
 
     // --- KAMERA & WEBRTC LOGIK ---
 
-const startCamera = async (targetDeviceId) => {
+    const startCamera = async (targetDeviceId) => {
         const idToUse = targetDeviceId || selectedDeviceId;
         console.log("Starte Kamera mit ID:", idToUse);
         
         let stream = null;
-
+    
         try {
-            // Standard: Video + Audio
-            stream = await navigator.mediaDevices.getUserMedia({ 
-                video: idToUse ? { deviceId: { exact: idToUse } } : true, 
-                audio: true 
-            });
-        } catch (err) {
-            console.warn("Mit Audio fehlgeschlagen, versuche ohne Audio...", err);
+            const constraints = {
+                video: idToUse ? { deviceId: { exact: idToUse } } : true,
+                audio: true
+            };
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+            console.warn("Fehler beim Anfordern von Video+Audio, versuche nur Video:", error);
             try {
-                // Fallback: Nur Video (für USB Cams wichtig!)
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: idToUse ? { deviceId: { exact: idToUse } } : true, 
-                    audio: false 
-                });
-            } catch (err2) {
-                console.error("Kamera komplett fehlgeschlagen:", err2);
-                alert("Kamera konnte nicht gestartet werden. Bitte Berechtigungen prüfen.");
-                return;
+                const constraints = {
+                    video: idToUse ? { deviceId: { exact: idToUse } } : true,
+                    audio: false // Fallback ohne Audio
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (videoError) {
+                console.error("Kamera konnte nicht gestartet werden:", videoError);
+                alert("Kamera konnte nicht gestartet werden. Bitte prüfe die Berechtigungen in deinem Browser.");
+                return; // Wichtig: hier abbrechen
             }
         }
-
+    
         if (stream) {
             setLocalStream(stream);
             setIsCameraEnabled(true);
@@ -726,6 +724,9 @@ const startCamera = async (targetDeviceId) => {
                 localVideoRef.current.srcObject = stream;
             }
             
+            // WICHTIG: Nach erfolgreichem Stream-Start die Geräteliste aktualisieren
+            await refreshDevices();
+
             // Bestehende Verbindungen aktualisieren
             Object.values(peerConnections.current).forEach(pc => {
                 const senders = pc.getSenders();
@@ -743,9 +744,6 @@ const startCamera = async (targetDeviceId) => {
             setTimeout(() => {
                 autoConnectToOpponents();
             }, 1000);
-            
-            // Geräte-Liste aktualisieren (nur wenn Kamera erfolgreich gestartet)
-            refreshDevices();
         }
     };
 
@@ -1294,34 +1292,34 @@ socket.on('camera-ice', async (data) => {
     // --- AUFNAHME-FUNKTIONEN ---
     const startRecording = async () => {
         try {
-            // Fordere den Bildschirm-Stream an
+            // Fordere den Bildschirm-Stream an (das ist der Screen Recorder)
             const displayStream = await navigator.mediaDevices.getDisplayMedia({
                 video: { mediaSource: "screen" },
                 audio: true
             });
 
-            // Erstelle einen MediaRecorder
+            // Erstelle einen MediaRecorder mit dem Bildschirm-Stream
             mediaRecorderRef.current = new MediaRecorder(displayStream, { mimeType: 'video/webm' });
             recordedChunksRef.current = [];
-
+    
             mediaRecorderRef.current.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     recordedChunksRef.current.push(event.data);
                 }
             };
-
+    
             mediaRecorderRef.current.onstop = () => {
                 const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `DOCA-WebDarts-Game-${new Date().toISOString()}.webm`;
+                a.download = `Darts-Aufnahme-${new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-')}.webm`;
                 a.click();
                 URL.revokeObjectURL(url);
-                // Stoppe den Bildschirm-Stream
+                // Stoppe den Bildschirm-Stream, wenn die Aufnahme beendet ist
                 displayStream.getTracks().forEach(track => track.stop());
             };
-
+    
             mediaRecorderRef.current.start();
             setIsRecording(true);
         } catch (error) {

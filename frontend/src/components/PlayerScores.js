@@ -183,8 +183,8 @@ return (
                 <div className="score-details-bild1">
                     {isRightSide ? (
                         <>
-                            {DartsThrownBlock}
                             {LastScoreBlock}
+                            {DartsThrownBlock}
                         </>
                     ) : LegsBlock}
                     <div className="main-score-wrapper-bild1">
