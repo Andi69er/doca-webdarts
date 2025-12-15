@@ -329,6 +329,7 @@ function initializeSocket(io, gameManager, auth) {
                         doublesHit: 0,
                         doublesThrown: 0,
                         scores180: 0,
+                        scores60plus: 0,
                         highestFinish: 0,
                         bestLeg: null,
                         finishes: [],
@@ -394,6 +395,7 @@ function initializeSocket(io, gameManager, auth) {
                     let newFinishes = p.finishes || [];
                     let newHighestFinish = p.highestFinish || 0;
                     let newScores180 = p.scores180 || 0;
+                    let newScores60plus = p.scores60plus || 0;
                     let newDoublesHit = p.doublesHit || 0;
                     let newDoublesThrown = p.doublesThrown || 0;
 
@@ -402,8 +404,13 @@ function initializeSocket(io, gameManager, auth) {
                         newScores = [...newScores, score];
 
                         // Check for 180
-                        if (score >= 180) {
+                        if (score == 180) {
                             newScores180 += 1;
+                        }
+
+                        // Check for 60+
+                        if (score >= 60 && score < 180) {
+                            newScores60plus += 1;
                         }
 
                         // Check for finish (score reaches 0)
