@@ -376,11 +376,10 @@ function initializeSocket(io, gameManager, auth) {
                     
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
+                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore); // || startScore ist wichtig
                         average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
                     } else if (newDartsThrown === 0) {
-                        // Korrektur für den Fall, dass Darts auf 0 zurückgesetzt werden
-                        average = "0.00";
+                        average = '0.00';
                     }
 
                     return {
