@@ -97,40 +97,105 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
         const isMyPlayer = user && user.id === player.id;
         const isHost = gameState.hostId === user?.id;
         const checkoutText = getCheckoutText(player.score);
-        const isSetMode = gameState?.gameOptions?.distance === 'sets';        
+        const isSetMode = gameState?.gameOptions?.distance === 'sets';
+
+        // --- STYLES ---
+        const styles = {
+            // Container für beide Stats nebeneinander
+            statsWrapper: {
+                display: 'flex',
+                flexDirection: 'row', // Nebeneinander
+                gap: '25px', // Platz zwischen den beiden Blöcken
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 10px'
+            },
+            // Ein einzelner Stat-Block (Icon oben, Wert unten)
+            statBox: {
+                display: 'flex',
+                flexDirection: 'column', // Untereinander
+                alignItems: 'center',
+                justifyContent: 'center'
+            },
+            iconTarget: {
+                fontSize: '2.8rem', // Großes Target Emoji
+                lineHeight: '1',
+                marginBottom: '5px' // Abstand zum Wert
+            },
+            iconSvg: {
+                width: '45px', // Großes Pfeil SVG
+                height: '45px',
+                marginBottom: '5px' // Abstand zum Wert
+            },
+            statValue: {
+                fontSize: '1.8rem', // Große Schrift
+                fontWeight: 'bold',
+                lineHeight: '1',
+                color: '#fff'
+            },
+            // Styles für Legs/Sets
+            legsLabel: {
+                display: 'block',
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                opacity: 0.7,
+                marginBottom: '5px'
+            },
+            legsCount: {
+                fontSize: '2.5rem',
+                fontWeight: 'bold'
+            },
+            legsContainer: {
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: '60px'
+            }
+        };
 
         const LegsBlock = (
-            <div className="legs-section-bild1">
+            <div style={styles.legsContainer}>
                 {isSetMode ? (
                     <>
-                        <span className="legs-label-bild1">Sets</span>
-                        <span className="legs-count-bild1">{gameState?.gameState?.setsWon?.[player.id] ?? 0}</span>
+                        <span style={styles.legsLabel}>Sets</span>
+                        <span style={styles.legsCount}>{gameState?.gameState?.setsWon?.[player.id] ?? 0}</span>
                     </>
                 ) : (
                     <>
-                        <span className="legs-label-bild1">Legs</span>
-                        <span className="legs-count-bild1">{gameState?.gameState?.legsWon?.[player.id] ?? 0}</span>
+                        <span style={styles.legsLabel}>Legs</span>
+                        <span style={styles.legsCount}>{gameState?.gameState?.legsWon?.[player.id] ?? 0}</span>
                     </>
                 )}
             </div>
         );
 
+        // --- Block: Letzter Wurf (Icon oben, Wert unten) ---
         const LastScoreBlock = (
-            <div className="icon-stat-block">
-                <span className="icon-stat-icon">🎯</span>
-                <span className="icon-stat-value">{player.lastScore || 0}</span>
+            <div style={styles.statBox}>
+                <span style={styles.iconTarget}>🎯</span>
+                <span style={styles.statValue}>{player.lastScore || 0}</span>
             </div>
         );
 
+        // --- Block: Darts (Icon oben, Wert unten) ---
         const DartsThrownBlock = (
-            <div className="icon-stat-block">
-                <svg className="icon-stat-icon" width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div style={styles.statBox}>
+                <svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={styles.iconSvg}>
                     <path d="M19.4 19.4L22 22L20.5 23.5L19 22L17.5 23.5L16 22L18.6 19.4C18.6 19.4 19 19 19.4 19.4Z" fill="#ef4444"/>
                     <path d="M22 16L23.5 17.5L22 19L23.5 20.5L22 22L19.4 19.4L22 16Z" fill="#ef4444"/>
                     <path d="M12.8 2.2L2.2 12.8L4 16L11.5 14L10 12.5L20 2.5L21.5 4L19.4 19.4L13.4 13.4L6 14.5L12.8 2.2Z" fill="#cbd5e1"/>
                     <path d="M2.2 12.8L2 16L4 16L12.8 2.2L2.2 12.8Z" fill="#64748b"/>
                 </svg>
-                <span className="icon-stat-value">{player.dartsThrown || 0}</span>
+                <span style={styles.statValue}>{player.dartsThrown || 0}</span>
+            </div>
+        );
+
+        // Wrapper der die beiden Blöcke enthält
+        const StatsContainer = (
+            <div style={styles.statsWrapper}>
+                {LastScoreBlock}
+                {DartsThrownBlock}
             </div>
         );
 
@@ -175,10 +240,10 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                 )}
 
                 {/* Grid Layout für den Inhalt: Stats, Score, Legs */}
-                <div className="score-details-bild1">
+                <div className="score-details-bild1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px' }}>
                     
                     {/* Linker Inhalt: Wenn Rechte Karte -> Stats, wenn Linke Karte -> Legs */}
-                    {isRightSide ? <div className="dart-info-bild1">{LastScoreBlock}{DartsThrownBlock}</div> : LegsBlock}
+                    {isRightSide ? StatsContainer : LegsBlock}
                     
                     {/* Mittlerer Inhalt: Hauptscore */}
                     <div className="main-score-wrapper-bild1">
@@ -186,7 +251,7 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                     </div>
                     
                     {/* Rechter Inhalt: Wenn Rechte Karte -> Legs, wenn Linke Karte -> Stats */}
-                    {isRightSide ? LegsBlock : <div className="dart-info-bild1">{LastScoreBlock}{DartsThrownBlock}</div>}
+                    {isRightSide ? LegsBlock : StatsContainer}
 
                 </div>
 
