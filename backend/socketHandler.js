@@ -325,7 +325,14 @@ function initializeSocket(io, gameManager, auth) {
                         isActive: index === currentPlayerIndex,
                         legs: 0,
                         scores: [],
-                        turns: []
+                        turns: [],
+                        doublesHit: 0,
+                        doublesThrown: 0,
+                        scores180: 0,
+                        highestFinish: 0,
+                        bestLeg: null,
+                        finishes: [],
+                        lastThrownScore: 0
                     })),
                     currentPlayerIndex: currentPlayerIndex,
                     gameStatus: 'active',
@@ -373,7 +380,7 @@ function initializeSocket(io, gameManager, auth) {
                 const updatedPlayers = room.players.map((p, idx) => {
                     const isCurrentPlayer = p.id === userId;
                     const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
-                    
+
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
@@ -382,19 +389,61 @@ function initializeSocket(io, gameManager, auth) {
                         average = "0.00";
                     }
 
+                    // Live Statistics Updates
+                    let newScores = p.scores || [];
+                    let newFinishes = p.finishes || [];
+                    let newHighestFinish = p.highestFinish || 0;
+                    let newScores180 = p.scores180 || 0;
+                    let newDoublesHit = p.doublesHit || 0;
+                    let newDoublesThrown = p.doublesThrown || 0;
+
+                    if (isCurrentPlayer) {
+                        // Add score to scores array
+                        newScores = [...newScores, score];
+
+                        // Check for 180
+                        if (score >= 180) {
+                            newScores180 += 1;
+                        }
+
+                        // Check for finish (score reaches 0)
+                        if (newGameStateFromGame.scores[p.id] === 0) {
+                            newFinishes = [...newFinishes, score];
+                            if (score > newHighestFinish) {
+                                newHighestFinish = score;
+                            }
+                            // Assume double finish for now
+                            newDoublesHit += 1;
+                        }
+
+                        // Update doubles thrown (3 per turn for X01)
+                        if (room.gameMode !== 'CricketGame') {
+                            newDoublesThrown += 3;
+                        }
+                    }
+
                     return {
                         ...p,
                         // Daten aus der Game-Instanz übernehmen
                         score: newGameStateFromGame.scores[p.id], // X01
                         points: newGameStateFromGame.scores[p.id], // Cricket
                         marks: newGameStateFromGame.marks ? newGameStateFromGame.marks[p.id] : p.marks,
-                        
+
                         // Statistiken neu berechnen
                         dartsThrown: newDartsThrown,
                         avg: average,
                         isActive: idx === newGameStateFromGame.currentPlayerIndex,
                         lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
                         legs: p.legs || 0, // TODO: Leg-Logik
+
+                        // Live Statistics
+                        scores: newScores,
+                        finishes: newFinishes,
+                        highestFinish: newHighestFinish,
+                        scores180: newScores180,
+                        doublesHit: newDoublesHit,
+                        doublesThrown: newDoublesThrown,
+                        lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
                     };
                 });
                 room.players = updatedPlayers;
@@ -464,6 +513,31 @@ function initializeSocket(io, gameManager, auth) {
                         average = "0.00";
                     }
 
+                    // Undo Statistics
+                    let newScores = p.scores || [];
+                    let newFinishes = p.finishes || [];
+                    let newHighestFinish = p.highestFinish || 0;
+                    let newScores180 = p.scores180 || 0;
+                    let newDoublesHit = p.doublesHit || 0;
+                    let newDoublesThrown = p.doublesThrown || 0;
+
+                    if (p.id === playerWhoUndidThrow.id) {
+                        newScores = newScores.slice(0, -1);
+                        newDoublesThrown = Math.max(0, newDoublesThrown - 3);
+
+                        if (newGameStateFromGame.scores[p.id] !== 0) { // was a finish
+                            newFinishes = newFinishes.slice(0, -1);
+                            newDoublesHit = Math.max(0, newDoublesHit - 1);
+                            newHighestFinish = newFinishes.length > 0 ? Math.max(...newFinishes) : 0;
+                        }
+
+                        if (p.lastThrownScore >= 180) {
+                            newScores180 = Math.max(0, newScores180 - 1);
+                        }
+
+                        p.lastThrownScore = 0;
+                    }
+
                     return {
                         ...p,
                         score: newGameStateFromGame.scores[p.id],
@@ -471,6 +545,14 @@ function initializeSocket(io, gameManager, auth) {
                         avg: average,
                         isActive: idx === newGameStateFromGame.currentPlayerIndex,
                         lastScore: 0, // Letzten Wurf zurücksetzen
+
+                        // Live Statistics
+                        scores: newScores,
+                        finishes: newFinishes,
+                        highestFinish: newHighestFinish,
+                        scores180: newScores180,
+                        doublesHit: newDoublesHit,
+                        doublesThrown: newDoublesThrown,
                     };
                 });
                 room.players = updatedPlayers;
