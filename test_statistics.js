@@ -30,6 +30,8 @@ socket.on('game-started', (gameState) => {
     playerStats = gameState.players[0]; // Initial stats
     console.log('Initiale Statistiken:', {
         scores60plus: playerStats.scores60plus || 0,
+        scores100plus: playerStats.scores100plus || 0,
+        scores140plus: playerStats.scores140plus || 0,
         scores180: playerStats.scores180 || 0,
         doublesHit: playerStats.doublesHit || 0,
         finishes: playerStats.finishes || 0
@@ -37,15 +39,17 @@ socket.on('game-started', (gameState) => {
 
     // Testwürfe: verschiedene Bereiche testen
     const testThrows = [
-        { score: 40, expected: { scores60plus: 0, scores180: 0 } }, // Unter 60
-        { score: 60, expected: { scores60plus: 1, scores180: 0 } }, // Genau 60
-        { score: 100, expected: { scores60plus: 2, scores180: 0 } }, // 60-179
-        { score: 121, expected: { scores60plus: 3, scores180: 0 } }, // 60-179
-        { score: 180, expected: { scores60plus: 3, scores180: 1 } }, // Genau 180 - sollte NICHT 60+ erhöhen
-        { score: 60, expected: { scores60plus: 4, scores180: 1 } }, // Wieder 60 - sollte 60+ erhöhen
-        { score: 179, expected: { scores60plus: 5, scores180: 1 } }, // 179 - sollte 60+ erhöhen
-        { score: 180, expected: { scores60plus: 5, scores180: 2 } }, // Zweiter 180 - sollte NICHT 60+ erhöhen
-        { score: 3, expected: { scores60plus: 5, scores180: 2, doublesHit: 1, finishes: 1 } } // Finish (Doppel-Finish angenommen)
+        { score: 40, expected: { scores60plus: 0, scores100plus: 0, scores140plus: 0, scores180: 0 } }, // Unter 60
+        { score: 60, expected: { scores60plus: 1, scores100plus: 0, scores140plus: 0, scores180: 0 } }, // Genau 60
+        { score: 100, expected: { scores60plus: 2, scores100plus: 1, scores140plus: 0, scores180: 0 } }, // 100
+        { score: 121, expected: { scores60plus: 3, scores100plus: 2, scores140plus: 0, scores180: 0 } }, // 121
+        { score: 140, expected: { scores60plus: 4, scores100plus: 3, scores140plus: 1, scores180: 0 } }, // 140
+        { score: 160, expected: { scores60plus: 5, scores100plus: 4, scores140plus: 2, scores180: 0 } }, // 160
+        { score: 180, expected: { scores60plus: 5, scores100plus: 4, scores140plus: 2, scores180: 1 } }, // Genau 180 - sollte NICHT 60+/100+/140+ erhöhen
+        { score: 60, expected: { scores60plus: 6, scores100plus: 4, scores140plus: 2, scores180: 1 } }, // Wieder 60 - sollte 60+ erhöhen
+        { score: 179, expected: { scores60plus: 7, scores100plus: 5, scores140plus: 3, scores180: 1 } }, // 179 - sollte alle erhöhen
+        { score: 180, expected: { scores60plus: 7, scores100plus: 5, scores140plus: 3, scores180: 2 } }, // Zweiter 180 - sollte NICHT andere erhöhen
+        { score: 3, expected: { scores60plus: 7, scores100plus: 5, scores140plus: 3, scores180: 2, doublesHit: 1, finishes: 1 } } // Finish (Doppel-Finish angenommen)
     ];
 
     let throwIndex = 0;
@@ -70,6 +74,8 @@ socket.on('game-started', (gameState) => {
         if (currentPlayer) {
             const currentStats = {
                 scores60plus: currentPlayer.scores60plus || 0,
+                scores100plus: currentPlayer.scores100plus || 0,
+                scores140plus: currentPlayer.scores140plus || 0,
                 scores180: currentPlayer.scores180 || 0,
                 doublesHit: currentPlayer.doublesHit || 0,
                 finishes: currentPlayer.finishes || 0
@@ -82,6 +88,8 @@ socket.on('game-started', (gameState) => {
 
                 const passed = (
                     currentStats.scores60plus === expected.scores60plus &&
+                    currentStats.scores100plus === expected.scores100plus &&
+                    currentStats.scores140plus === expected.scores140plus &&
                     currentStats.scores180 === expected.scores180 &&
                     (expected.doublesHit === undefined || currentStats.doublesHit === expected.doublesHit) &&
                     (expected.finishes === undefined || currentStats.finishes === expected.finishes)
@@ -94,6 +102,12 @@ socket.on('game-started', (gameState) => {
                     console.log('Unterschiede:');
                     if (currentStats.scores60plus !== expected.scores60plus) {
                         console.log(`  60+: ${currentStats.scores60plus} (erwartet: ${expected.scores60plus})`);
+                    }
+                    if (currentStats.scores100plus !== expected.scores100plus) {
+                        console.log(`  100+: ${currentStats.scores100plus} (erwartet: ${expected.scores100plus})`);
+                    }
+                    if (currentStats.scores140plus !== expected.scores140plus) {
+                        console.log(`  140+: ${currentStats.scores140plus} (erwartet: ${expected.scores140plus})`);
                     }
                     if (currentStats.scores180 !== expected.scores180) {
                         console.log(`  180: ${currentStats.scores180} (erwartet: ${expected.scores180})`);

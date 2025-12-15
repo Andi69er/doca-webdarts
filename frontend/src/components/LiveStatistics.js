@@ -46,13 +46,13 @@ const LiveStatistics = ({ gameState }) => {
     const p1Scores171Plus = getScoreRange(p1, 171, 179);
     const p2Scores171Plus = getScoreRange(p2, 171, 179);
     
-    // Berechne 60+, 100+, 140+
-    const p1Scores60Plus = getScoreRange(p1, 60);
-    const p2Scores60Plus = getScoreRange(p2, 60);
-    const p1Scores100Plus = getScoreRange(p1, 100);
-    const p2Scores100Plus = getScoreRange(p2, 100);
-    const p1Scores140Plus = getScoreRange(p1, 140);
-    const p2Scores140Plus = getScoreRange(p2, 140);
+    // Verwende die vom Backend berechneten Werte (um Doppelzählung von 180 zu vermeiden)
+    const p1Scores60Plus = p1.scores60plus || 0;
+    const p2Scores60Plus = p2.scores60plus || 0;
+    const p1Scores100Plus = p1.scores100plus || 0;
+    const p2Scores100Plus = p2.scores100plus || 0;
+    const p1Scores140Plus = p1.scores140plus || 0;
+    const p2Scores140Plus = p2.scores140plus || 0;
     
     const p1TonPlusFinishes = (p1.finishes || []).filter(f => f >= 100).length;
     const p2TonPlusFinishes = (p2.finishes || []).filter(f => f >= 100).length;
