@@ -525,7 +525,7 @@ function initializeSocket(io, gameManager, auth) {
                         newScores = newScores.slice(0, -1);
                         newDoublesThrown = Math.max(0, newDoublesThrown - 3);
 
-                        if (newGameStateFromGame.scores[p.id] !== 0) { // was a finish
+                        if (p.score === 0) { // was a finish
                             newFinishes = newFinishes.slice(0, -1);
                             newDoublesHit = Math.max(0, newDoublesHit - 1);
                             newHighestFinish = newFinishes.length > 0 ? Math.max(...newFinishes) : 0;
