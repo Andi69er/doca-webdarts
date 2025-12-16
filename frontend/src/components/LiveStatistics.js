@@ -29,6 +29,20 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
+    // Berechne zusätzliche Statistiken
+    const getScoreRange = (player, min, max = null) => {
+        const scores = player.scores || [];
+        if (max) {
+            return scores.filter(s => s >= min && s <= max).length;
+        }
+        // Wenn kein max, dann zähle alle >= min (für 60+, 100+, 140+)
+        if (min >= 60) {
+            return scores.filter(s => s >= min).length;
+        }
+        // Für 19- zähle alle < min
+        return scores.filter(s => s < min).length;
+    };
+
     const p1Scores19Minus = getScoreRange(p1, 19);
     const p2Scores19Minus = getScoreRange(p2, 19);
     const p1Scores19Plus = getScoreRange(p1, 19, 37);
@@ -45,7 +59,7 @@ const LiveStatistics = ({ gameState }) => {
     const p2Scores133Plus = getScoreRange(p2, 133, 170);
     const p1Scores171Plus = getScoreRange(p1, 171, 179);
     const p2Scores171Plus = getScoreRange(p2, 171, 179);
-    
+
     // Verwende die vom Backend berechneten Werte (um Doppelzählung von 180 zu vermeiden)
     const p1Scores60Plus = p1.scores60plus || 0;
     const p2Scores60Plus = p2.scores60plus || 0;
@@ -53,9 +67,12 @@ const LiveStatistics = ({ gameState }) => {
     const p2Scores100Plus = p2.scores100plus || 0;
     const p1Scores140Plus = p1.scores140plus || 0;
     const p2Scores140Plus = p2.scores140plus || 0;
-    
+
     const p1TonPlusFinishes = (p1.finishes || []).filter(f => f >= 100).length;
     const p2TonPlusFinishes = (p2.finishes || []).filter(f => f >= 100).length;
+
+    const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
+    const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
 
     const StatRow = ({ label, v1, v2, highlightP1, highlightP2 }) => (
         <div className="stat-row">
