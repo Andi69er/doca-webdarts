@@ -1315,15 +1315,12 @@ socket.on('camera-ice', async (data) => {
         let finalStartingPlayerId = startingPlayerId || defaultStarter;
 
         // Wenn die Lobby-Einstellung 'random' ist, wird defaultStarter zu 'bull-off'.
-        // Dies verhindert, dass 'random' in eine ID umgewandelt wird, bevor das Spiel startet (Problem 4).
         if (finalStartingPlayerId === 'bull-off') {
-            // Wenn Ausbullen ausgewählt, zeige Modal und starte nicht das Spiel
+            // Zeige Ausbullen-Modal an
             setShowBullOffModal(true);
-            return;
+            // Starte das Spiel trotzdem mit 'bull-off' als Startspieler
+            finalStartingPlayerId = 'bull-off';
         }
-
-        // Wenn Host das Dropdown nicht angeklickt hat, aber whoStarts 'opponent' ist,
-        // wird finalStartingPlayerId hier die ID des Gegners sein.
 
         const payload = {
             roomId,
@@ -1339,7 +1336,7 @@ socket.on('camera-ice', async (data) => {
                 mode: 'fullscreen',
                 currentPlayerId: 'local'
             });
-        } else {
+        } else if (finalStartingPlayerId !== 'bull-off') {
             setVideoLayout({
                 mode: 'fullscreen',
                 currentPlayerId: finalStartingPlayerId
