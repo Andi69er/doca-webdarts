@@ -1640,12 +1640,12 @@ const isHost = gameState.hostId === user.id;
 
                     <div style={{marginBottom: '15px'}}>
                         <strong>Game State:</strong><br/>
-                        Status: {gameState?.gameStatus || 'N/A'}<br/>
-                        Mode: {gameState?.mode || 'N/A'}<br/>
-                        Players: {gameState?.players?.length || 0}<br/>
-                        Current Player Index: {gameState?.currentPlayerIndex || 'N/A'}<br/>
-                        Host ID: {gameState?.hostId || 'N/A'}<br/>
-                        Who Starts: {gameState?.whoStarts || 'N/A'}
+                        Status: {gameState?.gameStatus ?? 'N/A'}<br/>
+                        Mode: {gameState?.mode ?? 'N/A'}<br/>
+                        Players: {gameState?.players?.length ?? 0}<br/>
+                        Current Player Index: {gameState?.currentPlayerIndex ?? 'N/A'}<br/>
+                        Host ID: {gameState?.hostId ?? 'N/A'}<br/>
+                        Who Starts: {gameState?.whoStarts ?? 'N/A'}
                     </div>
 
                     <div style={{marginBottom: '15px'}}>
@@ -1673,7 +1673,12 @@ const isHost = gameState.hostId === user.id;
                         Is Locked: {numpadState.isLocked ? '✅ Ja' : '❌ Nein'}<br/>
                         Can Undo: {numpadState.canUndo ? '✅ Ja' : '❌ Nein'}<br/>
                         Locked Player ID: {numpadState.lockedPlayerId || 'N/A'}<br/>
-                        Lock Timer: {numpadState.lockTimer ? 'Aktiv' : 'Inaktiv'}
+                        Lock Timer: {numpadState.lockTimer ? 'Aktiv' : 'Inaktiv'}<br/>
+                        5s Lock Active: {(() => {
+                            const now = Date.now();
+                            const timeLeft = turnEndTime ? Math.max(0, Math.ceil((turnEndTime - now) / 1000)) : 0;
+                            return timeLeft > 0 ? `✅ Ja (${timeLeft}s verbleibend)` : '❌ Nein';
+                        })()}
                     </div>
 
                     <div style={{marginBottom: '15px'}}>
