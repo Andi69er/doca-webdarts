@@ -692,6 +692,15 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
         socket.on('game-started', handleGameState);
         socket.on('gameState', handleGameState);
         socket.on('statusUpdate', handleGameState);
+        socket.on('gameError', (error) => {
+            console.error('Game error:', error);
+            alert('Spiel-Fehler: ' + error.error);
+            setIsStartingGame(false);
+            if (startGameTimeoutRef.current) {
+                clearTimeout(startGameTimeoutRef.current);
+                startGameTimeoutRef.current = null;
+            }
+        });
 
         socket.on('joinedAsSpectator', () => {
             console.log("Als Zuschauer beigetreten.");
