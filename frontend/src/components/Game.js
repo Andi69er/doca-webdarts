@@ -1303,6 +1303,22 @@ socket.on('camera-ice', async (data) => {
         if (!socket) return;
 
         setIsStartingGame(true);
+        
+        // Reset input lock state when starting game
+        setNumpadState({
+            isLocked: false,
+            canUndo: false,
+            lockedPlayerId: null,
+            lockTimer: null
+        });
+        
+        // Clear any existing lock timer
+        if (numpadState.lockTimer) {
+            clearTimeout(numpadState.lockTimer);
+        }
+        
+        // Clear turn end time
+        setTurnEndTime(null);
 
         // Set timeout to reset isStartingGame after 10 seconds in case game doesn't start
         startGameTimeoutRef.current = setTimeout(() => {
