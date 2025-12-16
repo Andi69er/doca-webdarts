@@ -393,7 +393,7 @@ function initializeSocket(io, gameManager, auth) {
                         } else {
                             average = "0.00";
                         }
-                    } else if (newDartsThrown === 0) { // Wenn Darts 0 sind, ist der Avg auch 0.00
+                    } else if (newDartsThrown === 0) {
                         average = "0.00";
                     }
 
@@ -443,6 +443,7 @@ function initializeSocket(io, gameManager, auth) {
                             if (room.gameMode !== 'CricketGame' && score >= 2 && score % 2 === 0) {
                                 newDoublesHit += 1;
                             }
+                        }
                         if (room.gameMode !== 'CricketGame') {
                             newDoublesThrown += 3;
                         }
