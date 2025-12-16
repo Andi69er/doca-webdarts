@@ -91,6 +91,19 @@ function initializeSocket(io, gameManager, auth) {
                 if (existingPlayerIndex !== -1) {
                     socket.join(room.id);
                     console.log(`Spieler ${socket.id} bereits im Raum ${room.id}, reconnection behandelt.`);
+
+                    // Update player id in case of socket reconnection
+                    const oldId = room.players[existingPlayerIndex].id;
+                    room.players[existingPlayerIndex].id = socket.id;
+
+                    // Also update in gameState if it exists
+                    if (room.gameState && room.gameState.players) {
+                        const gamePlayerIndex = room.gameState.players.findIndex(p => p.id === oldId);
+                        if (gamePlayerIndex !== -1) {
+                            room.gameState.players[gamePlayerIndex].id = socket.id;
+                        }
+                    }
+
                     // Send proper gameState format instead of raw room object
                     const gameState = room.gameState || {
                         mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
