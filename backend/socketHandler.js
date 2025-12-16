@@ -476,6 +476,15 @@ function initializeSocket(io, gameManager, auth) {
                         doublesHit: newDoublesHit,
                         doublesThrown: newDoublesThrown,
                         lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
+
+                        // Berechne bestLeg (geringste Anzahl Darts für ein Leg)
+                        bestLeg: (() => {
+                            const turns = room.gameState?.turns?.[p.id] || [];
+                            if (turns.length === 0) return null;
+                            const validTurns = turns.filter(t => t !== null && t !== undefined && t > 0);
+                            if (validTurns.length === 0) return null;
+                            return Math.min(...validTurns);
+                        })(),
                     };
                 });
                 room.players = updatedPlayers;
