@@ -1330,6 +1330,14 @@ socket.on('camera-ice', async (data) => {
         const defaultStarter = getDefaultStartingPlayerId();
         let finalStartingPlayerId = startingPlayerId || defaultStarter;
 
+        // Force game start immediately
+        socket.emit('start-game', {
+            roomId,
+            userId: user.id,
+            resetScores: true,
+            startingPlayerId: finalStartingPlayerId
+        });
+
         // Wenn die Lobby-Einstellung 'random' ist, wird defaultStarter zu 'bull-off'.
         if (finalStartingPlayerId === 'bull-off') {
             // Zeige Ausbullen-Modal an
