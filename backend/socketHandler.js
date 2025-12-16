@@ -387,7 +387,12 @@ function initializeSocket(io, gameManager, auth) {
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
-                        average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
+                        const turnsPlayed = Math.floor(newDartsThrown / 3); // Anzahl der vollständigen Turns
+                        if (turnsPlayed > 0) {
+                            average = (pointsScored / turnsPlayed).toFixed(2);
+                        } else {
+                            average = "0.00";
+                        }
                     } else if (newDartsThrown === 0) { // Wenn Darts 0 sind, ist der Avg auch 0.00
                         average = "0.00";
                     }
@@ -433,11 +438,11 @@ function initializeSocket(io, gameManager, auth) {
                             if (score > newHighestFinish) {
                                 newHighestFinish = score;
                             }
-                            // Assume double finish for now
-                            newDoublesHit += 1;
-                        }
-
-                        // Update doubles thrown (3 per turn for X01)
+                            // Nur Double-Finish zählen wenn tatsächlich mit Double ausgecheckt wurde
+                            // Für X01: Prüfe ob der letzte Score ein Double war (gerade Zahl und >= 2)
+                            if (room.gameMode !== 'CricketGame' && score >= 2 && score % 2 === 0) {
+                                newDoublesHit += 1;
+                            }
                         if (room.gameMode !== 'CricketGame') {
                             newDoublesThrown += 3;
                         }
@@ -531,9 +536,14 @@ function initializeSocket(io, gameManager, auth) {
 
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore); // || startScore ist wichtig
-                        average = ((pointsScored / newDartsThrown) * 3).toFixed(2);
-                    } else if (newDartsThrown === 0) {
+                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
+                        const turnsPlayed = Math.floor(newDartsThrown / 3); // Anzahl der vollständigen Turns
+                        if (turnsPlayed > 0) {
+                            average = (pointsScored / turnsPlayed).toFixed(2);
+                        } else {
+                            average = "0.00";
+                        }
+                    } else if (newDartsThrown === 0) { // Wenn Darts 0 sind, ist der Avg auch 0.00
                         average = "0.00";
                     }
 

@@ -48,21 +48,21 @@ class X01Game {
         // Bust-Logik
         const newScoreAfterThrow = currentScore - scoreValue;
 
-        const isBust = newScoreAfterThrow < 0 || newScoreAfterThrow === 1 || (newScoreAfterThrow === 0 && this.outMode === 'double' /* Hier müsste die Dart-Info geprüft werden, was wir nicht haben. Vereinfachung: Wir nehmen an, der Client prüft das. */);
+        // Bust-Bedingungen: Score < 0, Score = 1, oder Score = 0 aber nicht mit Double ausgecheckt
+        // Für Score = 0 müssen wir prüfen ob es ein gültiges Finish ist
+        let isBust = newScoreAfterThrow < 0 || newScoreAfterThrow === 1;
 
-        if (isBust) {
-            this.history.push({ playerId, score: scoreValue, bust: true, remainingScore: currentScore });
-            console.log(`[X01Game] BUST! Score bleibt bei ${currentScore}, nächster Spieler`);
-            // Score wird nicht geändert
-            this.nextTurn();
-            console.log(`[X01Game] Nächster Spieler Index: ${this.currentPlayerIndex}`);
-            return { valid: true, bust: true, winner: null };
-        }
-    
-        // Berechne den neuen Score
-        this.scores[playerId] = newScoreAfterThrow;
-        this.history.push({ playerId, score: scoreValue, bust: false, remainingScore: newScoreAfterThrow });
-    
+        // Wenn Score = 0 erreicht wird, prüfe ob es ein gültiges Finish ist
+        if (newScoreAfterThrow === 0) {
+            if (this.outMode === 'double') {
+                // Bei Double-Out muss der letzte Wurf ein Double sein
+                // Da wir keine Dart-Details haben, nehmen wir an dass der Client das prüft
+                // Für jetzt: Erlaube Finish bei Score = 0 (Client muss das validieren)
+                isBust = false;
+            } else {
+                // Bei Single-Out ist jeder Wurf erlaubt
+                isBust = false;
+            }
         console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScoreAfterThrow}`);
     
         // Prüfe auf Gewinner
