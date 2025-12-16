@@ -577,7 +577,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 whoStarts: newState.whoStarts || prev?.whoStarts  // whoStarts auch auf oberster Ebene
             };
         });
-    }, []);
+    }, [user.id]); // <--- WICHTIG: user.id hinzugefügt, damit isMyTurn korrekt berechnet wird!
 
     const handleScoreInput = (scoreInput) => {
         if (!isMyTurn || numpadState.isLocked) return;
