@@ -289,6 +289,7 @@ function Game() {
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
     const [isStartingGame, setIsStartingGame] = useState(false);
+    const startGameTimeoutRef = useRef(null);
 
     // NEU: State für Startspieler-Auswahl
     const [startingPlayerId, setStartingPlayerId] = useState(null);
@@ -462,6 +463,10 @@ setGameState(prev => {
             if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active') {
                 setLocalGameStarted(true);
                 setIsStartingGame(false);
+                if (startGameTimeoutRef.current) {
+                    clearTimeout(startGameTimeoutRef.current);
+                    startGameTimeoutRef.current = null;
+                }
             }
             
             const updatedPlayers = (newState.players || prev?.players || []).map(newPlayer => {
@@ -1286,6 +1291,12 @@ socket.on('camera-ice', async (data) => {
 
         setIsStartingGame(true);
 
+        // Set timeout to reset isStartingGame after 10 seconds in case game doesn't start
+        startGameTimeoutRef.current = setTimeout(() => {
+            console.log('Game start timeout - resetting isStartingGame');
+            setIsStartingGame(false);
+        }, 10000);
+
         // Bestimme die endgültige Startspieler-ID basierend auf Dropdown-Auswahl oder Lobby-Standard.
         const defaultStarter = getDefaultStartingPlayerId();
         let finalStartingPlayerId = startingPlayerId || defaultStarter;
@@ -1414,6 +1425,10 @@ const isHost = gameState.hostId === user.id;
         setShowBullOffModal(false);
         setBullOffModalShown(false);
         setIsStartingGame(false);
+        if (startGameTimeoutRef.current) {
+            clearTimeout(startGameTimeoutRef.current);
+            startGameTimeoutRef.current = null;
+        }
 
         if (socket) {
             const payload = {
@@ -1544,6 +1559,10 @@ const isHost = gameState.hostId === user.id;
                             setBullOffCompleted(false);
                             setLocalGameStarted(false);
                             setIsStartingGame(false);
+                            if (startGameTimeoutRef.current) {
+                                clearTimeout(startGameTimeoutRef.current);
+                                startGameTimeoutRef.current = null;
+                            }
                         }}
                         players={gameState.players} onBullOffComplete={handleBullOffComplete}
                         socket={socket} roomId={roomId} user={user}
