@@ -322,7 +322,7 @@ function Game() {
 
     // Nummernpad-Sperrlogik - VEREINFACHT
     const [numpadState, setNumpadState] = useState({
-        isLocked: true,        // Nummernpad gesperrt/entsperrt
+        isLocked: false,        // Nummernpad gesperrt/entsperrt
         canUndo: false,        // Undo möglich
         lockedPlayerId: null,  // Wer ist gesperrt
         lockTimer: null        // Timer für automatische Entsperrung
