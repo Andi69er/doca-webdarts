@@ -494,6 +494,20 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                     }
                 }
 
+// Unlock number pad when game becomes active and it's the user's turn
+                if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active' && newIsMyTurn) {
+                    setNumpadState(prev => ({
+                        ...prev,
+                        isLocked: false,
+                        canUndo: false,
+                        lockedPlayerId: null
+                    }));
+                    setTurnEndTime(null);
+                    if (numpadState.lockTimer) {
+                        clearTimeout(numpadState.lockTimer);
+                    }
+                }
+
 // Für Cricket: Immer entsperren wenn ich dran bin (auch nach eigenem Wurf)
                 if (newState.mode === 'cricket' && newIsMyTurn) {
                     setNumpadState(prev => ({
@@ -659,7 +673,9 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
     };
 
     useEffect(() => {
-        if (!socket) return;
+        if (!socket || !socket.connected) return;
+
+        console.log('Setting up game event listeners for room:', roomId);
 
         socket.on('game-state-update', handleGameState);
         socket.on('game-started', handleGameState);
@@ -676,11 +692,17 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             window.location.href = '/'; // Redirect to lobby
         });
 
+        console.log('Emitting joinRoom and getGameState for room:', roomId);
         socket.emit('joinRoom', { roomId });
         socket.emit('getGameState', roomId);
 
-        const poll = setInterval(() => socket.emit('getGameState', roomId), 2500);
+        const poll = setInterval(() => {
+            console.log('Polling getGameState for room:', roomId);
+            socket.emit('getGameState', roomId);
+        }, 2500);
+
         return () => {
+            console.log('Cleaning up game event listeners');
             clearInterval(poll);
             socket.off('game-state-update', handleGameState);
             socket.off('game-started', handleGameState);
@@ -1346,7 +1368,15 @@ socket.on('camera-ice', async (data) => {
             <div className="game-container" style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh', color:'white', flexDirection: 'column'}}>
                 <h2>Lade Spiel...</h2>
                 <div style={{marginTop: '20px'}}>
-                    {!socket ? "Verbinde mit Server..." : "Hole Spieldaten..."}
+                    {!socket ? "Verbinde mit Server..." :
+                     !socket.connected ? "Verbinde mit Server..." :
+                     "Hole Spieldaten..."}
+                </div>
+                <div style={{marginTop: '10px', fontSize: '12px', color: '#888'}}>
+                    Socket: {socket ? (socket.connected ? 'Verbunden' : 'Nicht verbunden') : 'Nicht verfügbar'}
+                </div>
+                <div style={{marginTop: '5px', fontSize: '12px', color: '#888'}}>
+                    Raum-ID: {roomId}
                 </div>
             </div>
         );
