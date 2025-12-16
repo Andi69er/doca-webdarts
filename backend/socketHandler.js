@@ -384,8 +384,10 @@ function initializeSocket(io, gameManager, auth) {
                     const isCurrentPlayer = p.id === userId;
                     const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
 
+                    // Average-Berechnung: Punkte erzielt / Turns gespielt
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
+                        // Berechne die bereits erzielten Punkte: Startscore - aktueller verbleibender Score
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
                         const turnsPlayed = Math.floor(newDartsThrown / 3); // Anzahl der vollständigen Turns
                         if (turnsPlayed > 0) {
@@ -395,8 +397,6 @@ function initializeSocket(io, gameManager, auth) {
                         }
                     } else if (newDartsThrown === 0) {
                         average = "0.00";
-                    }
-
                     // Live Statistics Updates
                     let newScores = p.scores || [];
                     let newFinishes = p.finishes || [];

@@ -74,12 +74,12 @@ const LiveStatistics = ({ gameState }) => {
             </div>
 
             <div className="stats-table">
-                <StatRow 
-                    label="MATCH Ø" 
-                    v1={avg(p1.average)} 
-                    v2={avg(p2.average)} 
-                    highlightP1={parseFloat(p1.average || 0) > parseFloat(p2.average || 0)}
-                    highlightP2={parseFloat(p2.average || 0) > parseFloat(p1.average || 0)}
+                <StatRow
+                    label="MATCH Ø"
+                    v1={avg(p1.avg)}
+                    v2={avg(p2.avg)}
+                    highlightP1={parseFloat(p1.avg || 0) > parseFloat(p2.avg || 0)}
+                    highlightP2={parseFloat(p2.avg || 0) > parseFloat(p1.avg || 0)}
                 />
                 <StatRow label="FIRST 9 Ø" v1={avg(p1.first9Avg)} v2={avg(p2.first9Avg)} />
                 <StatRow label="DOPPEL %" v1={p1Doubles} v2={p2Doubles} />
