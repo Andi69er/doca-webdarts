@@ -661,6 +661,11 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
     useEffect(() => {
         if (!socket) return;
 
+        socket.on('game-state-update', handleGameState);
+        socket.on('game-started', handleGameState);
+        socket.on('gameState', handleGameState);
+        socket.on('statusUpdate', handleGameState);
+
         socket.on('joinedAsSpectator', () => {
             console.log("Als Zuschauer beigetreten.");
             setIsSpectator(true);
