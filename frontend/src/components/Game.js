@@ -457,6 +457,10 @@ setGameState(prev => {
             if (newState.gameStatus === 'finished' && prev?.gameStatus !== 'finished') {
                 setShowWinnerPopup(true);
             }
+
+            if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active') {
+                setLocalGameStarted(true);
+            }
             
             const updatedPlayers = (newState.players || prev?.players || []).map(newPlayer => {
                 const existingPlayer = (prev?.players || []).find(p => p.id === newPlayer.id) || {};
@@ -1277,12 +1281,11 @@ socket.on('camera-ice', async (data) => {
     const handleStartGame = () => {
         console.log('handleStartGame called');
         if (!socket) return;
-        setLocalGameStarted(true);
 
         // Bestimme die endgültige Startspieler-ID basierend auf Dropdown-Auswahl oder Lobby-Standard.
         const defaultStarter = getDefaultStartingPlayerId();
         let finalStartingPlayerId = startingPlayerId || defaultStarter;
-        
+
         // Wenn die Lobby-Einstellung 'random' ist, wird defaultStarter zu 'bull-off'.
         // Dies verhindert, dass 'random' in eine ID umgewandelt wird, bevor das Spiel startet (Problem 4).
         if (finalStartingPlayerId === 'bull-off') {
@@ -1384,7 +1387,7 @@ socket.on('camera-ice', async (data) => {
     }
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
+    const isGameRunning = gameState.gameStatus === 'active';
     const isGameFinished = gameState.gameStatus === 'finished';
 
     const winner = gameState?.winner;
