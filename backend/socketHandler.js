@@ -397,6 +397,8 @@ function initializeSocket(io, gameManager, auth) {
                         }
                     } else if (newDartsThrown === 0) {
                         average = "0.00";
+                    }
+
                     // Live Statistics Updates
                     let newScores = p.scores || [];
                     let newFinishes = p.finishes || [];
