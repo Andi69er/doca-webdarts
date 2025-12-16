@@ -66,7 +66,12 @@ class X01Game {
         }
 
         console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScoreAfterThrow}`);
-    
+
+        // Aktualisiere Score wenn kein Bust
+        if (!isBust) {
+            this.scores[playerId] = newScoreAfterThrow;
+        }
+
         // Prüfe auf Gewinner
         if (newScoreAfterThrow === 0) {
             this.legWinner = playerId;
