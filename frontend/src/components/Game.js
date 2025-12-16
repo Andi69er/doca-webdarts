@@ -307,6 +307,9 @@ function Game() {
     // Doppelquote-Abfrage State
     const [doubleAttemptsQuery, setDoubleAttemptsQuery] = useState(null);
 
+    // Spectator state
+    const [isSpectator, setIsSpectator] = useState(false);
+
     // NEU: State für die Aufnahme
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef(null);
@@ -677,12 +680,11 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             socket.off('game-state-update', handleGameState);
             socket.off('game-started', handleGameState);
             socket.off('gameState', handleGameState);
-            socket.off('receiveMessage', handleReceiveMessage);
             socket.off('statusUpdate', handleGameState);
             socket.off('joinedAsSpectator');
             socket.off('youHaveBeenKicked');
         };
-    }, [socket, roomId, handleGameState, handleReceiveMessage]);
+    }, [socket, roomId, handleGameState]);
 
     // --- KAMERA & WEBRTC LOGIK ---
 
@@ -1349,6 +1351,7 @@ socket.on('camera-ice', async (data) => {
     const isGameRunning = gameState.gameStatus === 'active' || localGameStarted;
     const isGameFinished = gameState.gameStatus === 'finished';
 
+    const winner = gameState?.winner;
 
 const isHost = gameState.hostId === user.id;
     const canInput = !numpadState.isLocked;
