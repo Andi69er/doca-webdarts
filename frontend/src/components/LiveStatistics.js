@@ -11,24 +11,24 @@ const LiveStatistics = ({ gameState }) => {
 
     const val = (v, suffix = '') => (v !== undefined && v !== null ? v + suffix : '0' + suffix);
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
-    
-    const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
-    const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
-    
-    // Berechne zusätzliche Statistiken
-    const getScoreRange = (player, min, max = null) => {
+
+    // Berechne 9-Dart Average (Average der ersten 9 Darts)
+    const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
-        if (max) {
-            return scores.filter(s => s >= min && s <= max).length;
-        }
-        // Wenn kein max, dann zähle alle >= min (für 60+, 100+, 140+)
-        if (min >= 60) {
-            return scores.filter(s => s >= min).length;
-        }
-        // Für 19- zähle alle < min
-        return scores.filter(s => s < min).length;
+        if (scores.length === 0) return '0.00';
+
+        // Nimm die ersten 9 Scores, aber maximal die verfügbaren
+        const first9Scores = scores.slice(0, 9);
+        const totalPoints = first9Scores.reduce((sum, score) => sum + score, 0);
+        const totalDarts = Math.min(first9Scores.length * 3, 9); // Max 9 Darts
+
+        if (totalDarts === 0) return '0.00';
+        return (totalPoints / Math.ceil(totalDarts / 3)).toFixed(2);
     };
-    
+
+    const p1First9Avg = calculateFirst9Avg(p1);
+    const p2First9Avg = calculateFirst9Avg(p2);
+
     const p1Scores19Minus = getScoreRange(p1, 19);
     const p2Scores19Minus = getScoreRange(p2, 19);
     const p1Scores19Plus = getScoreRange(p1, 19, 37);
@@ -81,7 +81,7 @@ const LiveStatistics = ({ gameState }) => {
                     highlightP1={parseFloat(p1.avg || 0) > parseFloat(p2.avg || 0)}
                     highlightP2={parseFloat(p2.avg || 0) > parseFloat(p1.avg || 0)}
                 />
-                <StatRow label="FIRST 9 Ø" v1={avg(p1.first9Avg)} v2={avg(p2.first9Avg)} />
+                <StatRow label="FIRST 9 Ø" v1={p1First9Avg} v2={p2First9Avg} />
                 <StatRow label="DOPPEL %" v1={p1Doubles} v2={p2Doubles} />
                 <StatRow label="60+" v1={val(p1Scores60Plus)} v2={val(p2Scores60Plus)} />
                 <StatRow label="100+" v1={val(p1Scores100Plus)} v2={val(p2Scores100Plus)} />
