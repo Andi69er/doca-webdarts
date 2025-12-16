@@ -63,6 +63,8 @@ class X01Game {
                 // Bei Single-Out ist jeder Wurf erlaubt
                 isBust = false;
             }
+        }
+
         console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScoreAfterThrow}`);
     
         // Prüfe auf Gewinner
