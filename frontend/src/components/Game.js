@@ -544,7 +544,6 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 currentPlayerIndex: currentPlayerIndex,
                 whoStarts: newState.whoStarts || prev?.whoStarts  // whoStarts auch auf oberster Ebene
             };
-            });
         });
     }, []);
 
@@ -654,6 +653,12 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             });
             setDoubleAttemptsQuery(null);
         }
+    };
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('joinedAsSpectator', () => {
             console.log("Als Zuschauer beigetreten.");
             setIsSpectator(true);
         });
