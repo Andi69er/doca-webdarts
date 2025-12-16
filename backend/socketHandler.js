@@ -312,7 +312,7 @@ function initializeSocket(io, gameManager, auth) {
             
             room.gameStarted = true;
 
-// 4. GameState für Frontend bauen
+            // 4. GameState für Frontend bauen
             if (room.gameMode === 'CricketGame') {
                 room.gameState = {
                     mode: 'cricket',
