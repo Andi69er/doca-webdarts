@@ -277,7 +277,11 @@ function initializeSocket(io, gameManager, auth) {
             console.log("Gewünschte Start-ID vom Frontend:", startingPlayerId);
             console.log("Spieler im Raum:", room.players.map((p, i) => `${i}: ${p.id} (${p.name})`));
 
-            if (startingPlayerId) {
+            if (startingPlayerId === 'bull-off') {
+                // Random mode - start with bull-off
+                console.log("-> Zufälliger Start (Ausbullen) gewählt. Aktueller Spielerindex bleibt 0 für Host.");
+                // Start with host, bull-off will determine starter later
+            } else if (startingPlayerId) {
                 // Wenn Frontend eine ID mitschickt (aus dem Dropdown)
                 const foundIndex = room.players.findIndex(p => p.id === startingPlayerId);
                 if (foundIndex !== -1) {
