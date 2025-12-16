@@ -288,6 +288,7 @@ function Game() {
     const [localGameStarted, setLocalGameStarted] = useState(false);
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
+    const [isStartingGame, setIsStartingGame] = useState(false);
 
     // NEU: State für Startspieler-Auswahl
     const [startingPlayerId, setStartingPlayerId] = useState(null);
@@ -460,6 +461,7 @@ setGameState(prev => {
 
             if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active') {
                 setLocalGameStarted(true);
+                setIsStartingGame(false);
             }
             
             const updatedPlayers = (newState.players || prev?.players || []).map(newPlayer => {
@@ -1282,6 +1284,8 @@ socket.on('camera-ice', async (data) => {
         console.log('handleStartGame called');
         if (!socket) return;
 
+        setIsStartingGame(true);
+
         // Bestimme die endgültige Startspieler-ID basierend auf Dropdown-Auswahl oder Lobby-Standard.
         const defaultStarter = getDefaultStartingPlayerId();
         let finalStartingPlayerId = startingPlayerId || defaultStarter;
@@ -1409,7 +1413,8 @@ const isHost = gameState.hostId === user.id;
         // Start the game with the bull-off winner
         setShowBullOffModal(false);
         setBullOffModalShown(false);
-        
+        setIsStartingGame(false);
+
         if (socket) {
             const payload = {
                 roomId,
@@ -1448,7 +1453,7 @@ const isHost = gameState.hostId === user.id;
                             <div className="ready-box" style={{backgroundColor: '#111'}}>
                                 {gameState.players.length < 2 ?
                                     <h3 style={{color: '#888'}}>Warte auf Gegner...</h3> :
-                                    (isHost ? <button onClick={handleStartGame} className="start-game-button">SPIEL STARTEN 🎯</button> : <div className="waiting-message">Warte auf Host...</div>)
+                                    (isHost ? <button onClick={handleStartGame} disabled={isStartingGame} className="start-game-button">SPIEL STARTEN 🎯</button> : <div className="waiting-message">Warte auf Host...</div>)
                                 }
                             </div>
                         )}
@@ -1538,6 +1543,7 @@ const isHost = gameState.hostId === user.id;
                             setBullOffModalShown(false);
                             setBullOffCompleted(false);
                             setLocalGameStarted(false);
+                            setIsStartingGame(false);
                         }}
                         players={gameState.players} onBullOffComplete={handleBullOffComplete}
                         socket={socket} roomId={roomId} user={user}
@@ -1569,7 +1575,7 @@ const isHost = gameState.hostId === user.id;
                                 {gameState.players.length < 2 ? "Warte auf Gegner..." : "Bereit zum Start"}
                             </div>
                             {isHost && !isSpectator ? (
-                                <button className="start-game-button" onClick={handleStartGame}>
+                                <button className="start-game-button" onClick={handleStartGame} disabled={isStartingGame}>
                                     SPIEL STARTEN 🎯
                                 </button>
                             ) : (
@@ -1795,7 +1801,8 @@ const isHost = gameState.hostId === user.id;
                     onClose={() => {
                         setShowBullOffModal(false);
                         setBullOffModalShown(false);
-                        setBullOffCompleted(true);
+                        setBullOffCompleted(false);
+                        setIsStartingGame(false);
                     }}
                     players={gameState.players}
                     onBullOffComplete={handleBullOffComplete}
