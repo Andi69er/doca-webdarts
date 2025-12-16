@@ -1445,7 +1445,7 @@ const isHost = gameState.hostId === user.id;
                             <div className="ready-box" style={{backgroundColor: '#111'}}>
                                 {gameState.players.length < 2 ?
                                     <h3 style={{color: '#888'}}>Warte auf Gegner...</h3> :
-                                    (isHost ? <button onClick={() => { console.log('Button clicked directly'); handleStartGame(); }} className="start-game-button">SPIEL STARTEN 🎯</button> : <div className="waiting-message">Warte auf Host...</div>)
+                                    (isHost ? <button onClick={handleStartGame} className="start-game-button">SPIEL STARTEN 🎯</button> : <div className="waiting-message">Warte auf Host...</div>)
                                 }
                             </div>
                         )}
@@ -1530,7 +1530,12 @@ const isHost = gameState.hostId === user.id;
                 {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
                 {showBullOffModal && (
                     <BullOffModal
-                        isOpen={showBullOffModal} onClose={() => setShowBullOffModal(false)}
+                        isOpen={showBullOffModal} onClose={() => {
+                            setShowBullOffModal(false);
+                            setBullOffModalShown(false);
+                            setBullOffCompleted(false);
+                            setLocalGameStarted(false);
+                        }}
                         players={gameState.players} onBullOffComplete={handleBullOffComplete}
                         socket={socket} roomId={roomId} user={user}
                     />
