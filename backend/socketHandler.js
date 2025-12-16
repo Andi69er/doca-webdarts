@@ -490,7 +490,6 @@ function initializeSocket(io, gameManager, auth) {
                 room.players = updatedPlayers;
 
                 // 4. Prüfe ob Doppelquote-Abfrage nötig ist
-                const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
                 const currentScore = newGameStateFromGame.scores[userId];
                 const isFinishPossible = (currentScore === 50) || (currentScore <= 40 && currentScore % 2 === 0);
 
