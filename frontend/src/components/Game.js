@@ -1275,6 +1275,7 @@ socket.on('camera-ice', async (data) => {
 
     // Actions
     const handleStartGame = () => {
+        console.log('handleStartGame called');
         if (!socket) return;
         setLocalGameStarted(true);
 
