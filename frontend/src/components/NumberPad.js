@@ -29,7 +29,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
 
     const handleNumPress = useCallback((num) => {
         // Wenn ich Undo nutzen kann (Score eingegeben), keine weiteren Eingaben
-        if (canUseUndo) return;
+        // if (canUseUndo) return; // ENTFERNT: Erlaube Eingabe auch während Undo-Phase
         // Wenn Gegner gesperrt ist, keine Eingaben
         if (isOpponentLocked) return;
         // Standard-Checks
@@ -40,7 +40,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
 
     const handleEnter = useCallback(() => {
         // Wenn ich Undo nutzen kann (Score eingegeben), keine weitere Eingabe
-        if (canUseUndo) return;
+        // if (canUseUndo) return; // ENTFERNT: Erlaube Eingabe auch während Undo-Phase
         // Wenn Gegner gesperrt ist, keine Eingabe
         if (isOpponentLocked) return;
         // Standard-Checks
@@ -66,7 +66,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
             }
 
             // Wenn ich Undo nutzen kann, keine anderen Eingaben
-            if (canUseUndo) return;
+            // if (canUseUndo) return; // ENTFERNT: Erlaube Eingabe auch während Undo-Phase
 
             // Wenn Gegner gesperrt ist, keine Eingaben
             if (isOpponentLocked) return;

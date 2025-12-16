@@ -601,7 +601,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             const lockTimer = setTimeout(() => {
                 setNumpadState(prev => ({
                     ...prev,
-                    isLocked: true,
+                    isLocked: false,
                     canUndo: false,
                     lockedPlayerId: null,
                     lockTimer: null
