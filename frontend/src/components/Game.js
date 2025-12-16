@@ -1580,7 +1580,7 @@ const isHost = gameState.hostId === user.id;
 
                     <div className="game-bottom-section">
                         <div className="game-column-left">
-                            {isGameRunning && !isSpectator && (
+                            {!isSpectator && (
                                 <div className="wurf-section">
                                     <h3 className="wurf-title">{isMyTurn ? 'DEIN WURF' : `${currentPlayer?.name.toUpperCase()} WIRFT`}</h3>
                                     <div className="number-pad-container">
@@ -1599,6 +1599,7 @@ const isHost = gameState.hostId === user.id;
                                                 isOpponentLocked={!isMyTurn}
                                                 isMyTurn={isMyTurn}
                                                 canUseUndo={numpadState.canUndo}
+                                                gameRunning={isGameRunning}
                                             />
                                         </div>
                                     </div>

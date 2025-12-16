@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestions, isOpponentLocked, isMyTurn, canUseUndo }) => {
+const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestions, isOpponentLocked, isMyTurn, canUseUndo, gameRunning }) => {
     const [currentInput, setCurrentInput] = useState('');
 
     // Styles (wie gehabt Mittelgroß)
@@ -72,6 +72,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
             if (isOpponentLocked) return;
 
             // Standard-Checks
+            if (!gameRunning) return;
             if (!isActive) return;
             if (isLocked) return;
 
@@ -89,12 +90,13 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleNumPress, handleEnter, isActive, isLocked, canUseUndo, isOpponentLocked, onUndo]);
+    }, [handleNumPress, handleEnter, isActive, isLocked, canUseUndo, isOpponentLocked, onUndo, gameRunning]);
 
     return (
         <div style={styles.wrapper}>
             <div style={styles.status}>
-                {canUseUndo ? "Score eingegeben - Undo möglich (U)" :
+                {!gameRunning ? "Spiel noch nicht gestartet" :
+                 canUseUndo ? "Score eingegeben - Undo möglich (U)" :
                  isOpponentLocked ? "Warte 5 Sekunden..." :
                  (!isActive ? "Gegner ist dran..." :
                  (isLocked ? "Wurf gesendet..." : "Du bist dran!"))}
@@ -110,14 +112,14 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
 
             <div style={styles.grid}>
                 {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => {
-                    const isDisabled = !isActive || isLocked || canUseUndo || isOpponentLocked;
+                    const isDisabled = !gameRunning || !isActive || isLocked || canUseUndo || isOpponentLocked;
                     return (
                         <button key={num} style={{...styles.btn, ...styles.btnNum, opacity: isDisabled ? 0.5 : 1}} onClick={() => handleNumPress(num.toString())} disabled={isDisabled}>{num}</button>
                     );
                 })}
-                <button style={{...styles.btn, ...styles.btnClear, opacity: (!isActive || isLocked || canUseUndo || isOpponentLocked) ? 0.5 : 1}} onClick={() => setCurrentInput('')} disabled={!isActive || isLocked || canUseUndo || isOpponentLocked}>C</button>
-                <button style={{...styles.btn, ...styles.btnNum, opacity: (!isActive || isLocked || canUseUndo || isOpponentLocked) ? 0.5 : 1}} onClick={() => handleNumPress('0')} disabled={!isActive || isLocked || canUseUndo || isOpponentLocked}>0</button>
-                <button style={{...styles.btn, ...styles.btnEnter, opacity: (!isActive || isLocked || currentInput==='' || canUseUndo || isOpponentLocked) ? 0.5 : 1}} onClick={handleEnter} disabled={!isActive || isLocked || currentInput==='' || canUseUndo || isOpponentLocked}>⏎</button>
+                <button style={{...styles.btn, ...styles.btnClear, opacity: (!gameRunning || !isActive || isLocked || canUseUndo || isOpponentLocked) ? 0.5 : 1}} onClick={() => setCurrentInput('')} disabled={!gameRunning || !isActive || isLocked || canUseUndo || isOpponentLocked}>C</button>
+                <button style={{...styles.btn, ...styles.btnNum, opacity: (!gameRunning || !isActive || isLocked || canUseUndo || isOpponentLocked) ? 0.5 : 1}} onClick={() => handleNumPress('0')} disabled={!gameRunning || !isActive || isLocked || canUseUndo || isOpponentLocked}>0</button>
+                <button style={{...styles.btn, ...styles.btnEnter, opacity: (!gameRunning || !isActive || isLocked || currentInput==='' || canUseUndo || isOpponentLocked) ? 0.5 : 1}} onClick={handleEnter} disabled={!gameRunning || !isActive || isLocked || currentInput==='' || canUseUndo || isOpponentLocked}>⏎</button>
             </div>
             <button style={{...styles.btnUndo, opacity: (!canUseUndo) ? 0.5 : 1}} onClick={onUndo} disabled={!canUseUndo}>⟲ Undo (U)</button>
         </div>
