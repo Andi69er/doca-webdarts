@@ -440,7 +440,7 @@ function initializeSocket(io, gameManager, auth) {
                             if (score > newHighestFinish) {
                                 newHighestFinish = score;
                             }
-                            // Nur Double-Finish zählen wenn tatsächlich mit Double ausgecheckt wurde
+                            // Double-Finish wird später über manuelle Abfrage bestimmt
                             // Für X01: Prüfe ob der letzte Score ein Double war (gerade Zahl und >= 2)
                             if (room.gameMode !== 'CricketGame' && score >= 2 && score % 2 === 0) {
                                 newDoublesHit += 1;
@@ -489,7 +489,44 @@ function initializeSocket(io, gameManager, auth) {
                 });
                 room.players = updatedPlayers;
 
-                // 4. Update-Payload für Clients erstellen
+                // 4. Prüfe ob Doppelquote-Abfrage nötig ist
+                const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                const currentScore = newGameStateFromGame.scores[userId];
+                const isFinishPossible = (currentScore === 50) || (currentScore <= 40 && currentScore % 2 === 0);
+
+                let doubleAttemptsQuery = null;
+                if (isFinishPossible && room.gameMode !== 'CricketGame') {
+                    if (newGameStateFromGame.scores[userId] === 0) {
+                        // Check - frage nach dem Dart
+                        doubleAttemptsQuery = {
+                            type: 'checkout',
+                            question: 'Mit dem wievielten Dart hast du gecheckt?',
+                            options: ['1. Dart', '2. Dart', '3. Dart'],
+                            score: score,
+                            startScore: currentScore
+                        };
+                    } else if (newGameStateFromGame.scores[userId] > 1) {
+                        // Kein Check aber Finish möglich - frage nach Versuchen
+                        doubleAttemptsQuery = {
+                            type: 'attempts',
+                            question: 'Wie viele Darts hast du auf ein Doppel geworfen?',
+                            options: ['0', '1', '2', '3'],
+                            score: score,
+                            startScore: currentScore
+                        };
+                    } else if (newGameStateFromGame.scores[userId] < 0 || newGameStateFromGame.scores[userId] === 1) {
+                        // Bust - frage nach Versuchen vor dem Bust
+                        doubleAttemptsQuery = {
+                            type: 'bust',
+                            question: 'Wie viele Darts gingen auf das Doppel, bevor du überworfen hast?',
+                            options: ['0', '1', '2', '3'],
+                            score: score,
+                            startScore: currentScore
+                        };
+                    }
+                }
+
+                // 5. Update-Payload für Clients erstellen
                 const updateData = {
                     mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                     players: updatedPlayers,
@@ -500,133 +537,11 @@ function initializeSocket(io, gameManager, auth) {
                     hostId: room.hostId,
                     gameState: newGameStateFromGame, // Das komplette State-Objekt vom Spiel
                     dartsThrownInTurn: result.dartsThrownInTurn, // Wichtig für Cricket
+                    doubleAttemptsQuery: doubleAttemptsQuery, // Neue Abfrage
                 };
 
-                // TODO: Leg-Gewinner-Logik hier einfügen, falls benötigt
-                if (result.winner) {
-                    // ...
-                }
-
-                // 5. Neuen State speichern und an Clients senden
+                // 6. Neuen State speichern und an Clients senden
                 room.gameState = { ...updateData };
-                io.to(roomId).emit('game-state-update', updateData);
-
-            } catch (error) {
-                console.error(`[SCORE-INPUT] Fehler:`, error);
-                socket.emit('gameError', { error: 'Interner Serverfehler' });
-            }
-        });
-        
-        socket.on('undo', (data) => {
-            const { roomId, userId } = data;
-            const room = rooms.find(r => r.id === roomId);
-
-            if (!room || !room.game) {
-                return socket.emit('gameError', { error: 'Spiel nicht aktiv oder Raum nicht gefunden.' });
-            }
-
-            try {
-                // 1. Führe die Undo-Aktion in der Spiellogik aus
-                const result = room.game.undoLastThrow();
-
-                if (!result.success) {
-                    return socket.emit('gameError', { error: result.reason });
-                }
-
-                // 2. Hole den neuen, korrigierten Spielstand
-                const newGameStateFromGame = room.game.getGameState();
-
-                // 3. Aktualisiere die Spieler-Statistiken (Darts, Average etc.)
-                const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
-                const playerWhoUndidThrow = room.players[newGameStateFromGame.currentPlayerIndex];
-
-                const updatedPlayers = room.players.map((p, idx) => {
-                    let newDartsThrown = p.dartsThrown || 0;
-                    if (p.id === playerWhoUndidThrow.id) {
-                        newDartsThrown = Math.max(0, newDartsThrown - (room.gameMode === 'CricketGame' ? 1 : 3));
-                    }
-
-                    let average = p.avg || "0.00";
-                    if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
-                        const turnsPlayed = Math.floor(newDartsThrown / 3); // Anzahl der vollständigen Turns
-                        if (turnsPlayed > 0) {
-                            average = (pointsScored / turnsPlayed).toFixed(2);
-                        } else {
-                            average = "0.00";
-                        }
-                    } else if (newDartsThrown === 0) { // Wenn Darts 0 sind, ist der Avg auch 0.00
-                        average = "0.00";
-                    }
-
-                    // Undo Statistics
-                    let newScores = p.scores || [];
-                    let newFinishes = p.finishes || [];
-                    let newHighestFinish = p.highestFinish || 0;
-                    let newScores180 = p.scores180 || 0;
-                    let newScores100plus = p.scores100plus || 0;
-                    let newScores140plus = p.scores140plus || 0;
-                    let newDoublesHit = p.doublesHit || 0;
-                    let newDoublesThrown = p.doublesThrown || 0;
-
-                    if (p.id === playerWhoUndidThrow.id) {
-                        newScores = newScores.slice(0, -1);
-                        newDoublesThrown = Math.max(0, newDoublesThrown - 3);
-
-                        if (p.score === 0) { // was a finish
-                            newFinishes = newFinishes.slice(0, -1);
-                            newDoublesHit = Math.max(0, newDoublesHit - 1);
-                            newHighestFinish = newFinishes.length > 0 ? Math.max(...newFinishes) : 0;
-                        }
-
-                        if (p.lastThrownScore >= 180) {
-                            newScores180 = Math.max(0, newScores180 - 1);
-                        }
-
-                        if (p.lastThrownScore >= 60 && p.lastThrownScore < 100) {
-                            newScores60plus = Math.max(0, newScores60plus - 1);
-                        }
-
-                        if (p.lastThrownScore >= 100 && p.lastThrownScore < 180) {
-                            newScores100plus = Math.max(0, newScores100plus - 1);
-                        }
-
-                        if (p.lastThrownScore >= 140 && p.lastThrownScore < 180) {
-                            newScores140plus = Math.max(0, newScores140plus - 1);
-                        }
-
-                        p.lastThrownScore = 0;
-                    }
-
-                    return {
-                        ...p,
-                        score: newGameStateFromGame.scores[p.id],
-                        dartsThrown: newDartsThrown,
-                        avg: average,
-                        isActive: idx === newGameStateFromGame.currentPlayerIndex,
-                        lastScore: 0, // Letzten Wurf zurücksetzen
-
-                        // Live Statistics
-                        scores: newScores,
-                        finishes: newFinishes,
-                        highestFinish: newHighestFinish,
-                        scores180: newScores180,
-                        scores60plus: newScores60plus,
-                        scores100plus: newScores100plus,
-                        scores140plus: newScores140plus,
-                        doublesHit: newDoublesHit,
-                        doublesThrown: newDoublesThrown,
-                    };
-                });
-                room.players = updatedPlayers;
-
-                // 4. Erstelle das Update-Paket und sende es an alle
-                const updateData = {
-                    ...room.gameState, // Nimm den alten State als Basis
-                    players: updatedPlayers,
-                    gameState: newGameStateFromGame,
-                };
-                room.gameState = updateData;
                 io.to(roomId).emit('game-state-update', updateData);
 
             } catch (error) {
@@ -675,6 +590,38 @@ function initializeSocket(io, gameManager, auth) {
             }
             room.gameState = room.game.getGameState();
             io.to(room.id).emit('game-state-update', room);
+        });
+
+        // Doppelquote-Abfrage Antwort
+        socket.on('double-attempts-response', (data) => {
+            const { roomId, userId, response, queryType, score, startScore } = data;
+            const room = rooms.find(r => r.id === roomId);
+
+            if (!room) return;
+
+            const player = room.players.find(p => p.id === userId);
+            if (!player) return;
+
+            // Statistik aktualisieren basierend auf der Antwort
+            let hitsToAdd = 0;
+            let attemptsToAdd = 0;
+
+            if (queryType === 'checkout') {
+                // Check - response ist der Dart-Index (0, 1, 2 für 1., 2., 3. Dart)
+                hitsToAdd = 1;
+                attemptsToAdd = parseInt(response) + 1; // 0->1, 1->2, 2->3
+            } else if (queryType === 'attempts' || queryType === 'bust') {
+                // Kein Check - response ist die Anzahl der Versuche (0-3)
+                hitsToAdd = 0;
+                attemptsToAdd = parseInt(response);
+            }
+
+            // Statistik aktualisieren
+            player.doublesHit = (player.doublesHit || 0) + hitsToAdd;
+            player.doublesThrown = (player.doublesThrown || 0) + attemptsToAdd;
+
+            // Broadcast update
+            io.to(roomId).emit('game-state-update', room.gameState);
         });
 
         socket.on('rematch', (data) => {

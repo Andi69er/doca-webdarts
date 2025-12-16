@@ -303,8 +303,10 @@ function Game() {
     const [isCameraEnabled, setIsCameraEnabled] = useState(false);
     const [remoteStreams, setRemoteStreams] = useState({});
     const [showWinnerPopup, setShowWinnerPopup] = useState(false);
-    
-    const [isSpectator, setIsSpectator] = useState(false);
+
+    // Doppelquote-Abfrage State
+    const [doubleAttemptsQuery, setDoubleAttemptsQuery] = useState(null);
+
     // NEU: State für die Aufnahme
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef(null);
@@ -523,6 +525,11 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 });
             }
 
+            // Doppelquote-Abfrage verarbeiten
+            if (newState.doubleAttemptsQuery) {
+                setDoubleAttemptsQuery(newState.doubleAttemptsQuery);
+            }
+
             return {
                 ...(prev || {}),
                 ...newState,
@@ -537,13 +544,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 currentPlayerIndex: currentPlayerIndex,
                 whoStarts: newState.whoStarts || prev?.whoStarts  // whoStarts auch auf oberster Ebene
             };
-        });
-    }, [socket?.id, user?.id]);
-
-    const handleReceiveMessage = useCallback((data) => {
-        setGameState(prev => {
-            if(!prev) return prev;
-            return { ...prev, chatMessages: [...(prev.chatMessages || []), data] };
+            });
         });
     }, []);
 
@@ -626,7 +627,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             ignoreServerUntil.current = 0;
             expectedLocalScore.current = null;
             socket.emit('undo', { roomId, userId: user.id });
-            
+
             // Nach Undo: Nummernpad sofort sperren
             setNumpadState(prev => ({
                 ...prev,
@@ -634,25 +635,25 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 canUndo: false,
                 lockedPlayerId: null
             }));
-            
+
             if (numpadState.lockTimer) {
                 clearTimeout(numpadState.lockTimer);
             }
         }
     };
 
-    const winner = gameState?.players?.find(p => p.score <= 0);
-
-
-    useEffect(() => {
-        if (!socket) return;
-        socket.on('game-state-update', handleGameState);
-        socket.on('game-started', handleGameState);
-        socket.on('gameState', handleGameState);
-        socket.on('receiveMessage', handleReceiveMessage);
-        socket.on('statusUpdate', handleGameState);
-
-        socket.on('joinedAsSpectator', () => {
+    const handleDoubleAttemptsResponse = (responseIndex) => {
+        if (socket && doubleAttemptsQuery) {
+            socket.emit('double-attempts-response', {
+                roomId,
+                userId: user.id,
+                response: responseIndex,
+                queryType: doubleAttemptsQuery.type,
+                score: doubleAttemptsQuery.score,
+                startScore: doubleAttemptsQuery.startScore
+            });
+            setDoubleAttemptsQuery(null);
+        }
             console.log("Als Zuschauer beigetreten.");
             setIsSpectator(true);
         });
@@ -1677,6 +1678,63 @@ const isHost = gameState.hostId === user.id;
                     </div>
                 </div>
             </div>
+            {/* Doppelquote-Abfrage Modal */}
+            {doubleAttemptsQuery && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: '#222',
+                        padding: '20px',
+                        borderRadius: '8px',
+                        border: '2px solid #ffd700',
+                        maxWidth: '400px',
+                        width: '90%'
+                    }}>
+                        <h3 style={{ color: '#ffd700', marginBottom: '15px', textAlign: 'center' }}>
+                            Doppelquote-Abfrage
+                        </h3>
+                        <p style={{ color: '#fff', marginBottom: '20px', textAlign: 'center' }}>
+                            {doubleAttemptsQuery.question}
+                        </p>
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                        }}>
+                            {doubleAttemptsQuery.options.map((option, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => handleDoubleAttemptsResponse(index)}
+                                    style={{
+                                        padding: '10px',
+                                        backgroundColor: '#4CAF50',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '16px'
+                                    }}
+                                    onMouseOver={(e) => e.target.style.backgroundColor = '#45a049'}
+                                    onMouseOut={(e) => e.target.style.backgroundColor = '#4CAF50'}
+                                >
+                                    {option}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
             {showBullOffModal && (
                 <BullOffModal
