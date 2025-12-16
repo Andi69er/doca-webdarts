@@ -316,6 +316,10 @@ function Game() {
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef(null);
     const recordedChunksRef = useRef([]);
+
+    // Debug State
+    const [showDebug, setShowDebug] = useState(false);
+    const [debugLogs, setDebugLogs] = useState([]);
     // Video Layout State
     const [videoLayout, setVideoLayout] = useState({
         mode: 'splitscreen', // 'splitscreen' oder 'fullscreen'
@@ -1586,6 +1590,136 @@ const isHost = gameState.hostId === user.id;
     return (
         <div className="game-container">
             {isSpectator && <div className="spectator-banner">Zuschauer</div>}
+
+            {/* Debug Window Toggle */}
+            <button
+                onClick={() => setShowDebug(!showDebug)}
+                style={{
+                    position: 'fixed',
+                    top: '10px',
+                    right: '10px',
+                    zIndex: 9999,
+                    padding: '5px 10px',
+                    backgroundColor: '#333',
+                    color: '#fff',
+                    border: '1px solid #555',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                }}
+            >
+                {showDebug ? '🐛 Debug aus' : '🐛 Debug an'}
+            </button>
+
+            {/* Debug Window */}
+            {showDebug && (
+                <div style={{
+                    position: 'fixed',
+                    top: '50px',
+                    right: '10px',
+                    width: '400px',
+                    maxHeight: '80vh',
+                    backgroundColor: 'rgba(0,0,0,0.9)',
+                    color: '#fff',
+                    border: '1px solid #555',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    zIndex: 9998,
+                    overflowY: 'auto',
+                    fontSize: '12px',
+                    fontFamily: 'monospace'
+                }}>
+                    <h3 style={{marginTop: 0, color: '#ffd700'}}>🐛 Debug Information</h3>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>Socket Status:</strong><br/>
+                        Connected: {socket?.connected ? '✅ Ja' : '❌ Nein'}<br/>
+                        ID: {socket?.id || 'N/A'}<br/>
+                        Room: {roomId}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>Game State:</strong><br/>
+                        Status: {gameState?.gameStatus || 'N/A'}<br/>
+                        Mode: {gameState?.mode || 'N/A'}<br/>
+                        Players: {gameState?.players?.length || 0}<br/>
+                        Current Player Index: {gameState?.currentPlayerIndex || 'N/A'}<br/>
+                        Host ID: {gameState?.hostId || 'N/A'}<br/>
+                        Who Starts: {gameState?.whoStarts || 'N/A'}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>User Info:</strong><br/>
+                        User ID: {user?.id || 'N/A'}<br/>
+                        User Name: {user?.name || 'N/A'}<br/>
+                        Is Host: {isHost ? '✅ Ja' : '❌ Nein'}<br/>
+                        Is Spectator: {isSpectator ? '✅ Ja' : '❌ Nein'}<br/>
+                        Is My Turn: {isMyTurn ? '✅ Ja' : '❌ Nein'}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>UI State:</strong><br/>
+                        Is Game Running: {isGameRunning ? '✅ Ja' : '❌ Nein'}<br/>
+                        Is Game Finished: {isGameFinished ? '✅ Ja' : '❌ Nein'}<br/>
+                        Is Starting Game: {isStartingGame ? '✅ Ja' : '❌ Nein'}<br/>
+                        Local Game Started: {localGameStarted ? '✅ Ja' : '❌ Nein'}<br/>
+                        Show BullOff Modal: {showBullOffModal ? '✅ Ja' : '❌ Nein'}<br/>
+                        BullOff Modal Shown: {bullOffModalShown ? '✅ Ja' : '❌ Nein'}<br/>
+                        BullOff Completed: {bullOffCompleted ? '✅ Ja' : '❌ Nein'}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>NumberPad State:</strong><br/>
+                        Is Locked: {numpadState.isLocked ? '✅ Ja' : '❌ Nein'}<br/>
+                        Can Undo: {numpadState.canUndo ? '✅ Ja' : '❌ Nein'}<br/>
+                        Locked Player ID: {numpadState.lockedPlayerId || 'N/A'}<br/>
+                        Lock Timer: {numpadState.lockTimer ? 'Aktiv' : 'Inaktiv'}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>Video State:</strong><br/>
+                        Camera Enabled: {isCameraEnabled ? '✅ Ja' : '❌ Nein'}<br/>
+                        Local Stream: {localStream ? '✅ Ja' : '❌ Nein'}<br/>
+                        Remote Streams: {Object.keys(remoteStreams).length}<br/>
+                        Video Layout: {videoLayout?.mode || 'N/A'}<br/>
+                        Current Player ID: {videoLayout?.currentPlayerId || 'N/A'}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>Players:</strong>
+                        {gameState?.players?.map((player, index) => (
+                            <div key={player.id} style={{marginLeft: '10px', marginBottom: '5px'}}>
+                                {index}: {player.name} (ID: {player.id}) - Score: {player.score || player.points || 'N/A'}
+                                {player.id === user?.id ? ' ← DU' : ''}
+                                {player.id === gameState?.hostId ? ' ← HOST' : ''}
+                            </div>
+                        )) || 'Keine Spieler'}
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>Debug Logs:</strong>
+                        <div style={{maxHeight: '100px', overflowY: 'auto', backgroundColor: '#111', padding: '5px', borderRadius: '4px'}}>
+                            {debugLogs.length > 0 ? debugLogs.map((log, index) => (
+                                <div key={index} style={{marginBottom: '2px'}}>{log}</div>
+                            )) : 'Keine Logs'}
+                        </div>
+                    </div>
+
+                    <div style={{marginBottom: '15px'}}>
+                        <strong>Actions:</strong><br/>
+                        <button onClick={() => {
+                            setDebugLogs([]);
+                            setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Debug logs cleared`]);
+                        }} style={{marginRight: '5px', padding: '2px 5px', fontSize: '11px'}}>Clear Logs</button>
+                        <button onClick={() => {
+                            if (socket) {
+                                socket.emit('getGameState', roomId);
+                                setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Manual getGameState sent`]);
+                            }
+                        }} style={{padding: '2px 5px', fontSize: '11px'}}>Refresh State</button>
+                    </div>
+                </div>
+            )}
 
             <div className="game-layout">
                 <div className="game-main-area">
