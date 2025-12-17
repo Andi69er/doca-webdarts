@@ -574,10 +574,13 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             }
 
             // Checkout popup verarbeiten
+            console.log('[DEBUG] Frontend - newState.checkoutQuery:', newState.checkoutQuery);
+            console.log('[DEBUG] Frontend - newState.doubleAttemptsQuery:', newState.doubleAttemptsQuery);
             if (newState.checkoutQuery) {
+                console.log('[DEBUG] Frontend - Setting checkout popup active');
                 setCheckoutPlayer(newState.checkoutQuery.player);
                 setShowCheckoutPopup(true);
-            } else if (!newState.doubleAttemptsQuery) {
+            } else if (!newState.checkoutQuery) {
                 setShowCheckoutPopup(false);
                 setCheckoutPlayer(null);
             }

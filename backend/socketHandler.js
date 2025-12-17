@@ -506,16 +506,26 @@ function initializeSocket(io, gameManager, auth) {
                 });
                 room.players = updatedPlayers;
 
-                // 4. Prüfe ob Doppelquote-Abfrage nötig ist
+// 4. Prüfe ob Doppelquote-Abfrage nötig ist
                 const currentScore = newGameStateFromGame.scores[userId];
                 const isFinishPossible = (currentScore === 50) || (currentScore <= 40 && currentScore % 2 === 0);
 
-let doubleAttemptsQuery = null;
+                console.log(`[DEBUG] User ${userId} - Current Score: ${currentScore}, Is Finish Possible: ${isFinishPossible}, Game Mode: ${room.gameMode}`);
+                console.log(`[DEBUG] Game options:`, room.gameOptions);
+                console.log(`[DEBUG] Out Mode:`, room.gameOptions?.outMode);
+
+                let doubleAttemptsQuery = null;
                 let checkoutQuery = null;
                 
-                if (isFinishPossible && room.gameMode !== 'CricketGame') {
+                // Nur für X01 Spiele mit Double-Out Modus
+                const isDoubleOut = room.gameOptions?.outMode === 'double';
+                console.log(`[DEBUG] Is Double Out:`, isDoubleOut);
+                
+                if (isFinishPossible && room.gameMode !== 'CricketGame' && isDoubleOut) {
+                    console.log(`[DEBUG] Finish possible detected for user ${userId} in double-out game`);
                     if (newGameStateFromGame.scores[userId] === 0) {
                         // Check - verwende dedizierte Checkout-Abfrage
+                        console.log(`[DEBUG] Checkout detected - creating checkout query`);
                         const player = room.players.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
@@ -524,6 +534,7 @@ let doubleAttemptsQuery = null;
                         };
                     } else if (newGameStateFromGame.scores[userId] > 1) {
                         // Kein Check aber Finish möglich - frage nach Versuchen
+                        console.log(`[DEBUG] No checkout but finish possible - creating attempts query`);
                         doubleAttemptsQuery = {
                             type: 'attempts',
                             question: 'Wie viele Darts hast du auf ein Doppel geworfen?',
@@ -533,6 +544,7 @@ let doubleAttemptsQuery = null;
                         };
                     } else if (newGameStateFromGame.scores[userId] < 0 || newGameStateFromGame.scores[userId] === 1) {
                         // Bust - frage nach Versuchen vor dem Bust
+                        console.log(`[DEBUG] Bust detected - creating bust query`);
                         doubleAttemptsQuery = {
                             type: 'bust',
                             question: 'Wie viele Darts gingen auf das Doppel, bevor du überworfen hast?',
