@@ -221,7 +221,6 @@ function initializeSocket(io, gameManager, auth) {
             
             let currentPlayerIndex = 0;
             if (startingPlayerId === 'bull-off') {
-                // Logic for bull-off already handled or default to 0
             } else if (startingPlayerId) {
                 const foundIndex = room.players.findIndex(p => p.id === startingPlayerId);
                 if (foundIndex !== -1) currentPlayerIndex = foundIndex;
@@ -309,7 +308,7 @@ function initializeSocket(io, gameManager, auth) {
             }
 
             try {
-                // Vorherigen Stand für Logik-Checks nutzen
+                // Vorherigen Stand sichern für Berechnungen
                 const preThrowGameState = room.game.getGameState();
                 const scoreBeforeThrow = preThrowGameState.scores[userId] || 0;
 
@@ -319,7 +318,7 @@ function initializeSocket(io, gameManager, auth) {
                     return socket.emit('gameError', { error: result.reason });
                 }
 
-                // 2. GameState vom Spielobjekt holen
+                // 2. Neuen GameState holen
                 const newGameStateFromGame = room.game.getGameState();
 
                 // 3. Spielerdaten für das Frontend aktualisieren
@@ -328,15 +327,15 @@ function initializeSocket(io, gameManager, auth) {
                 const updatedPlayers = room.players.map((p, idx) => {
                     const isCurrentPlayer = p.id === userId;
                     
-                    // Bei X01 addieren wir hier erstmal IMMER 3 Darts.
-                    // Wenn es ein Checkout war, korrigieren wir das später in 'checkout-selection'.
+                    // Bei X01 addieren wir hier erst einmal 3 Darts. 
+                    // Das wird in 'checkout-selection' korrigiert, falls weniger gebraucht wurden.
                     const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
 
                     // Average-Berechnung
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
-                        const turnsPlayed = newDartsThrown / 3; // Gleitkomma erlaubt für präzisere Berechnung
+                        const turnsPlayed = newDartsThrown / 3;
                         if (turnsPlayed > 0) {
                             average = (pointsScored / turnsPlayed).toFixed(2);
                         } else {
@@ -364,7 +363,6 @@ function initializeSocket(io, gameManager, auth) {
                         if (score >= 100 && score < 180) newScores100plus += 1;
                         if (score >= 140 && score < 180) newScores140plus += 1;
 
-                        // Check for finish
                         if (newGameStateFromGame.scores[p.id] === 0) {
                             newFinishes = [...newFinishes, score];
                             if (score > newHighestFinish) {
@@ -375,7 +373,7 @@ function initializeSocket(io, gameManager, auth) {
                             }
                         }
                         if (room.gameMode !== 'CricketGame') {
-                            newDoublesThrown += 3; // Wird korrigiert bei Antwort
+                            newDoublesThrown += 3;
                         }
                     }
 
@@ -410,12 +408,10 @@ function initializeSocket(io, gameManager, auth) {
                 });
                 room.players = updatedPlayers;
 
-                // 4. Doppelquote & Checkout Abfrage
+                // 4. Abfragen generieren
                 const currentScore = newGameStateFromGame.scores[userId];
-                // WICHTIG: Verwende den Score VOR dem Wurf + Input Score, um zu prüfen ob Finish MÖGLICH WAR
-                // Da wir in X01 runterzählen, ist scoreBeforeThrow = scoreAfter + inputScore
-                // Aber hier nehmen wir einfach den gespeicherten scoreBeforeThrow von oben, um sicher zu gehen.
-                // Da wir in score-input sind, ist scoreBeforeThrow einfach der alte Stand.
+                // Wir nehmen den Score VOR dem Wurf, um sicher zu sein (da wir runterzählen bei X01)
+                // scoreBeforeThrow haben wir oben gesichert.
                 
                 const wasFinishPossible = (scoreBeforeThrow === 50) || (scoreBeforeThrow <= 40 && scoreBeforeThrow % 2 === 0);
 
@@ -424,7 +420,7 @@ function initializeSocket(io, gameManager, auth) {
                 
                 if (wasFinishPossible && room.gameMode !== 'CricketGame') {
                     if (currentScore === 0) {
-                        // Check!
+                        // CHECKOUT
                         const player = room.players.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
@@ -469,11 +465,17 @@ function initializeSocket(io, gameManager, auth) {
                     checkoutQuery: checkoutQuery,
                 };
 
-                // FIX: Wenn Checkout abgefragt wird, darf das Spiel noch nicht als 'finished'
-                // angezeigt werden, damit das Popup nicht überdeckt wird.
+                // WICHTIGSTER FIX:
+                // Wenn wir eine Checkout-Abfrage haben, MÜSSEN wir so tun, als wäre das Spiel noch aktiv
+                // und es gäbe noch keinen Gewinner, sonst zeigt das Frontend den GameEndPopup
+                // anstatt des CheckoutPopups. Wir müssen auch den Gewinner im verschachtelten gameState verstecken.
                 if (checkoutQuery) {
                     updateData.winner = null;
                     updateData.gameStatus = 'active';
+                    if (updateData.gameState) {
+                        // Erstelle eine flache Kopie, um das Original nicht zu verändern
+                        updateData.gameState = { ...updateData.gameState, winner: null };
+                    }
                 }
 
                 room.gameState = { ...updateData };
@@ -519,43 +521,37 @@ function initializeSocket(io, gameManager, auth) {
             const room = rooms.find(r => r.id === roomId);
             if (!room || !room.game) return;
 
-            // 1. Darts für den Spieler korrigieren
-            // In score-input wurden +3 Darts gerechnet. Wir ziehen 3 ab und addieren die echten Darts.
-            // dartCount kommt als 1, 2 oder 3 vom Frontend.
-            const currentPlayerId = room.game.lastPlayerId; // Oder aus Turn History
+            // Logik-Korrektur:
+            // Wir haben in score-input pauschal +3 Darts gerechnet.
+            // Der User sagt uns jetzt, wie viele er WIRKLICH brauchte (1, 2 oder 3).
+            // Also: Darts = (Aktuell - 3) + Tatsächlich
+            
             const actualDartsUsed = parseInt(dartCount, 10);
             
-            // Da wir gerade geworfen haben, ist der 'currentPlayerIndex' schon weitergesprungen!
-            // Wir müssen den Spieler finden, der gerade geworfen hat (und Checkout hatte).
-            // Normalerweise ist das der Spieler VOR dem aktuellen Index (oder der Gewinner).
-            let player = null;
-            
-            // Wenn das Spiel vorbei ist, ist winner gesetzt im Game Object
+            // Wir müssen den Gewinner finden. Da das Spiel im Hintergrund schon fertig ist,
+            // ist der 'winner' im Game-Objekt gesetzt.
             const gameStateInner = room.game.getGameState();
+            let player = null;
             if (gameStateInner.winner) {
                 player = room.players.find(p => p.id === gameStateInner.winner);
             }
 
             if (player) {
-                // Korrektur: Wir haben vorher pauschal 3 addiert.
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
                 
-                // Average neu berechnen mit korrekter Dartanzahl
+                // Average neu berechnen
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
-                // Points Scored ist beim Checkout gleich StartScore (da 0 Rest)
-                const pointsScored = startScore; 
-                // Average = Punkte / (Darts / 3)
+                const pointsScored = startScore; // Checkout = Full Score
                 if (player.dartsThrown > 0) {
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
             }
 
-            // Game Logic für CheckoutDarts (falls nötig für interne Logik)
             if (room.game.setCheckoutDarts) {
                 room.game.setCheckoutDarts(dartCount);
             }
 
-            // Finalen State holen (jetzt mit Winner)
+            // GameState aktualisieren (Winner ist hier jetzt enthalten)
             room.gameState = room.game.getGameState();
             
             // Abfragen löschen
@@ -564,11 +560,11 @@ function initializeSocket(io, gameManager, auth) {
                 room.gameState.doubleAttemptsQuery = null;
             }
             
-            // Player Daten (mit korrigierten Darts/Avg) in den Update Payload packen
+            // Jetzt senden wir den ECHTEN Status (finished) mit dem Gewinner
             const updateData = {
                 ...room.gameState,
-                players: room.players, // Unsere modifizierten Player-Objekte
-                gameStatus: 'finished', // Jetzt explizit finished
+                players: room.players, // Die korrigierten Player-Objekte
+                gameStatus: 'finished',
                 winner: gameStateInner.winner
             };
 
@@ -586,19 +582,14 @@ function initializeSocket(io, gameManager, auth) {
             let hitsToAdd = 0;
             let attemptsToAdd = 0;
             
-            // Response ist Index: 0 -> 1. Dart, 1 -> 2. Dart, 2 -> 3. Dart
-            // Oder bei 'attempts': 0 -> 0 Versuche, 1 -> 1 Versuch...
-
             if (queryType === 'checkout') {
-                // Checkout via generisches Modal (falls genutzt)
-                const actualDartsUsed = parseInt(response) + 1; // Index 0 = 1 Dart
-                
-                // Darts korrigieren (-3 + real)
+                // Falls Checkout über diesen Weg kommt (Backup)
+                const actualDartsUsed = parseInt(response) + 1; // 0->1
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
                 
-                // Average neu berechnen
+                // Average Update
                 const startScoreGame = parseInt(room.gameOptions.startingScore, 10) || 501;
-                const pointsScored = startScoreGame; // Checkout -> Alles Punkte
+                const pointsScored = startScoreGame;
                 if (player.dartsThrown > 0) {
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
@@ -618,15 +609,13 @@ function initializeSocket(io, gameManager, auth) {
                 room.gameState.checkoutQuery = null;
             }
             
-            // Wenn es ein Checkout war, müssen wir sicherstellen, dass jetzt der Winner-Screen kommt
-            // Falls das Spiel durch diese Antwort "fertig" gemacht wurde (visuell).
-            // Wir nehmen an, dass room.game.getGameState().winner schon gesetzt ist.
+            // State wiederherstellen (inkl. Winner falls Spiel vorbei)
             const gameStateInner = room.game.getGameState();
             const updateData = {
-                ...room.gameState, // Hat ggf. winner=null von vorher
+                ...room.gameState,
                 players: room.players,
                 gameState: gameStateInner,
-                winner: gameStateInner.winner, // Jetzt echten Winner senden
+                winner: gameStateInner.winner,
                 gameStatus: gameStateInner.winner ? 'finished' : 'active'
             };
 
