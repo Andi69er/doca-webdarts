@@ -510,14 +510,15 @@ function initializeSocket(io, gameManager, auth) {
                 const currentScore = newGameStateFromGame.scores[userId];
                 const isFinishPossible = (currentScore === 50) || (currentScore <= 40 && currentScore % 2 === 0);
 
-                let doubleAttemptsQuery = null;
+let doubleAttemptsQuery = null;
+                let checkoutQuery = null;
+                
                 if (isFinishPossible && room.gameMode !== 'CricketGame') {
                     if (newGameStateFromGame.scores[userId] === 0) {
-                        // Check - frage nach dem Dart
-                        doubleAttemptsQuery = {
-                            type: 'checkout',
-                            question: 'Mit dem wievielten Dart hast du gecheckt?',
-                            options: ['1. Dart', '2. Dart', '3. Dart'],
+                        // Check - verwende dedizierte Checkout-Abfrage
+                        const player = room.players.find(p => p.id === userId);
+                        checkoutQuery = {
+                            player: player,
                             score: score,
                             startScore: currentScore
                         };
@@ -537,12 +538,12 @@ function initializeSocket(io, gameManager, auth) {
                             question: 'Wie viele Darts gingen auf das Doppel, bevor du überworfen hast?',
                             options: ['0', '1', '2', '3'],
                             score: score,
-                            startScore: currentScore
+                            startScore: newGameStateFromGame.scores[userId]
                         };
                     }
                 }
 
-                // 5. Update-Payload für Clients erstellen
+// 5. Update-Payload für Clients erstellen
                 const updateData = {
                     mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                     players: updatedPlayers,
@@ -554,6 +555,7 @@ function initializeSocket(io, gameManager, auth) {
                     gameState: newGameStateFromGame, // Das komplette State-Objekt vom Spiel
                     dartsThrownInTurn: result.dartsThrownInTurn, // Wichtig für Cricket
                     doubleAttemptsQuery: doubleAttemptsQuery, // Neue Abfrage
+                    checkoutQuery: checkoutQuery, // Checkout-Abfrage
                 };
 
                 // 6. Neuen State speichern und an Clients senden

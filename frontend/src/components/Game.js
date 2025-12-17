@@ -5,6 +5,7 @@ import NumberPad from './NumberPad';
 import GameChat from './GameChat';
 import GameEndPopup from './GameEndPopup';
 import BullOffModal from './BullOffModal';
+import CheckoutPopup from './CheckoutPopup';
 import './Game.css';
 import LiveStatistics from "./LiveStatistics";
 import PlayerScores from "./PlayerScores";
@@ -309,6 +310,10 @@ function Game() {
     // Doppelquote-Abfrage State
     const [doubleAttemptsQuery, setDoubleAttemptsQuery] = useState(null);
 
+    // Checkout popup state
+    const [showCheckoutPopup, setShowCheckoutPopup] = useState(false);
+    const [checkoutPlayer, setCheckoutPlayer] = useState(null);
+
     // Spectator state
     const [isSpectator, setIsSpectator] = useState(false);
 
@@ -562,6 +567,21 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 setDoubleAttemptsQuery(newState.doubleAttemptsQuery);
             }
 
+            // Checkout popup verarbeiten
+            if (newState.checkoutQuery) {
+                setCheckoutPlayer(newState.checkoutQuery.player);
+                setShowCheckoutPopup(true);
+            }
+
+            // Checkout popup verarbeiten
+            if (newState.checkoutQuery) {
+                setCheckoutPlayer(newState.checkoutQuery.player);
+                setShowCheckoutPopup(true);
+            } else if (!newState.doubleAttemptsQuery) {
+                setShowCheckoutPopup(false);
+                setCheckoutPlayer(null);
+            }
+
             return {
                 ...(prev || {}),
                 ...newState,
@@ -684,6 +704,17 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                 startScore: doubleAttemptsQuery.startScore
             });
             setDoubleAttemptsQuery(null);
+        }
+    };
+
+    const handleCheckoutSelect = (dartCount) => {
+        if (socket && checkoutPlayer) {
+            socket.emit('checkout-selection', {
+                roomId,
+                dartCount
+            });
+            setShowCheckoutPopup(false);
+            setCheckoutPlayer(null);
         }
     };
 
@@ -1973,6 +2004,13 @@ const isHost = gameState.hostId === user.id;
                     </div>
                 </div>
             )}
+
+            <CheckoutPopup
+                isActive={showCheckoutPopup}
+                onSelect={handleCheckoutSelect}
+                user={user}
+                checkoutPlayer={checkoutPlayer}
+            />
 
             {showWinnerPopup && <GameEndPopup winner={winner} countdown={10} onRematch={handleRematch} />}
             {showBullOffModal && (
