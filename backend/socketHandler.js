@@ -621,7 +621,14 @@ socket.on('score-input', (data) => {
                 room.game.setCheckoutDarts(dartCount);
             }
             room.gameState = room.game.getGameState();
-            io.to(room.id).emit('game-state-update', room);
+            
+            // WICHTIG: Checkout-Abfrage im State löschen
+            if (room.gameState) {
+                room.gameState.checkoutQuery = null;
+                room.gameState.doubleAttemptsQuery = null;
+            }
+            
+            io.to(room.id).emit('game-state-update', room.gameState); // Sendet room.gameState statt room
         });
 
         // Doppelquote-Abfrage Antwort
@@ -651,6 +658,12 @@ socket.on('score-input', (data) => {
             // Statistik aktualisieren
             player.doublesHit = (player.doublesHit || 0) + hitsToAdd;
             player.doublesThrown = (player.doublesThrown || 0) + attemptsToAdd;
+
+            // WICHTIG: Die Abfrage im State löschen, damit sie nicht erneut gesendet wird!
+            if (room.gameState) {
+                room.gameState.doubleAttemptsQuery = null;
+                room.gameState.checkoutQuery = null;
+            }
 
             // Broadcast update
             io.to(roomId).emit('game-state-update', room.gameState);
