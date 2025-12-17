@@ -74,6 +74,13 @@ const LiveStatistics = ({ gameState }) => {
     const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
     const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
 
+    // Berechne das niedrigste Leg im Match
+    const matchLowestLeg = Math.min(
+        p1.bestLeg || Infinity,
+        p2.bestLeg || Infinity
+    );
+    const matchLowestLegDisplay = matchLowestLeg === Infinity ? null : matchLowestLeg;
+
     const StatRow = ({ label, v1, v2, highlightP1, highlightP2 }) => (
         <div className="stat-row">
             <div className={`stat-cell left ${highlightP1 ? 'highlight' : ''}`}>{v1}</div>
@@ -106,6 +113,7 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="180ER" v1={val(p1.scores180)} v2={val(p2.scores180)} />
                 <StatRow label="HIGH FINISH" v1={val(p1.highestFinish)} v2={val(p2.highestFinish)} />
                 <StatRow label="SHORT LEG" v1={val(p1.bestLeg)} v2={val(p2.bestLeg)} />
+                <StatRow label="MATCH LOWEST LEG" v1={val(matchLowestLegDisplay)} v2={val(matchLowestLegDisplay)} />
             </div>
         </div>
     );
