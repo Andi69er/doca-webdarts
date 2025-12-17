@@ -113,7 +113,7 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="180ER" v1={val(p1.scores180)} v2={val(p2.scores180)} />
                 <StatRow label="HIGH FINISH" v1={val(p1.highestFinish)} v2={val(p2.highestFinish)} />
                 <StatRow label="SHORT LEG" v1={val(p1.bestLeg)} v2={val(p2.bestLeg)} />
-                <StatRow label="MATCH LOWEST LEG" v1={val(matchLowestLegDisplay)} v2={val(matchLowestLegDisplay)} />
+                <StatRow label="NIEDRIGSTES LEG IM MATCH" v1={val(matchLowestLegDisplay)} v2={val(matchLowestLegDisplay)} />
             </div>
         </div>
     );
