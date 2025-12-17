@@ -537,6 +537,7 @@ socket.on('score-input', (data) => {
                         console.log(`[DEBUG] No checkout but finish possible - creating attempts query`);
                         doubleAttemptsQuery = {
                             type: 'attempts',
+                            playerId: userId,
                             question: 'Wie viele Darts hast du auf ein Doppel geworfen?',
                             options: ['0', '1', '2', '3'],
                             score: score,
@@ -547,6 +548,7 @@ socket.on('score-input', (data) => {
                         console.log(`[DEBUG] Bust detected - creating bust query`);
                         doubleAttemptsQuery = {
                             type: 'bust',
+                            playerId: userId,
                             question: 'Wie viele Darts gingen auf das Doppel, bevor du überworfen hast?',
                             options: ['0', '1', '2', '3'],
                             score: score,

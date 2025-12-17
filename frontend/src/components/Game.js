@@ -1952,7 +1952,7 @@ const isHost = gameState.hostId === user.id;
                 </div>
             </div>
             {/* Doppelquote-Abfrage Modal */}
-            {doubleAttemptsQuery && (
+            {doubleAttemptsQuery && doubleAttemptsQuery.playerId === user.id && (
                 <div style={{
                     position: 'fixed',
                     top: 0,
