@@ -219,9 +219,22 @@ function initializeSocket(io, gameManager, auth) {
                 room.game = new X01Game(gameOptions);
             }
             
+            // WICHTIG: Statistiken zurücksetzen, damit keine "Geisterdaten" aus alten Spielen bleiben!
+            room.players.forEach(p => {
+                p.score = startScore;
+                p.dartsThrown = 0;
+                p.doublesHit = 0;
+                p.doublesThrown = 0;
+                p.avg = "0.00";
+                p.scores = [];
+                p.finishes = [];
+                p.legs = 0;
+                p.sets = 0;
+                p.history = [];
+            });
+            
             let currentPlayerIndex = 0;
             if (startingPlayerId === 'bull-off') {
-                // ...
             } else if (startingPlayerId) {
                 const foundIndex = room.players.findIndex(p => p.id === startingPlayerId);
                 if (foundIndex !== -1) currentPlayerIndex = foundIndex;
@@ -319,7 +332,6 @@ function initializeSocket(io, gameManager, auth) {
                     return socket.emit('gameError', { error: result.reason });
                 }
 
-                // 2. Neuen GameState holen (hier ist der Score schon abgezogen!)
                 const newGameStateFromGame = room.game.getGameState();
 
                 // 3. Spielerdaten für das Frontend aktualisieren
@@ -328,7 +340,7 @@ function initializeSocket(io, gameManager, auth) {
                 const updatedPlayers = room.players.map((p, idx) => {
                     const isCurrentPlayer = p.id === userId;
                     
-                    // Standardmäßig +3 Darts rechnen. Das wird bei Checkout korrigiert.
+                    // Standardmäßig +3 Darts rechnen.
                     const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
 
                     // Average-Berechnung
@@ -368,12 +380,6 @@ function initializeSocket(io, gameManager, auth) {
                             if (score > newHighestFinish) {
                                 newHighestFinish = score;
                             }
-                            if (room.gameMode !== 'CricketGame' && score >= 2 && score % 2 === 0) {
-                                newDoublesHit += 1;
-                            }
-                        }
-                        if (room.gameMode !== 'CricketGame') {
-                            newDoublesThrown += 3;
                         }
                     }
 
@@ -395,7 +401,7 @@ function initializeSocket(io, gameManager, auth) {
                         scores100plus: newScores100plus,
                         scores140plus: newScores140plus,
                         doublesHit: newDoublesHit,
-                        doublesThrown: newDoublesThrown,
+                        doublesThrown: newDoublesThrown, // Keine automatische Erhöhung!
                         lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
                         bestLeg: (() => {
                             const turns = room.gameState?.turns?.[p.id] || [];
@@ -410,29 +416,22 @@ function initializeSocket(io, gameManager, auth) {
 
                 // 4. Abfragen generieren
                 const currentScore = newGameStateFromGame.scores[userId];
-                // Finish war möglich, wenn der Score vorher <= 50 war (und nicht Bogie)
-                const wasFinishPossible = (scoreBeforeThrow === 50) || (scoreBeforeThrow <= 40 && scoreBeforeThrow % 2 === 0) || (scoreBeforeThrow <= 170 && scoreBeforeThrow > 0); 
-                // Einfachere Heuristik für "Finish möglich":
+                
+                // Helper: Ist ein Finish möglich? (<= 170, nicht Bogie)
                 const canCheckoutFrom = (s) => {
                      if (s > 170) return false;
                      if ([169, 168, 166, 165, 163, 162, 159].includes(s)) return false;
                      return true;
                 };
 
-                // Wir wollen nur fragen, wenn man wirklich auf Doppel gehen konnte.
-                // Das ist bei Rest <= 50 der Fall, oder wenn man generell checken konnte (<= 170)
-                // Der User will "ab 2 Dart Finish" -> Das ist jede Zahl <= 110 (mit Ausnahmen)
-                // Aber die Frage "Versuche auf Doppel" macht nur Sinn, wenn man auch wirklich auf Doppel geworfen hat.
-                // Standardmäßig fragen wir bei: Score 0 (Checkout) ODER (Rest <= 50 und kein Checkout).
-
-                const inFinishRange = (scoreBeforeThrow <= 50 && scoreBeforeThrow > 1);
+                const inFinishRange = canCheckoutFrom(scoreBeforeThrow);
 
                 let doubleAttemptsQuery = null;
                 let checkoutQuery = null;
                 
                 if (room.gameMode !== 'CricketGame') {
                     if (currentScore === 0) {
-                        // CHECKOUT -> Frage nach Darts (1, 2 oder 3)
+                        // CHECKOUT
                         const player = room.players.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
@@ -440,7 +439,7 @@ function initializeSocket(io, gameManager, auth) {
                             startScore: scoreBeforeThrow
                         };
                     } else if (inFinishRange && currentScore > 1) {
-                        // VERPASST -> Frage nach Versuchen auf Doppel
+                        // VERPASST
                         doubleAttemptsQuery = {
                             type: 'attempts',
                             playerId: userId,
@@ -450,7 +449,7 @@ function initializeSocket(io, gameManager, auth) {
                             startScore: scoreBeforeThrow
                         };
                     } else if (currentScore < 0 || currentScore === 1) {
-                        // BUST -> Frage nach Versuchen vor Bust
+                        // BUST
                         if (inFinishRange) {
                             doubleAttemptsQuery = {
                                 type: 'bust',
@@ -479,7 +478,7 @@ function initializeSocket(io, gameManager, auth) {
                     checkoutQuery: checkoutQuery,
                 };
 
-                // WICHTIG: Wenn wir eine Abfrage haben, Gewinner und Status faken, damit Popup kommt!
+                // Wenn Checkout-Popup, Spiel aktiv lassen damit Popup sichtbar ist
                 if (checkoutQuery) {
                     updateData.winner = null;
                     updateData.gameStatus = 'active';
@@ -541,15 +540,19 @@ function initializeSocket(io, gameManager, auth) {
             }
 
             if (player) {
-                // Korrektur: Die pauschalen 3 Darts abziehen und echte addieren
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
                 
-                // Average neu berechnen
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
                 const pointsScored = startScore; 
                 if (player.dartsThrown > 0) {
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
+
+                // DOPPELSTATISTIK BEI CHECKOUT:
+                // 1 Hit und 1 Versuch (der Treffer)
+                // Fehlwürfe im gleichen Turn werden hier nicht erfasst, da das Popup nur nach "Darts used" fragt.
+                player.doublesHit = (player.doublesHit || 0) + 1;
+                player.doublesThrown = (player.doublesThrown || 0) + 1;
             }
 
             if (room.game.setCheckoutDarts) {
@@ -558,13 +561,11 @@ function initializeSocket(io, gameManager, auth) {
 
             room.gameState = room.game.getGameState();
             
-            // Abfragen löschen
             if (room.gameState) {
                 room.gameState.checkoutQuery = null;
                 room.gameState.doubleAttemptsQuery = null;
             }
             
-            // Jetzt echten Winner senden
             const updateData = {
                 ...room.gameState,
                 players: room.players,
@@ -596,7 +597,7 @@ function initializeSocket(io, gameManager, auth) {
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
                 hitsToAdd = 1;
-                attemptsToAdd = actualDartsUsed;
+                attemptsToAdd = 1; 
             } else if (queryType === 'attempts' || queryType === 'bust') {
                 hitsToAdd = 0;
                 attemptsToAdd = parseInt(response);
@@ -640,6 +641,8 @@ function initializeSocket(io, gameManager, auth) {
                 player.sets = 0; 
                 player.marks = {}; 
                 player.lastScore = 0;
+                player.doublesHit = 0;
+                player.doublesThrown = 0;
                 player.isActive = false;
             });
 
