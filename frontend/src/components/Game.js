@@ -6,6 +6,7 @@ import GameChat from './GameChat';
 import GameEndPopup from './GameEndPopup';
 import BullOffModal from './BullOffModal';
 import CheckoutPopup from './CheckoutPopup';
+import DoubleAttemptsPopup from './DoubleAttemptsPopup'; // <--- NEUER IMPORT
 import './Game.css';
 import LiveStatistics from "./LiveStatistics";
 import PlayerScores from "./PlayerScores";
@@ -1952,60 +1953,12 @@ const isHost = gameState.hostId === user.id;
                 </div>
             </div>
             {/* Doppelquote-Abfrage Modal */}
+            {/* HIER WURDE DAS INLINE-DIV DURCH DIE KOMPONENTE ERSETZT */}
             {doubleAttemptsQuery && doubleAttemptsQuery.playerId === user.id && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div style={{
-                        backgroundColor: '#222',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        border: '2px solid #ffd700',
-                        maxWidth: '400px',
-                        width: '90%'
-                    }}>
-                        <h3 style={{ color: '#ffd700', marginBottom: '15px', textAlign: 'center' }}>
-                            Doppelquote-Abfrage
-                        </h3>
-                        <p style={{ color: '#fff', marginBottom: '20px', textAlign: 'center' }}>
-                            {doubleAttemptsQuery.question}
-                        </p>
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '10px'
-                        }}>
-                            {doubleAttemptsQuery.options.map((option, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => handleDoubleAttemptsResponse(index)}
-                                    style={{
-                                        padding: '10px',
-                                        backgroundColor: '#4CAF50',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '16px'
-                                    }}
-                                    onMouseOver={(e) => e.target.style.backgroundColor = '#45a049'}
-                                    onMouseOut={(e) => e.target.style.backgroundColor = '#4CAF50'}
-                                >
-                                    {option}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                <DoubleAttemptsPopup 
+                    query={doubleAttemptsQuery} 
+                    onSelect={handleDoubleAttemptsResponse} 
+                />
             )}
 
             <CheckoutPopup
