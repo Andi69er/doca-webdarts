@@ -29,26 +29,19 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Berechne zusätzliche Statistiken
+    // Berechne zusätzliche Statistiken (Score Ranges)
     const getScoreRange = (player, min, max = null) => {
         const scores = player.scores || [];
         if (max) {
             return scores.filter(s => s >= min && s <= max).length;
         }
-        // Wenn kein max, dann zähle alle >= min (für 60+, 100+, 140+)
         if (min >= 60) {
             return scores.filter(s => s >= min).length;
         }
-        // Für 19- zähle alle < min
         return scores.filter(s => s < min).length;
     };
 
-    // (Variablen für Score Ranges, falls du sie später brauchst, lasse ich drin)
-    const p1Scores19Minus = getScoreRange(p1, 19);
-    const p2Scores19Minus = getScoreRange(p2, 19);
-    // ... restliche Range-Berechnungen im Hintergrund ...
-
-    // Verwende die vom Backend berechneten Werte (um Doppelzählung von 180 zu vermeiden)
+    // Verwende die vom Backend berechneten Werte
     const p1Scores60Plus = p1.scores60plus || 0;
     const p2Scores60Plus = p2.scores60plus || 0;
     const p1Scores100Plus = p1.scores100plus || 0;
@@ -90,8 +83,6 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="140+" v1={val(p1Scores140Plus)} v2={val(p2Scores140Plus)} />
                 <StatRow label="180ER" v1={val(p1.scores180)} v2={val(p2.scores180)} />
                 <StatRow label="HIGH FINISH" v1={val(p1.highestFinish)} v2={val(p2.highestFinish)} />
-                
-                {/* Hier wird nun das niedrigste Leg (Short Leg) des jeweiligen Spielers angezeigt */}
                 <StatRow label="SHORT LEG" v1={val(p1.bestLeg)} v2={val(p2.bestLeg)} />
             </div>
         </div>
