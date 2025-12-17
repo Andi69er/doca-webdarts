@@ -1,7 +1,7 @@
 import React from 'react';
 
 const LiveStatistics = ({ gameState }) => {
-    // Sicherheits-Check: Absturz verhindern, wenn Daten fehlen
+    // Sicherheits-Check
     if (!gameState || !gameState.players) {
         return <div className="stats-wrapper" style={{justifyContent:'center', alignItems:'center', color:'#666'}}>Lade...</div>;
     }
@@ -12,16 +12,53 @@ const LiveStatistics = ({ gameState }) => {
     const val = (v, suffix = '') => (v !== undefined && v !== null ? v + suffix : '0' + suffix);
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
-    // Berechne 9-Dart Average (Average der ersten 9 Darts)
+    // ---------------------------------------------------------
+    // NEU: Erweiterte Berechnung für das Short Leg (Best Leg)
+    // ---------------------------------------------------------
+    const calculateBestLeg = (player, playerIndex) => {
+        // 1. Wenn der Wert direkt im Spieler-Objekt steht und > 0 ist, nimm ihn
+        if (player.bestLeg && player.bestLeg > 0) return player.bestLeg;
+        if (player.shortLeg && player.shortLeg > 0) return player.shortLeg; // Manchmal heißt es shortLeg
+
+        // 2. Falls gameState eine Leg-Historie hat ('legs' oder 'matchLog'), berechne es selbst
+        // Wir suchen nach Legs, die dieser Spieler gewonnen hat
+        const history = gameState.legs || gameState.matchLog || gameState.sets; 
+        
+        if (history && Array.isArray(history)) {
+            // Filtere alle Legs, die dieser Spieler gewonnen hat
+            // Wir prüfen auf Index (0/1) oder Name
+            const wonLegs = history.filter(leg => 
+                leg.winner === playerIndex || 
+                leg.winner === player.name || 
+                leg.winningPlayer === playerIndex
+            );
+
+            // Extrahiere die Anzahl der Darts (Feldname variiert oft: 'darts', 'dartsThrown', 'throws')
+            const dartCounts = wonLegs.map(leg => {
+                return leg.darts || leg.dartsThrown || leg.throws || 0;
+            }).filter(d => d > 0);
+
+            // Wenn wir Werte gefunden haben, nimm den kleinsten (Minimum)
+            if (dartCounts.length > 0) {
+                return Math.min(...dartCounts);
+            }
+        }
+
+        return 0; // Kein Short Leg gefunden
+    };
+
+    const p1BestLeg = calculateBestLeg(p1, 0);
+    const p2BestLeg = calculateBestLeg(p2, 1);
+    // ---------------------------------------------------------
+
+
+    // First 9 Average Berechnung
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
         if (scores.length === 0) return '0.00';
-
-        // Nimm die ersten 9 Scores, aber maximal die verfügbaren
         const first9Scores = scores.slice(0, 9);
         const totalPoints = first9Scores.reduce((sum, score) => sum + score, 0);
-        const totalDarts = Math.min(first9Scores.length * 3, 9); // Max 9 Darts
-
+        const totalDarts = Math.min(first9Scores.length * 3, 9);
         if (totalDarts === 0) return '0.00';
         return (totalPoints / Math.ceil(totalDarts / 3)).toFixed(2);
     };
@@ -29,19 +66,7 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Berechne zusätzliche Statistiken (Score Ranges)
-    const getScoreRange = (player, min, max = null) => {
-        const scores = player.scores || [];
-        if (max) {
-            return scores.filter(s => s >= min && s <= max).length;
-        }
-        if (min >= 60) {
-            return scores.filter(s => s >= min).length;
-        }
-        return scores.filter(s => s < min).length;
-    };
-
-    // Verwende die vom Backend berechneten Werte
+    // Score Ranges
     const p1Scores60Plus = p1.scores60plus || 0;
     const p2Scores60Plus = p2.scores60plus || 0;
     const p1Scores100Plus = p1.scores100plus || 0;
@@ -49,6 +74,7 @@ const LiveStatistics = ({ gameState }) => {
     const p1Scores140Plus = p1.scores140plus || 0;
     const p2Scores140Plus = p2.scores140plus || 0;
 
+    // Doppelquote
     const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
     const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
 
@@ -83,7 +109,9 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="140+" v1={val(p1Scores140Plus)} v2={val(p2Scores140Plus)} />
                 <StatRow label="180ER" v1={val(p1.scores180)} v2={val(p2.scores180)} />
                 <StatRow label="HIGH FINISH" v1={val(p1.highestFinish)} v2={val(p2.highestFinish)} />
-                <StatRow label="SHORT LEG" v1={val(p1.bestLeg)} v2={val(p2.bestLeg)} />
+                
+                {/* Hier verwenden wir jetzt die berechneten Werte */}
+                <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
         </div>
     );
