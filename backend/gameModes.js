@@ -33,10 +33,14 @@ class X01Game {
     }
   
     processThrow(playerId, score) {
+        console.log(`[X01Game] processThrow called - Player: ${playerId}, Score: ${score}, Current Player Index: ${this.currentPlayerIndex}`);
+        
         if (this.winner) {
+            console.log(`[X01Game] Game already ended`);
             return { valid: false, reason: 'Game has already ended' };
         }
         if (playerId !== this.players[this.currentPlayerIndex]) {
+            console.log(`[X01Game] Not player's turn - Expected: ${this.players[this.currentPlayerIndex]}, Got: ${playerId}`);
             return { valid: false, reason: 'Not your turn' };
         }
     
@@ -44,6 +48,7 @@ class X01Game {
         const scoreValue = parseInt(score, 10);
         
         console.log(`[X01Game] processThrow - Player: ${playerId}, Score eingegeben: ${scoreValue}, Aktueller Score: ${currentScore}`);
+        console.log(`[X01Game] Out Mode:`, this.outMode);
         
         // Bust-Logik
         const newScoreAfterThrow = currentScore - scoreValue;
@@ -54,18 +59,21 @@ class X01Game {
 
         // Wenn Score = 0 erreicht wird, prüfe ob es ein gültiges Finish ist
         if (newScoreAfterThrow === 0) {
+            console.log(`[X01Game] Score reached 0, checking out mode:`, this.outMode);
             if (this.outMode === 'double') {
                 // Bei Double-Out muss der letzte Wurf ein Double sein
                 // Da wir keine Dart-Details haben, nehmen wir an dass der Client das prüft
                 // Für jetzt: Erlaube Finish bei Score = 0 (Client muss das validieren)
+                console.log(`[X01Game] Double-out mode - allowing finish`);
                 isBust = false;
             } else {
                 // Bei Single-Out ist jeder Wurf erlaubt
+                console.log(`[X01Game] Single-out mode - allowing finish`);
                 isBust = false;
             }
         }
 
-        console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScoreAfterThrow}`);
+        console.log(`[X01Game] Score aktualisiert - Alter Score: ${currentScore}, Abzug: ${scoreValue}, Neuer Score: ${newScoreAfterThrow}, Is Bust: ${isBust}`);
 
         // Aktualisiere Score wenn kein Bust
         if (!isBust) {

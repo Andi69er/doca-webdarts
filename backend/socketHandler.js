@@ -370,17 +370,21 @@ function initializeSocket(io, gameManager, auth) {
             console.log(`Spiel gestartet. Index: ${currentPlayerIndex}, ID: ${room.players[currentPlayerIndex].id}`);
         });
 
-        socket.on('score-input', (data) => {
+socket.on('score-input', (data) => {
             const { roomId, score, userId } = data;
+            console.log(`[DEBUG] score-input received:`, { roomId, score, userId });
             const room = rooms.find(r => r.id === roomId);
 
             if (!room || !room.game) {
+                console.log(`[DEBUG] No room or game found`);
                 return socket.emit('gameError', { error: 'Spiel nicht gestartet oder Raum nicht gefunden' });
             }
 
+            console.log(`[DEBUG] Room found, game mode:`, room.gameMode);
             const currentPlayerIndex = room.game.currentPlayerIndex || 0;
             const currentPlayer = room.players[currentPlayerIndex];
 
+            console.log(`[DEBUG] Current player:`, currentPlayer?.id, `Expected:`, userId);
             if (currentPlayer?.id !== userId) {
                 return socket.emit('gameError', { error: 'Nicht dein Zug' });
             }
@@ -512,17 +516,13 @@ function initializeSocket(io, gameManager, auth) {
 
                 console.log(`[DEBUG] User ${userId} - Current Score: ${currentScore}, Is Finish Possible: ${isFinishPossible}, Game Mode: ${room.gameMode}`);
                 console.log(`[DEBUG] Game options:`, room.gameOptions);
-                console.log(`[DEBUG] Out Mode:`, room.gameOptions?.outMode);
 
                 let doubleAttemptsQuery = null;
                 let checkoutQuery = null;
                 
-                // Nur für X01 Spiele mit Double-Out Modus
-                const isDoubleOut = room.gameOptions?.outMode === 'double';
-                console.log(`[DEBUG] Is Double Out:`, isDoubleOut);
-                
-                if (isFinishPossible && room.gameMode !== 'CricketGame' && isDoubleOut) {
-                    console.log(`[DEBUG] Finish possible detected for user ${userId} in double-out game`);
+                // Für alle X01 Spiele wenn Finish möglich ist
+                if (isFinishPossible && room.gameMode !== 'CricketGame') {
+                    console.log(`[DEBUG] Finish possible detected for user ${userId}`);
                     if (newGameStateFromGame.scores[userId] === 0) {
                         // Check - verwende dedizierte Checkout-Abfrage
                         console.log(`[DEBUG] Checkout detected - creating checkout query`);
