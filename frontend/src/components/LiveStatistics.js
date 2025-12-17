@@ -1,6 +1,10 @@
 import React from 'react';
 
 const LiveStatistics = ({ gameState }) => {
+    // Debugging: Zeigt dir in der Browser-Konsole (F12) an, welche Daten ankommen
+    // Such in der Konsole nach "DEBUG GAMESTATE"
+    console.log("DEBUG GAMESTATE:", gameState);
+
     // Sicherheits-Check
     if (!gameState || !gameState.players) {
         return <div className="stats-wrapper" style={{justifyContent:'center', alignItems:'center', color:'#666'}}>Lade...</div>;
@@ -13,46 +17,59 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // NEU: Erweiterte Berechnung für das Short Leg (Best Leg)
+    // ROBUSTE BERECHNUNG FÜR SHORT LEG
     // ---------------------------------------------------------
     const calculateBestLeg = (player, playerIndex) => {
-        // 1. Wenn der Wert direkt im Spieler-Objekt steht und > 0 ist, nimm ihn
-        if (player.bestLeg && player.bestLeg > 0) return player.bestLeg;
-        if (player.shortLeg && player.shortLeg > 0) return player.shortLeg; // Manchmal heißt es shortLeg
+        // 1. Suche nach direkten Werten (verschiedene Schreibweisen prüfen)
+        const directValues = [
+            player.bestLeg, player.best_leg, 
+            player.shortLeg, player.short_leg, 
+            player.lowLeg, player.low_leg,
+            player.bestLegDarts
+        ];
+        // Nimm den ersten Wert, der größer als 0 ist
+        const foundDirect = directValues.find(v => v && parseInt(v) > 0);
+        if (foundDirect) return foundDirect;
 
-        // 2. Falls gameState eine Leg-Historie hat ('legs' oder 'matchLog'), berechne es selbst
-        // Wir suchen nach Legs, die dieser Spieler gewonnen hat
-        const history = gameState.legs || gameState.matchLog || gameState.sets; 
-        
-        if (history && Array.isArray(history)) {
-            // Filtere alle Legs, die dieser Spieler gewonnen hat
-            // Wir prüfen auf Index (0/1) oder Name
-            const wonLegs = history.filter(leg => 
-                leg.winner === playerIndex || 
-                leg.winner === player.name || 
-                leg.winningPlayer === playerIndex
-            );
-
-            // Extrahiere die Anzahl der Darts (Feldname variiert oft: 'darts', 'dartsThrown', 'throws')
-            const dartCounts = wonLegs.map(leg => {
-                return leg.darts || leg.dartsThrown || leg.throws || 0;
-            }).filter(d => d > 0);
-
-            // Wenn wir Werte gefunden haben, nimm den kleinsten (Minimum)
-            if (dartCounts.length > 0) {
-                return Math.min(...dartCounts);
-            }
+        // 2. Suche in einem 'stats' Unterobjekt (falls vorhanden)
+        if (player.stats) {
+             const statsValues = [
+                player.stats.bestLeg, player.stats.best_leg,
+                player.stats.shortLeg, player.stats.short_leg
+            ];
+            const foundStats = statsValues.find(v => v && parseInt(v) > 0);
+            if (foundStats) return foundStats;
         }
 
-        return 0; // Kein Short Leg gefunden
+        // 3. Manuelle Berechnung aus der Historie (gameState.legs)
+        // Das funktioniert nur, wenn das Spiel eine Historie der Legs mitsendet
+        if (gameState.legs && Array.isArray(gameState.legs)) {
+             const wonLegs = gameState.legs.filter(leg => {
+                 // Prüfe, ob dieser Spieler das Leg gewonnen hat
+                 return leg.winner === playerIndex || 
+                        leg.winner === player.name || 
+                        leg.winningPlayer === playerIndex ||
+                        (leg.winner_id && leg.winner_id === player.id);
+             });
+
+             if (wonLegs.length > 0) {
+                 const dartCounts = wonLegs.map(leg => {
+                     // Suche nach der Anzahl der Darts in der Historie
+                     return leg.darts || leg.dartsThrown || leg.darts_thrown || leg.throws || 0;
+                 }).filter(d => d > 0);
+
+                 if (dartCounts.length > 0) return Math.min(...dartCounts);
+             }
+        }
+
+        return 0; // Kein Leg gefunden
     };
 
     const p1BestLeg = calculateBestLeg(p1, 0);
     const p2BestLeg = calculateBestLeg(p2, 1);
     // ---------------------------------------------------------
 
-
-    // First 9 Average Berechnung
+    // First 9 Average
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
         if (scores.length === 0) return '0.00';
@@ -66,7 +83,7 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Score Ranges
+    // Score Ranges (direkt oder fallback auf 0)
     const p1Scores60Plus = p1.scores60plus || 0;
     const p2Scores60Plus = p2.scores60plus || 0;
     const p1Scores100Plus = p1.scores100plus || 0;
@@ -110,7 +127,7 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="180ER" v1={val(p1.scores180)} v2={val(p2.scores180)} />
                 <StatRow label="HIGH FINISH" v1={val(p1.highestFinish)} v2={val(p2.highestFinish)} />
                 
-                {/* Hier verwenden wir jetzt die berechneten Werte */}
+                {/* Short Leg wird hier angezeigt. Wenn 0, dann ist noch kein Leg beendet worden oder Daten fehlen */}
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
         </div>
