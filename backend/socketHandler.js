@@ -52,8 +52,6 @@ function initializeSocket(io, gameManager, auth) {
         });
 
         socket.on('createRoom', (roomData) => {
-            console.log('!!! createRoom EVENT VOM CLIENT EMPFANGEN !!! Daten:', roomData);
-            
             const gameOptions = (roomData && roomData.gameOptions) ? roomData.gameOptions : {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
@@ -66,23 +64,19 @@ function initializeSocket(io, gameManager, auth) {
                 hostId: socket.id, 
                 maxPlayers: 2,
                 players: [{ id: socket.id, name: `Player ${Math.floor(Math.random() * 1000)}`}],
-                // NEU: Array für Zuschauer
                 spectators: [],
                 gameState: null, 
                 game: null 
             };
             
-            // Manually set initial score for the first player
             newRoom.players[0].score = startScore;
             rooms.push(newRoom);
             socket.join(newRoom.id);
             socket.emit('roomCreated', { roomId: newRoom.id });
             io.emit('updateRooms', rooms);
-            console.log(`Raum erfolgreich erstellt: ${newRoom.name} (${newRoom.id})`);
         });
 
         socket.on('joinRoom', (data) => {
-            console.log(`!!! joinRoom EVENT VOM CLIENT ${socket.id} EMPFANGEN !!! Will Raum beitreten:`, data.roomId);
             const room = rooms.find(r => r.id === data.roomId);
 
             if (room) {
@@ -90,13 +84,9 @@ function initializeSocket(io, gameManager, auth) {
 
                 if (existingPlayerIndex !== -1) {
                     socket.join(room.id);
-                    console.log(`Spieler ${socket.id} bereits im Raum ${room.id}, reconnection behandelt.`);
-
-                    // Update player id in case of socket reconnection
                     const oldId = room.players[existingPlayerIndex].id;
                     room.players[existingPlayerIndex].id = socket.id;
 
-                    // Also update in gameState if it exists
                     if (room.gameState && room.gameState.players) {
                         const gamePlayerIndex = room.gameState.players.findIndex(p => p.id === oldId);
                         if (gamePlayerIndex !== -1) {
@@ -104,7 +94,6 @@ function initializeSocket(io, gameManager, auth) {
                         }
                     }
 
-                    // Send proper gameState format instead of raw room object
                     const gameState = room.gameState || {
                         mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                         players: room.players,
@@ -125,7 +114,6 @@ function initializeSocket(io, gameManager, auth) {
                     room.players.push(newPlayer);
                     socket.join(room.id);
 
-                    // Systemnachricht an den Raum senden
                     io.to(room.id).emit('receiveMessage', {
                         user: 'System',
                         text: `${newPlayer.name} ist dem Raum beigetreten.`
@@ -137,31 +125,22 @@ function initializeSocket(io, gameManager, auth) {
                         socket.emit('game-started', room.gameState);
                     }
 
-                    console.log(`Spieler ${socket.id} ist Raum ${room.id} beigetreten.`);
-                    // Send game state to all in room, including the new player
                     io.to(room.id).emit('game-state-update', room.gameState);
                     io.emit('updateRooms', rooms);
                 } else {
-                    // Raum ist voll, als Zuschauer hinzufügen
                     if (!room.spectators) room.spectators = [];
-                    
                     const newSpectator = {
                         id: socket.id,
                         name: `Zuschauer_${socket.id.substring(0, 4)}`
                     };
                     room.spectators.push(newSpectator);
                     socket.join(room.id);
-
-                    // Systemnachricht an den Raum senden
                     io.to(room.id).emit('receiveMessage', {
                         user: 'System',
                         text: `${newSpectator.name} schaut jetzt zu.`
                     });
-                    
-                    // Informiere den Client, dass er Zuschauer ist und sende den aktuellen Spielstand
                     socket.emit('joinedAsSpectator', { roomId: room.id });
                     socket.emit('game-state-update', room.gameState);
-                    console.log(`Zuschauer ${socket.id} ist Raum ${room.id} beigetreten.`);
                 }
             } else {
                 socket.emit('gameError', { error: 'Room not found' });
@@ -175,20 +154,16 @@ function initializeSocket(io, gameManager, auth) {
             }
 
             const room = rooms.find(r => r.id === roomId);
-            if (!room) {
-                return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
-            }
+            if (!room) return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
 
             const player = room.players.find(p => p.id === userId);
             if (!player) {
-                // Maybe the user is a spectator
                 const spectator = room.spectators.find(s => s.id === userId);
                 if (spectator) spectator.name = newName.trim();
             } else {
                 const oldName = player.name;
                 player.name = newName.trim();
 
-                // Update the name in the gameState as well
                 if (room.gameState && room.gameState.players) {
                     const playerInGameState = room.gameState.players.find(p => p.id === userId);
                     if (playerInGameState) {
@@ -203,22 +178,15 @@ function initializeSocket(io, gameManager, auth) {
         socket.on('kickPlayer', (data) => {
             const { roomId, playerIdToKick } = data;
             const room = rooms.find(r => r.id === roomId);
+            if (!room) return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
 
-            if (!room) {
-                return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
-            }
-
-            // Check if the user sending the request is the host
             if (room.hostId !== socket.id) {
                 return socket.emit('gameError', { error: 'Nur der Host kann Spieler kicken.' });
             }
 
             const playerToKick = room.players.find(p => p.id === playerIdToKick);
-            if (!playerToKick) {
-                return socket.emit('gameError', { error: 'Spieler nicht im Raum gefunden.' });
-            }
+            if (!playerToKick) return socket.emit('gameError', { error: 'Spieler nicht im Raum gefunden.' });
 
-            // Find the socket of the player to be kicked
             const kickedSocket = io.sockets.sockets.get(playerIdToKick);
             if (kickedSocket) {
                 kickedSocket.leave(roomId);
@@ -226,43 +194,24 @@ function initializeSocket(io, gameManager, auth) {
             }
 
             room.players = room.players.filter(p => p.id !== playerIdToKick);
-
             io.to(roomId).emit('receiveMessage', { user: 'System', text: `${playerToKick.name} wurde vom Host entfernt.` });
             io.to(roomId).emit('game-state-update', { ...room.gameState, players: room.players });
             io.emit('updateRooms', rooms);
         });
 
-        // ==========================================
-        // HIER IST DIE LOGIK FÜR DEN SPIELSTART
-        // ==========================================
         socket.on('start-game', (data) => {
-            console.log(`[SERVER] Received 'start-game' event. Payload:`, data);
-            
-            // 1. Daten extrahieren
             const { roomId, userId, startingPlayerId } = data;
             const room = rooms.find(r => r.id === roomId);
 
-            if (!room) {
-                socket.emit('gameError', { error: 'Raum nicht gefunden' });
-                return;
-            }
+            if (!room) return socket.emit('gameError', { error: 'Raum nicht gefunden' });
             
             const isHost = room.players[0]?.id === userId || room.hostId === userId;
-            
-            if (!isHost) {
-                socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
-                return;
-            }
-            
-            if (room.players.length < 2) {
-                socket.emit('gameError', { error: 'Warte auf zweiten Spieler' });
-                return;
-            }
+            if (!isHost) return socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
+            if (room.players.length < 2) return socket.emit('gameError', { error: 'Warte auf zweiten Spieler' });
 
             const gameOptions = room.gameOptions || {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
-            // Spielinstanz neu erstellen
             if (room.gameMode === 'CricketGame') {
                 const { CricketGame } = require('./gameModes');
                 room.game = new CricketGame(gameOptions);
@@ -270,49 +219,25 @@ function initializeSocket(io, gameManager, auth) {
                 room.game = new X01Game(gameOptions);
             }
             
-            // 2. Startspieler bestimmen (mit ausführlichem Debugging)
-            let currentPlayerIndex = 0; // Standard: Host fängt an
-
-            console.log("--- [DEBUG START-LOGIC] ---");
-            console.log("Gewünschte Start-ID vom Frontend:", startingPlayerId);
-            console.log("Spieler im Raum:", room.players.map((p, i) => `${i}: ${p.id} (${p.name})`));
-
+            let currentPlayerIndex = 0;
             if (startingPlayerId === 'bull-off') {
-                // Random mode - start with bull-off
-                console.log("-> Zufälliger Start (Ausbullen) gewählt. Aktueller Spielerindex bleibt 0 für Host.");
-                // Start with host, bull-off will determine starter later
+                // Logic for bull-off already handled or default to 0
             } else if (startingPlayerId) {
-                // Wenn Frontend eine ID mitschickt (aus dem Dropdown)
                 const foundIndex = room.players.findIndex(p => p.id === startingPlayerId);
-                if (foundIndex !== -1) {
-                    currentPlayerIndex = foundIndex;
-                    console.log(`✅ ID gefunden an Index ${foundIndex}. Spieler ${startingPlayerId} beginnt.`);
-                } else {
-                    console.log(`⚠️ ID ${startingPlayerId} nicht im Raum gefunden. Fallback auf Index 0.`);
-                }
+                if (foundIndex !== -1) currentPlayerIndex = foundIndex;
             } else {
-                // Fallback, wenn Frontend keine ID schickt (altes Frontend oder kein Dropdown gewählt)
-                console.log("ℹ️ Keine startingPlayerId empfangen. Nutze Raumeinstellungen/Zufall.");
                 if (room.whoStarts === 'opponent' && room.players.length >= 2) {
-                    // Finde den Nicht-Host-Spieler
                     const opponentIndex = room.players.findIndex(p => p.id !== room.hostId);
                     currentPlayerIndex = opponentIndex !== -1 ? opponentIndex : 1;
-                    console.log(`-> Einstellung 'opponent': Index ${currentPlayerIndex} beginnt.`);
-            } else {
-                    // Finde den Host-Spieler
+                } else {
                     const hostIndex = room.players.findIndex(p => p.id === room.hostId);
                     currentPlayerIndex = hostIndex !== -1 ? hostIndex : 0;
-                    console.log(`-> Standard: Host (Index ${currentPlayerIndex}) beginnt.`);
                 }
             }
-            console.log("---------------------------");
 
-            // 3. Spiel mit korrektem Index initialisieren
             room.game.initializePlayers(room.players.map(p => p.id), currentPlayerIndex);
-            
             room.gameStarted = true;
 
-            // 4. GameState für Frontend bauen
             if (room.gameMode === 'CricketGame') {
                 room.gameState = {
                     mode: 'cricket',
@@ -365,52 +290,53 @@ function initializeSocket(io, gameManager, auth) {
             }
             
             room.game.playerIds = room.players.map(p => p.id);
-
             io.to(roomId).emit('game-started', room.gameState);
-            console.log(`Spiel gestartet. Index: ${currentPlayerIndex}, ID: ${room.players[currentPlayerIndex].id}`);
         });
 
-socket.on('score-input', (data) => {
+        socket.on('score-input', (data) => {
             const { roomId, score, userId } = data;
-            console.log(`[DEBUG] score-input received:`, { roomId, score, userId });
             const room = rooms.find(r => r.id === roomId);
 
             if (!room || !room.game) {
-                console.log(`[DEBUG] No room or game found`);
                 return socket.emit('gameError', { error: 'Spiel nicht gestartet oder Raum nicht gefunden' });
             }
 
-            console.log(`[DEBUG] Room found, game mode:`, room.gameMode);
             const currentPlayerIndex = room.game.currentPlayerIndex || 0;
             const currentPlayer = room.players[currentPlayerIndex];
 
-            console.log(`[DEBUG] Current player:`, currentPlayer?.id, `Expected:`, userId);
             if (currentPlayer?.id !== userId) {
                 return socket.emit('gameError', { error: 'Nicht dein Zug' });
             }
 
             try {
+                // Vorherigen Stand für Logik-Checks nutzen
+                const preThrowGameState = room.game.getGameState();
+                const scoreBeforeThrow = preThrowGameState.scores[userId] || 0;
+
                 const result = room.game.processThrow(userId, score);
 
                 if (!result.valid) {
                     return socket.emit('gameError', { error: result.reason });
                 }
 
-                // 2. GameState vom Spielobjekt holen (dieser ist jetzt die "Wahrheit")
+                // 2. GameState vom Spielobjekt holen
                 const newGameStateFromGame = room.game.getGameState();
 
-                // 3. Spielerdaten für das Frontend aktualisieren (Statistiken etc.)
+                // 3. Spielerdaten für das Frontend aktualisieren
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                
                 const updatedPlayers = room.players.map((p, idx) => {
                     const isCurrentPlayer = p.id === userId;
+                    
+                    // Bei X01 addieren wir hier erstmal IMMER 3 Darts.
+                    // Wenn es ein Checkout war, korrigieren wir das später in 'checkout-selection'.
                     const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
 
-                    // Average-Berechnung: Punkte erzielt / Turns gespielt
+                    // Average-Berechnung
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        // Berechne die bereits erzielten Punkte: Startscore - aktueller verbleibender Score
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
-                        const turnsPlayed = Math.floor(newDartsThrown / 3); // Anzahl der vollständigen Turns
+                        const turnsPlayed = newDartsThrown / 3; // Gleitkomma erlaubt für präzisere Berechnung
                         if (turnsPlayed > 0) {
                             average = (pointsScored / turnsPlayed).toFixed(2);
                         } else {
@@ -432,61 +358,37 @@ socket.on('score-input', (data) => {
                     let newDoublesThrown = p.doublesThrown || 0;
 
                     if (isCurrentPlayer) {
-                        // Add score to scores array
                         newScores = [...newScores, score];
+                        if (score == 180) newScores180 += 1;
+                        if (score >= 60 && score < 100) newScores60plus += 1;
+                        if (score >= 100 && score < 180) newScores100plus += 1;
+                        if (score >= 140 && score < 180) newScores140plus += 1;
 
-                        // Check for 180
-                        if (score == 180) {
-                            newScores180 += 1;
-                        }
-
-                        // Check for 60+
-                        if (score >= 60 && score < 100) {
-                            newScores60plus += 1;
-                        }
-
-                        // Check for 100+
-                        if (score >= 100 && score < 180) {
-                            newScores100plus += 1;
-                        }
-
-                        // Check for 140+
-                        if (score >= 140 && score < 180) {
-                            newScores140plus += 1;
-                        }
-
-                        // Check for finish (score reaches 0)
+                        // Check for finish
                         if (newGameStateFromGame.scores[p.id] === 0) {
                             newFinishes = [...newFinishes, score];
                             if (score > newHighestFinish) {
                                 newHighestFinish = score;
                             }
-                            // Double-Finish wird später über manuelle Abfrage bestimmt
-                            // Für X01: Prüfe ob der letzte Score ein Double war (gerade Zahl und >= 2)
                             if (room.gameMode !== 'CricketGame' && score >= 2 && score % 2 === 0) {
                                 newDoublesHit += 1;
                             }
                         }
                         if (room.gameMode !== 'CricketGame') {
-                            newDoublesThrown += 3;
+                            newDoublesThrown += 3; // Wird korrigiert bei Antwort
                         }
                     }
 
                     return {
                         ...p,
-                        // Daten aus der Game-Instanz übernehmen
-                        score: newGameStateFromGame.scores[p.id], // X01
-                        points: newGameStateFromGame.scores[p.id], // Cricket
+                        score: newGameStateFromGame.scores[p.id],
+                        points: newGameStateFromGame.scores[p.id],
                         marks: newGameStateFromGame.marks ? newGameStateFromGame.marks[p.id] : p.marks,
-
-                        // Statistiken neu berechnen
                         dartsThrown: newDartsThrown,
                         avg: average,
                         isActive: idx === newGameStateFromGame.currentPlayerIndex,
                         lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
-                        legs: p.legs || 0, // TODO: Leg-Logik
-
-                        // Live Statistics
+                        legs: p.legs || 0,
                         scores: newScores,
                         finishes: newFinishes,
                         highestFinish: newHighestFinish,
@@ -497,8 +399,6 @@ socket.on('score-input', (data) => {
                         doublesHit: newDoublesHit,
                         doublesThrown: newDoublesThrown,
                         lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
-
-                        // Berechne bestLeg (geringste Anzahl Darts für ein Leg)
                         bestLeg: (() => {
                             const turns = room.gameState?.turns?.[p.id] || [];
                             if (turns.length === 0) return null;
@@ -510,26 +410,21 @@ socket.on('score-input', (data) => {
                 });
                 room.players = updatedPlayers;
 
-// 4. Prüfe ob Doppelquote-Abfrage nötig ist
-                // Berechne Score VOR dem Wurf, um zu wissen, ob man auf einem Doppel stand
+                // 4. Doppelquote & Checkout Abfrage
                 const currentScore = newGameStateFromGame.scores[userId];
-                const scoreBeforeThrow = currentScore + score; // Bei X01 wird subtrahiert, also addieren wir hier
+                // WICHTIG: Verwende den Score VOR dem Wurf + Input Score, um zu prüfen ob Finish MÖGLICH WAR
+                // Da wir in X01 runterzählen, ist scoreBeforeThrow = scoreAfter + inputScore
+                // Aber hier nehmen wir einfach den gespeicherten scoreBeforeThrow von oben, um sicher zu gehen.
+                // Da wir in score-input sind, ist scoreBeforeThrow einfach der alte Stand.
                 
-                // Prüfen, ob vor dem Wurf ein Finish möglich war
                 const wasFinishPossible = (scoreBeforeThrow === 50) || (scoreBeforeThrow <= 40 && scoreBeforeThrow % 2 === 0);
 
-                console.log(`[DEBUG] User ${userId} - Score Before: ${scoreBeforeThrow}, Current: ${currentScore}, Was Finish Possible: ${wasFinishPossible}`);
-                
                 let doubleAttemptsQuery = null;
                 let checkoutQuery = null;
                 
-                // Für alle X01 Spiele wenn Finish möglich war
                 if (wasFinishPossible && room.gameMode !== 'CricketGame') {
-                    console.log(`[DEBUG] Finish was possible for user ${userId}`);
-                    
                     if (currentScore === 0) {
-                        // Check - verwende dedizierte Checkout-Abfrage
-                        console.log(`[DEBUG] Checkout detected - creating checkout query`);
+                        // Check!
                         const player = room.players.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
@@ -537,8 +432,7 @@ socket.on('score-input', (data) => {
                             startScore: scoreBeforeThrow
                         };
                     } else if (currentScore > 1) {
-                        // Kein Check aber Finish WAR möglich - frage nach Versuchen
-                        console.log(`[DEBUG] No checkout but finish was possible - creating attempts query`);
+                        // Finish verpasst
                         doubleAttemptsQuery = {
                             type: 'attempts',
                             playerId: userId,
@@ -548,20 +442,19 @@ socket.on('score-input', (data) => {
                             startScore: scoreBeforeThrow
                         };
                     } else if (currentScore < 0 || currentScore === 1) {
-                        // Bust - frage nach Versuchen vor dem Bust
-                        console.log(`[DEBUG] Bust detected - creating bust query`);
+                        // Bust
                         doubleAttemptsQuery = {
                             type: 'bust',
                             playerId: userId,
                             question: 'Wie viele Darts gingen auf das Doppel, bevor du überworfen hast?',
                             options: ['0', '1', '2', '3'],
                             score: score,
-                            startScore: scoreBeforeThrow // Hier war es vorher newGameStateFromGame.scores[userId], was bei Bust falsch sein kann
+                            startScore: scoreBeforeThrow
                         };
                     }
                 }
 
-// 5. Update-Payload für Clients erstellen
+                // 5. Update-Payload
                 const updateData = {
                     mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                     players: updatedPlayers,
@@ -570,22 +463,19 @@ socket.on('score-input', (data) => {
                     currentPlayerIndex: newGameStateFromGame.currentPlayerIndex,
                     lastThrow: { playerId: userId, score },
                     hostId: room.hostId,
-                    gameState: newGameStateFromGame, // Das komplette State-Objekt vom Spiel
-                    dartsThrownInTurn: result.dartsThrownInTurn, // Wichtig für Cricket
-                    doubleAttemptsQuery: doubleAttemptsQuery, // Neue Abfrage
-                    checkoutQuery: checkoutQuery, // Checkout-Abfrage
+                    gameState: newGameStateFromGame,
+                    dartsThrownInTurn: result.dartsThrownInTurn,
+                    doubleAttemptsQuery: doubleAttemptsQuery,
+                    checkoutQuery: checkoutQuery,
                 };
-                
-                // FIX für Checkout-Popup: Wenn wir nach Checkout fragen, dürfen wir das Spiel noch nicht
-                // als 'finished' markieren und den Winner noch nicht senden, sonst überdeckt das
-                // GameEndPopup (Winner) das CheckoutPopup.
+
+                // FIX: Wenn Checkout abgefragt wird, darf das Spiel noch nicht als 'finished'
+                // angezeigt werden, damit das Popup nicht überdeckt wird.
                 if (checkoutQuery) {
-                    console.log("[DEBUG] Holding winner state to ask for checkout details");
                     updateData.winner = null;
                     updateData.gameStatus = 'active';
                 }
 
-                // 6. Neuen State speichern und an Clients senden
                 room.gameState = { ...updateData };
                 io.to(roomId).emit('game-state-update', updateData);
 
@@ -598,7 +488,6 @@ socket.on('score-input', (data) => {
         socket.on('getGameState', (roomId) => {
             const room = rooms.find(r => r.id === roomId);
             if(room) {
-                // Return the gameState if it exists, otherwise return room info
                 if (room.gameState) {
                     socket.emit('gameState', room.gameState);
                 } else {
@@ -630,58 +519,118 @@ socket.on('score-input', (data) => {
             const room = rooms.find(r => r.id === roomId);
             if (!room || !room.game) return;
 
+            // 1. Darts für den Spieler korrigieren
+            // In score-input wurden +3 Darts gerechnet. Wir ziehen 3 ab und addieren die echten Darts.
+            // dartCount kommt als 1, 2 oder 3 vom Frontend.
+            const currentPlayerId = room.game.lastPlayerId; // Oder aus Turn History
+            const actualDartsUsed = parseInt(dartCount, 10);
+            
+            // Da wir gerade geworfen haben, ist der 'currentPlayerIndex' schon weitergesprungen!
+            // Wir müssen den Spieler finden, der gerade geworfen hat (und Checkout hatte).
+            // Normalerweise ist das der Spieler VOR dem aktuellen Index (oder der Gewinner).
+            let player = null;
+            
+            // Wenn das Spiel vorbei ist, ist winner gesetzt im Game Object
+            const gameStateInner = room.game.getGameState();
+            if (gameStateInner.winner) {
+                player = room.players.find(p => p.id === gameStateInner.winner);
+            }
+
+            if (player) {
+                // Korrektur: Wir haben vorher pauschal 3 addiert.
+                player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
+                
+                // Average neu berechnen mit korrekter Dartanzahl
+                const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                // Points Scored ist beim Checkout gleich StartScore (da 0 Rest)
+                const pointsScored = startScore; 
+                // Average = Punkte / (Darts / 3)
+                if (player.dartsThrown > 0) {
+                    player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
+                }
+            }
+
+            // Game Logic für CheckoutDarts (falls nötig für interne Logik)
             if (room.game.setCheckoutDarts) {
                 room.game.setCheckoutDarts(dartCount);
             }
-            // Hole den finalen State (inklusive Winner)
+
+            // Finalen State holen (jetzt mit Winner)
             room.gameState = room.game.getGameState();
             
-            // WICHTIG: Checkout-Abfrage im State löschen, da sie beantwortet ist
+            // Abfragen löschen
             if (room.gameState) {
                 room.gameState.checkoutQuery = null;
                 room.gameState.doubleAttemptsQuery = null;
             }
             
-            // Jetzt senden wir den State MIT Winner, da die Frage beantwortet wurde
-            io.to(room.id).emit('game-state-update', room.gameState);
+            // Player Daten (mit korrigierten Darts/Avg) in den Update Payload packen
+            const updateData = {
+                ...room.gameState,
+                players: room.players, // Unsere modifizierten Player-Objekte
+                gameStatus: 'finished', // Jetzt explizit finished
+                winner: gameStateInner.winner
+            };
+
+            io.to(room.id).emit('game-state-update', updateData);
         });
 
-        // Doppelquote-Abfrage Antwort
         socket.on('double-attempts-response', (data) => {
             const { roomId, userId, response, queryType, score, startScore } = data;
             const room = rooms.find(r => r.id === roomId);
-
             if (!room) return;
 
             const player = room.players.find(p => p.id === userId);
             if (!player) return;
 
-            // Statistik aktualisieren basierend auf der Antwort
             let hitsToAdd = 0;
             let attemptsToAdd = 0;
+            
+            // Response ist Index: 0 -> 1. Dart, 1 -> 2. Dart, 2 -> 3. Dart
+            // Oder bei 'attempts': 0 -> 0 Versuche, 1 -> 1 Versuch...
 
             if (queryType === 'checkout') {
-                // Check - response ist der Dart-Index (0, 1, 2 für 1., 2., 3. Dart)
+                // Checkout via generisches Modal (falls genutzt)
+                const actualDartsUsed = parseInt(response) + 1; // Index 0 = 1 Dart
+                
+                // Darts korrigieren (-3 + real)
+                player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
+                
+                // Average neu berechnen
+                const startScoreGame = parseInt(room.gameOptions.startingScore, 10) || 501;
+                const pointsScored = startScoreGame; // Checkout -> Alles Punkte
+                if (player.dartsThrown > 0) {
+                    player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
+                }
+
                 hitsToAdd = 1;
-                attemptsToAdd = parseInt(response) + 1; // 0->1, 1->2, 2->3
+                attemptsToAdd = actualDartsUsed;
             } else if (queryType === 'attempts' || queryType === 'bust') {
-                // Kein Check - response ist die Anzahl der Versuche (0-3)
                 hitsToAdd = 0;
                 attemptsToAdd = parseInt(response);
             }
 
-            // Statistik aktualisieren
             player.doublesHit = (player.doublesHit || 0) + hitsToAdd;
             player.doublesThrown = (player.doublesThrown || 0) + attemptsToAdd;
 
-            // WICHTIG: Die Abfrage im State löschen, damit das Popup nicht wieder erscheint!
             if (room.gameState) {
                 room.gameState.doubleAttemptsQuery = null;
                 room.gameState.checkoutQuery = null;
             }
+            
+            // Wenn es ein Checkout war, müssen wir sicherstellen, dass jetzt der Winner-Screen kommt
+            // Falls das Spiel durch diese Antwort "fertig" gemacht wurde (visuell).
+            // Wir nehmen an, dass room.game.getGameState().winner schon gesetzt ist.
+            const gameStateInner = room.game.getGameState();
+            const updateData = {
+                ...room.gameState, // Hat ggf. winner=null von vorher
+                players: room.players,
+                gameState: gameStateInner,
+                winner: gameStateInner.winner, // Jetzt echten Winner senden
+                gameStatus: gameStateInner.winner ? 'finished' : 'active'
+            };
 
-            // Broadcast update
-            io.to(roomId).emit('game-state-update', room.gameState);
+            io.to(roomId).emit('game-state-update', updateData);
         });
 
         socket.on('rematch', (data) => {
@@ -689,63 +638,49 @@ socket.on('score-input', (data) => {
             const room = rooms.find(r => r.id === roomId);
             if (!room) return;
 
-            // Setze das Spiel komplett zurück
             room.gameState = null;
             room.game = null;
             room.gameStarted = false;
 
-            // Setze die Spielerstatistiken zurück, aber behalte Namen, IDs und die Reihenfolge bei
             const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
             room.players.forEach(player => {
                 player.score = startScore;
                 player.dartsThrown = 0;
                 player.avg = '0.00';
                 player.legs = 0;
-                player.sets = 0; // Auch Sets zurücksetzen für ein komplett neues Spiel
-                player.marks = {}; // For cricket
+                player.sets = 0; 
+                player.marks = {}; 
                 player.lastScore = 0;
                 player.isActive = false;
             });
 
-            // Erstelle einen sauberen "Warte"-Zustand
             const waitingState = {
                 mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                 players: room.players,
                 gameStatus: 'waiting',
                 hostId: room.hostId,
-                whoStarts: room.whoStarts // Behalte die "Wer beginnt"-Einstellung bei
+                whoStarts: room.whoStarts
             };
             io.to(room.id).emit('game-state-update', waitingState);
         });
 
-// Bull-off logic
         socket.on('bull-off-submit', (data) => {
             const { roomId, playerId, throws } = data;
             const room = rooms.find(r => r.id === roomId);
             if (!room) return;
-
-            // Store the throws for this player
             if (!room.bullOffThrows) room.bullOffThrows = {};
             room.bullOffThrows[playerId] = throws;
-
-            // Broadcast to all players in the room
             io.to(roomId).emit('bull-off-throws', { playerId, throws });
         });
 
-        // Bull-off restart for sudden death phase
         socket.on('bull-off-restart', (data) => {
             const { roomId } = data;
             const room = rooms.find(r => r.id === roomId);
             if (!room) return;
-
-            // Clear previous throws for sudden death phase
             room.bullOffThrows = {};
-
-            // Broadcast restart to all players
             io.to(roomId).emit('bull-off-restart', { roomId });
         });
 
-        // WebRTC Camera Signaling
         socket.on('camera-offer', (data) => {
             const { roomId, to } = data;
             io.to(to).emit('camera-offer', data);
