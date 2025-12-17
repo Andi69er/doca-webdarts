@@ -511,39 +511,43 @@ socket.on('score-input', (data) => {
                 room.players = updatedPlayers;
 
 // 4. Prüfe ob Doppelquote-Abfrage nötig ist
+                // Berechne Score VOR dem Wurf, um zu wissen, ob man auf einem Doppel stand
                 const currentScore = newGameStateFromGame.scores[userId];
-                const isFinishPossible = (currentScore === 50) || (currentScore <= 40 && currentScore % 2 === 0);
+                const scoreBeforeThrow = currentScore + score; // Bei X01 wird subtrahiert, also addieren wir hier
+                
+                // Prüfen, ob vor dem Wurf ein Finish möglich war
+                const wasFinishPossible = (scoreBeforeThrow === 50) || (scoreBeforeThrow <= 40 && scoreBeforeThrow % 2 === 0);
 
-                console.log(`[DEBUG] User ${userId} - Current Score: ${currentScore}, Is Finish Possible: ${isFinishPossible}, Game Mode: ${room.gameMode}`);
-                console.log(`[DEBUG] Game options:`, room.gameOptions);
-
+                console.log(`[DEBUG] User ${userId} - Score Before: ${scoreBeforeThrow}, Current: ${currentScore}, Was Finish Possible: ${wasFinishPossible}`);
+                
                 let doubleAttemptsQuery = null;
                 let checkoutQuery = null;
                 
-                // Für alle X01 Spiele wenn Finish möglich ist
-                if (isFinishPossible && room.gameMode !== 'CricketGame') {
-                    console.log(`[DEBUG] Finish possible detected for user ${userId}`);
-                    if (newGameStateFromGame.scores[userId] === 0) {
+                // Für alle X01 Spiele wenn Finish möglich war
+                if (wasFinishPossible && room.gameMode !== 'CricketGame') {
+                    console.log(`[DEBUG] Finish was possible for user ${userId}`);
+                    
+                    if (currentScore === 0) {
                         // Check - verwende dedizierte Checkout-Abfrage
                         console.log(`[DEBUG] Checkout detected - creating checkout query`);
                         const player = room.players.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
                             score: score,
-                            startScore: currentScore
+                            startScore: scoreBeforeThrow
                         };
-                    } else if (newGameStateFromGame.scores[userId] > 1) {
-                        // Kein Check aber Finish möglich - frage nach Versuchen
-                        console.log(`[DEBUG] No checkout but finish possible - creating attempts query`);
+                    } else if (currentScore > 1) {
+                        // Kein Check aber Finish WAR möglich - frage nach Versuchen
+                        console.log(`[DEBUG] No checkout but finish was possible - creating attempts query`);
                         doubleAttemptsQuery = {
                             type: 'attempts',
                             playerId: userId,
                             question: 'Wie viele Darts hast du auf ein Doppel geworfen?',
                             options: ['0', '1', '2', '3'],
                             score: score,
-                            startScore: currentScore
+                            startScore: scoreBeforeThrow
                         };
-                    } else if (newGameStateFromGame.scores[userId] < 0 || newGameStateFromGame.scores[userId] === 1) {
+                    } else if (currentScore < 0 || currentScore === 1) {
                         // Bust - frage nach Versuchen vor dem Bust
                         console.log(`[DEBUG] Bust detected - creating bust query`);
                         doubleAttemptsQuery = {
@@ -552,7 +556,7 @@ socket.on('score-input', (data) => {
                             question: 'Wie viele Darts gingen auf das Doppel, bevor du überworfen hast?',
                             options: ['0', '1', '2', '3'],
                             score: score,
-                            startScore: newGameStateFromGame.scores[userId]
+                            startScore: scoreBeforeThrow // Hier war es vorher newGameStateFromGame.scores[userId], was bei Bust falsch sein kann
                         };
                     }
                 }
@@ -571,6 +575,15 @@ socket.on('score-input', (data) => {
                     doubleAttemptsQuery: doubleAttemptsQuery, // Neue Abfrage
                     checkoutQuery: checkoutQuery, // Checkout-Abfrage
                 };
+                
+                // FIX für Checkout-Popup: Wenn wir nach Checkout fragen, dürfen wir das Spiel noch nicht
+                // als 'finished' markieren und den Winner noch nicht senden, sonst überdeckt das
+                // GameEndPopup (Winner) das CheckoutPopup.
+                if (checkoutQuery) {
+                    console.log("[DEBUG] Holding winner state to ask for checkout details");
+                    updateData.winner = null;
+                    updateData.gameStatus = 'active';
+                }
 
                 // 6. Neuen State speichern und an Clients senden
                 room.gameState = { ...updateData };
@@ -620,15 +633,17 @@ socket.on('score-input', (data) => {
             if (room.game.setCheckoutDarts) {
                 room.game.setCheckoutDarts(dartCount);
             }
+            // Hole den finalen State (inklusive Winner)
             room.gameState = room.game.getGameState();
             
-            // WICHTIG: Checkout-Abfrage im State löschen
+            // WICHTIG: Checkout-Abfrage im State löschen, da sie beantwortet ist
             if (room.gameState) {
                 room.gameState.checkoutQuery = null;
                 room.gameState.doubleAttemptsQuery = null;
             }
             
-            io.to(room.id).emit('game-state-update', room.gameState); // Sendet room.gameState statt room
+            // Jetzt senden wir den State MIT Winner, da die Frage beantwortet wurde
+            io.to(room.id).emit('game-state-update', room.gameState);
         });
 
         // Doppelquote-Abfrage Antwort
@@ -659,7 +674,7 @@ socket.on('score-input', (data) => {
             player.doublesHit = (player.doublesHit || 0) + hitsToAdd;
             player.doublesThrown = (player.doublesThrown || 0) + attemptsToAdd;
 
-            // WICHTIG: Die Abfrage im State löschen, damit sie nicht erneut gesendet wird!
+            // WICHTIG: Die Abfrage im State löschen, damit das Popup nicht wieder erscheint!
             if (room.gameState) {
                 room.gameState.doubleAttemptsQuery = null;
                 room.gameState.checkoutQuery = null;
