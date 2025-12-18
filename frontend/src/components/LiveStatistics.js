@@ -16,15 +16,13 @@ const LiveStatistics = ({ gameState }) => {
     // Versuch, das Short Leg zu finden (anhand gängiger Namen)
     // ---------------------------------------------------------
     const findBestLeg = (player) => {
-        // Liste der üblichen Verdächtigen
         const candidates = [
             player.bestLeg, player.best_leg, 
             player.shortLeg, player.short_leg, 
             player.bestLegDarts, player.best_leg_darts,
             player.lowLeg, player.low_leg,
             player.fastestLeg,
-            player.minDarts,
-            // Stats Unterobjekt
+            // Stats Unterobjekt prüfen
             player.stats ? player.stats.bestLeg : null,
             player.stats ? player.stats.best_leg : null,
             player.stats ? player.stats.shortLeg : null,
@@ -38,9 +36,20 @@ const LiveStatistics = ({ gameState }) => {
 
     const p1BestLeg = findBestLeg(p1);
     const p2BestLeg = findBestLeg(p2);
-    // ---------------------------------------------------------
 
-    // First 9 Average
+    // ---------------------------------------------------------
+    // DEBUG: Wir bereiten die Daten für die Anzeige vor
+    // Wir filtern große Arrays (scores) raus, damit der Text lesbar bleibt
+    // ---------------------------------------------------------
+    const getDebugData = (player) => {
+        const cleanPlayer = { ...player };
+        // Entferne große Listen für die Übersichtlichkeit
+        if (cleanPlayer.scores) cleanPlayer.scores = `[Array mit ${cleanPlayer.scores.length} Einträgen]`;
+        if (cleanPlayer.history) cleanPlayer.history = `[Array]`;
+        return JSON.stringify(cleanPlayer, null, 2);
+    };
+
+    // First 9 Avg
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
         if (scores.length === 0) return '0.00';
@@ -54,7 +63,7 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Score Ranges & High Finish (Fallback Logik)
+    // Stats Abruf Helfer
     const getStat = (p, ...keys) => {
         for (let key of keys) {
             if (p[key] !== undefined) return p[key];
@@ -85,10 +94,6 @@ const LiveStatistics = ({ gameState }) => {
         </div>
     );
 
-    // DEBUG HILFE: Sammle alle Keys von P1
-    const p1Keys = Object.keys(p1).join(', ');
-    const p1StatsKeys = p1.stats ? Object.keys(p1.stats).join(', ') : 'kein stats objekt';
-
     return (
         <div className="stats-wrapper">
             <div className="stats-header">
@@ -115,11 +120,22 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* WICHTIG: Das hier zeigt uns, welche Daten überhaupt da sind! */}
-            <div style={{fontSize: '10px', color: '#888', marginTop: '10px', textAlign:'left', padding:'5px', borderTop:'1px solid #333', wordBreak: 'break-all'}}>
-                <strong>DATEN ANALYSE (P1):</strong><br/>
-                Haupt-Daten: {p1Keys}<br/><br/>
-                Stats-Daten: {p1StatsKeys}
+            {/* DEBUGGING BEREICH - WICHTIG: BITTE SCREENSHOT DAVON MACHEN */}
+            <div style={{
+                marginTop: '20px', 
+                padding: '10px', 
+                background: '#400', 
+                border: '2px solid red', 
+                color: '#fff', 
+                textAlign: 'left',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                maxHeight: '300px',
+                overflowY: 'auto'
+            }}>
+                <strong>DEBUG DATEN (Player 1):</strong><br/>
+                {getDebugData(p1)}
             </div>
         </div>
     );
