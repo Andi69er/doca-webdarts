@@ -13,43 +13,39 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // Versuch, das Short Leg zu finden (anhand gängiger Namen)
+    // BERECHNUNG: Short Leg aus History oder Variable
     // ---------------------------------------------------------
-    const findBestLeg = (player) => {
-        const candidates = [
-            player.bestLeg, player.best_leg, 
-            player.shortLeg, player.short_leg, 
-            player.bestLegDarts, player.best_leg_darts,
-            player.lowLeg, player.low_leg,
-            player.fastestLeg,
-            // Stats Unterobjekt prüfen
-            player.stats ? player.stats.bestLeg : null,
-            player.stats ? player.stats.best_leg : null,
-            player.stats ? player.stats.shortLeg : null,
-            player.stats ? player.stats.bestLegDarts : null
-        ];
+    const calculateBestLeg = (player) => {
+        // 1. Prüfe, ob das Backend den Wert direkt liefert (bestLeg)
+        if (player.bestLeg && player.bestLeg > 0) return player.bestLeg;
+        
+        // 2. Fallback: Berechne aus der History
+        if (player.history && Array.isArray(player.history) && player.history.length > 0) {
+            // Wir sammeln alle "Darts"-Werte aus der Historie
+            const legsDarts = player.history.map(entry => {
+                // Verschiedene Schreibweisen prüfen
+                if (entry.dartsThrown) return entry.dartsThrown;
+                if (entry.darts) return entry.darts;
+                if (entry.throws) return entry.throws;
+                // Falls entry nur eine Zahl ist (unwahrscheinlich, aber möglich)
+                if (typeof entry === 'number') return entry;
+                return 0;
+            }).filter(d => d > 0); // Nur Werte > 0 behalten
 
-        // Nimm den ersten Wert > 0
-        const found = candidates.find(v => v && !isNaN(v) && parseInt(v) > 0);
-        return found || 0;
+            if (legsDarts.length > 0) {
+                return Math.min(...legsDarts);
+            }
+        }
+
+        return 0;
     };
 
-    const p1BestLeg = findBestLeg(p1);
-    const p2BestLeg = findBestLeg(p2);
+    const p1BestLeg = calculateBestLeg(p1);
+    const p2BestLeg = calculateBestLeg(p2);
 
     // ---------------------------------------------------------
-    // DEBUG: Wir bereiten die Daten für die Anzeige vor
-    // Wir filtern große Arrays (scores) raus, damit der Text lesbar bleibt
-    // ---------------------------------------------------------
-    const getDebugData = (player) => {
-        const cleanPlayer = { ...player };
-        // Entferne große Listen für die Übersichtlichkeit
-        if (cleanPlayer.scores) cleanPlayer.scores = `[Array mit ${cleanPlayer.scores.length} Einträgen]`;
-        if (cleanPlayer.history) cleanPlayer.history = `[Array]`;
-        return JSON.stringify(cleanPlayer, null, 2);
-    };
-
     // First 9 Avg
+    // ---------------------------------------------------------
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
         if (scores.length === 0) return '0.00';
@@ -63,7 +59,7 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Stats Abruf Helfer
+    // Stats Helper
     const getStat = (p, ...keys) => {
         for (let key of keys) {
             if (p[key] !== undefined) return p[key];
@@ -80,8 +76,8 @@ const LiveStatistics = ({ gameState }) => {
     const p2Scores140Plus = getStat(p2, 'scores140plus', 'scores140s');
     const p1Scores180 = getStat(p1, 'scores180', 'scores180s');
     const p2Scores180 = getStat(p2, 'scores180', 'scores180s');
-    const p1HighFinish = getStat(p1, 'highestFinish', 'highFinish', 'bestFinish');
-    const p2HighFinish = getStat(p2, 'highestFinish', 'highFinish', 'bestFinish');
+    const p1HighFinish = getStat(p1, 'highestFinish', 'highFinish');
+    const p2HighFinish = getStat(p2, 'highestFinish', 'highFinish');
 
     const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
     const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
@@ -120,9 +116,9 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* DEBUGGING BEREICH - WICHTIG: BITTE SCREENSHOT DAVON MACHEN */}
+            {/* DEBUGGING BEREICH - ZEIGT UNS DIE HISTORY VON PLAYER 2 */}
             <div style={{
-                marginTop: '20px', 
+                marginTop: '10px', 
                 padding: '10px', 
                 background: '#400', 
                 border: '2px solid red', 
@@ -131,11 +127,11 @@ const LiveStatistics = ({ gameState }) => {
                 fontSize: '11px',
                 fontFamily: 'monospace',
                 whiteSpace: 'pre-wrap',
-                maxHeight: '300px',
+                maxHeight: '200px',
                 overflowY: 'auto'
             }}>
-                <strong>DEBUG DATEN (Player 1):</strong><br/>
-                {getDebugData(p1)}
+                <strong>HISTORY CHECK (Player 2):</strong><br/>
+                {p2.history ? JSON.stringify(p2.history, null, 2) : "Keine History vorhanden"}
             </div>
         </div>
     );
