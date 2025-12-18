@@ -40,18 +40,22 @@ const Lobby = memo(() => {
     const { socket, socketConnected } = useSocket();
     const navigate = useNavigate();
 
-    // --- STATE VARIABLES (1:1 Original) ---
+    // --- STATE VARIABLES ---
     const [rooms, setRooms] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState(0);
     const [roomName, setRoomName] = useState('');
+    
+    // Spieloptionen
     const [gameMode, setGameMode] = useState('X01Game'); 
     const [startingScore, setStartingScore] = useState('501');
     const [sets, setSets] = useState('0');
     const [legs, setLegs] = useState('1');
+    
+    // Erweiterte Regeln
     const [winType, setWinType] = useState('firstTo'); 
     const [inMode, setInMode] = useState('single'); 
     const [outMode, setOutMode] = useState('double'); 
-    const [whoStartsUI, setWhoStartsUI] = useState('random'); // Default
+    const [whoStartsUI, setWhoStartsUI] = useState('random'); 
 
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -193,11 +197,16 @@ const Lobby = memo(() => {
     return (
         <LobbyErrorBoundary>
             <div className="lobby-wrapper">
-                {/* Header */}
+                {/* Header (ANGEPASST) */}
                 <header className="lobby-topbar">
-                    <div className="logo-area">
-                        <h1>DOCA <span className="highlight">Lobby</span></h1>
+                    <div className="brand-area">
+                        <h1>🎯 DOCA <span className="highlight">WebDarts Pro</span></h1>
                     </div>
+                    
+                    <div className="center-title">
+                        <h2>LOBBY</h2>
+                    </div>
+
                     <div className="status-area">
                        <div className="status-badge">
                             <span className="dot"></span> {onlineUsers} Online
