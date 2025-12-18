@@ -239,7 +239,6 @@ const Lobby = memo(() => {
                                     className="lobby-input"
                                     value={sets}
                                     onChange={(e) => setSets(e.target.value)}
-                                    min="0"
                                     placeholder="0"
                                 />
                             </div>
@@ -251,7 +250,6 @@ const Lobby = memo(() => {
                                     className="lobby-input"
                                     value={legs}
                                     onChange={(e) => setLegs(e.target.value)}
-                                    min="1"
                                     placeholder="1"
                                 />
                             </div>
