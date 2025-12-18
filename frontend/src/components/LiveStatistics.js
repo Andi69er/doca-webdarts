@@ -1,9 +1,6 @@
 import React from 'react';
 
 const LiveStatistics = ({ gameState }) => {
-    // Debugging (F12 im Browser -> Konsole): Damit sehen wir, was wirklich ankommt
-    console.log("DEBUG GAMESTATE:", gameState);
-
     // Sicherheits-Check
     if (!gameState || !gameState.players) {
         return <div className="stats-wrapper" style={{justifyContent:'center', alignItems:'center', color:'#666'}}>Lade...</div>;
@@ -16,72 +13,91 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // BERECHNUNG FÜR SHORT LEG (BEST LEG)
+    // Aggressive Suche nach allen gespielten Legs (auch in Sets)
     // ---------------------------------------------------------
-    const findBestLeg = (player, playerIndex) => {
-        // 1. Direkte Werte prüfen (falls das Backend sie doch liefert)
-        const candidates = [
-            player.bestLeg, player.best_leg, 
-            player.shortLeg, player.short_leg, 
-            player.bestLegDarts,
-            player.stats ? player.stats.bestLeg : 0,
-            player.stats ? player.stats.best_leg : 0
-        ];
-        const found = candidates.find(v => v && !isNaN(v) && parseInt(v) > 0);
-        if (found) return found;
-
-        // 2. Manuelle Berechnung aus der Historie (gameState.legs)
-        // Das ist der wichtigste Teil, wenn das Backend keine fertige Zahl liefert.
+    const getAllLegs = () => {
+        let allLegs = [];
+        
+        // 1. Suche in direkter Leg-Liste
         if (gameState.legs && Array.isArray(gameState.legs)) {
-            
-            // Wir filtern alle Legs, die dieser Spieler gewonnen hat.
-            // WICHTIG: Wir prüfen ID, Name und Index!
-            const wonLegs = gameState.legs.filter(leg => {
-                const winner = leg.winner || leg.winningPlayer || leg.winner_id;
-                
-                // Check 1: Ist der Gewinner der Index (0 oder 1)?
-                if (winner === playerIndex) return true;
-                
-                // Check 2: Ist der Gewinner die Player-ID? (Das ist wahrscheinlich der Fall!)
-                if (player.id && winner === player.id) return true;
-                
-                // Check 3: Ist der Gewinner der Name?
-                if (player.name && winner === player.name) return true;
+            allLegs = [...allLegs, ...gameState.legs];
+        }
 
-                return false;
-            });
-
-            // Jetzt schauen wir uns die gewonnenen Legs an
-            const dartCounts = wonLegs.map(leg => {
-                // A) Steht die Anzahl der Darts direkt im Leg-Objekt?
-                if (leg.darts && leg.darts > 0) return parseInt(leg.darts);
-                if (leg.dartsThrown && leg.dartsThrown > 0) return parseInt(leg.dartsThrown);
-                if (leg.throws && leg.throws > 0) return parseInt(leg.throws);
-
-                // B) Wenn nicht: Können wir die Visits (Aufnahmen) zählen?
-                // Meistens gibt es ein Array 'visits', 'scores' oder 'throws'
-                const visits = leg.visits || leg.scores || leg.history;
-                if (visits && Array.isArray(visits) && visits.length > 0) {
-                    // Annahme: Jede Aufnahme hat 3 Darts. 
-                    // (Das ist nicht 100% exakt für das Checkout, aber besser als 0)
-                    return visits.length * 3;
+        // 2. Suche in Sets (falls Set-Modus)
+        if (gameState.sets && Array.isArray(gameState.sets)) {
+            gameState.sets.forEach(set => {
+                if (set.legs && Array.isArray(set.legs)) {
+                    allLegs = [...allLegs, ...set.legs];
                 }
-                
-                return 0;
-            }).filter(d => d > 0);
+            });
+        }
 
-            if (dartCounts.length > 0) {
-                return Math.min(...dartCounts);
+        // 3. Suche in matchLog oder history
+        if (gameState.matchLog && Array.isArray(gameState.matchLog)) {
+            allLegs = [...allLegs, ...gameState.matchLog];
+        }
+        
+        return allLegs;
+    };
+
+    const playedLegs = getAllLegs();
+
+    // ---------------------------------------------------------
+    // BERECHNUNG: Short Leg aus der Liste aller Legs
+    // ---------------------------------------------------------
+    const calculateShortLeg = (player, playerIndex) => {
+        // Zuerst: Gibt es einen direkten Wert im Spieler-Objekt?
+        const directKeys = ['bestLeg', 'best_leg', 'shortLeg', 'short_leg', 'bestLegDarts', 'lowLeg'];
+        for (let key of directKeys) {
+            if (player[key] && parseInt(player[key]) > 0) return player[key];
+            if (player.stats && player.stats[key] && parseInt(player.stats[key]) > 0) return player.stats[key];
+        }
+
+        if (playedLegs.length === 0) return 0;
+
+        // Filtere Legs, die dieser Spieler gewonnen hat
+        const wonLegs = playedLegs.filter(leg => {
+            const winner = leg.winner || leg.winningPlayer || leg.winner_id;
+            
+            // Vergleiche Index (0/1), ID oder Name
+            const byIndex = winner === playerIndex;
+            const byId = player.id && winner === player.id;
+            const byName = player.name && winner === player.name;
+            
+            // Manche Systeme nutzen auch 'result': 'won' im Kontext des Spielers
+            return byIndex || byId || byName;
+        });
+
+        // Extrahiere Dart-Anzahl
+        const dartsCounts = wonLegs.map(leg => {
+            // Direkte Dart-Zahl
+            if (leg.darts && leg.darts > 0) return parseInt(leg.darts);
+            if (leg.dartsThrown && leg.dartsThrown > 0) return parseInt(leg.dartsThrown);
+            if (leg.throws && leg.throws > 0) return parseInt(leg.throws);
+            if (leg.darts_thrown && leg.darts_thrown > 0) return parseInt(leg.darts_thrown);
+
+            // Wenn keine Zahl da ist: Visits zählen (Anzahl Aufnahmen * 3)
+            // Das ist ungenau beim Checkout, aber besser als 0
+            const visits = leg.visits || leg.scores || leg.history;
+            if (visits && Array.isArray(visits) && visits.length > 0) {
+                // Versuchen wir herauszufinden, wessen Visits das sind
+                // (Oft sind Visits verschachtelt nach Spielern)
+                return visits.length * 3; 
             }
+            return 0;
+        }).filter(d => d > 0);
+
+        if (dartsCounts.length > 0) {
+            return Math.min(...dartsCounts);
         }
 
         return 0;
     };
 
-    const p1BestLeg = findBestLeg(p1, 0);
-    const p2BestLeg = findBestLeg(p2, 1);
-    // ---------------------------------------------------------
+    const p1BestLeg = calculateShortLeg(p1, 0);
+    const p2BestLeg = calculateShortLeg(p2, 1);
 
+    // ---------------------------------------------------------
 
     // First 9 Average
     const calculateFirst9Avg = (player) => {
@@ -97,10 +113,14 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Score Ranges (mit Fallback auf stats-Objekt)
-    const getStat = (p, key1, key2) => {
-        return p[key1] || (p.stats ? p.stats[key1] : 0) || p[key2] || (p.stats ? p.stats[key2] : 0) || 0;
-    }
+    // Hilfsfunktion für Stats
+    const getStat = (p, ...keys) => {
+        for (let key of keys) {
+            if (p[key]) return p[key];
+            if (p.stats && p.stats[key]) return p.stats[key];
+        }
+        return 0;
+    };
 
     const p1Scores60Plus = getStat(p1, 'scores60plus', 'scores60s');
     const p2Scores60Plus = getStat(p2, 'scores60plus', 'scores60s');
@@ -113,13 +133,8 @@ const LiveStatistics = ({ gameState }) => {
     const p1HighFinish = getStat(p1, 'highestFinish', 'highFinish');
     const p2HighFinish = getStat(p2, 'highestFinish', 'highFinish');
 
-    // Doppelquote
-    const p1Doubles = p1.doublesHit && p1.doublesThrown 
-        ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` 
-        : '0% (0/0)';
-    const p2Doubles = p2.doublesHit && p2.doublesThrown 
-        ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` 
-        : '0% (0/0)';
+    const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
+    const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
 
     const StatRow = ({ label, v1, v2, highlightP1, highlightP2 }) => (
         <div className="stat-row">
@@ -153,6 +168,14 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="180ER" v1={val(p1Scores180)} v2={val(p2Scores180)} />
                 <StatRow label="HIGH FINISH" v1={val(p1HighFinish)} v2={val(p2HighFinish)} />
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
+            </div>
+
+            {/* DEBUGGING BEREICH - Kann später entfernt werden */}
+            <div style={{fontSize: '10px', color: '#555', marginTop: '10px', textAlign:'left', padding:'5px', border:'1px solid #333'}}>
+                <strong>Debug Info:</strong><br/>
+                Gefundene Legs total: {playedLegs.length}<br/>
+                Keys in Leg #1: {playedLegs[0] ? Object.keys(playedLegs[0]).join(', ') : 'keine Legs'}<br/>
+                P1 ID: {p1.id} | P2 ID: {p2.id}
             </div>
         </div>
     );
