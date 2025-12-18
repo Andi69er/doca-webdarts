@@ -234,26 +234,26 @@ const Lobby = memo(() => {
 
                             <div className="form-row">
                                 <label>Sets:</label>
-                                <select className="lobby-input" value={sets} onChange={(e) => setSets(e.target.value)}>
-                                    <option value="0">0</option>
-                                    <option value="1">1</option>
-                                    <option value="3">3</option>
-                                    <option value="5">5</option>
-                                    <option value="7">7</option>
-                                    <option value="9">9</option>
-                                </select>
+                                <input
+                                    type="number"
+                                    className="lobby-input"
+                                    value={sets}
+                                    onChange={(e) => setSets(e.target.value)}
+                                    min="0"
+                                    placeholder="0"
+                                />
                             </div>
 
                             <div className="form-row">
                                 <label>Legs:</label>
-                                <select className="lobby-input" value={legs} onChange={(e) => setLegs(e.target.value)}>
-                                    <option value="1">1</option>
-                                    <option value="3">3</option>
-                                    <option value="5">5</option>
-                                    <option value="7">7</option>
-                                    <option value="9">9</option>
-                                    <option value="11">11</option>
-                                </select>
+                                <input
+                                    type="number"
+                                    className="lobby-input"
+                                    value={legs}
+                                    onChange={(e) => setLegs(e.target.value)}
+                                    min="1"
+                                    placeholder="1"
+                                />
                             </div>
 
                             {gameMode !== 'CricketGame' && (
