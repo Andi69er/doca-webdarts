@@ -5,7 +5,7 @@ import gameModes from '../gameModes';
 import OnlineUsers from './OnlineUsers';
 import './Lobby.css';
 
-// Error Boundary für Lobby-Rendering-Fehler
+// Error Boundary
 class LobbyErrorBoundary extends Component {
     constructor(props) {
         super(props);
@@ -26,7 +26,7 @@ class LobbyErrorBoundary extends Component {
             return (
                 <div className="lobby-error-container">
                     <h1>Fehler in der Lobby</h1>
-                    <button onClick={() => window.location.reload()} className="lobby-button">
+                    <button onClick={() => window.location.reload()} className="action-button">
                         Seite neu laden
                     </button>
                 </div>
@@ -40,23 +40,30 @@ const Lobby = memo(() => {
     const { socket, socketConnected } = useSocket();
     const navigate = useNavigate();
 
+    // --- STATE VARIABLES (ALLE WIEDERHERGESTELLT) ---
     const [rooms, setRooms] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState(0);
     const [roomName, setRoomName] = useState('');
+    
+    // Spieloptionen
     const [gameMode, setGameMode] = useState('X01Game');
     const [startingScore, setStartingScore] = useState('501');
     const [sets, setSets] = useState('0');
     const [legs, setLegs] = useState('1');
-    const [winType, setWinType] = useState('firstTo');
-    const [inMode, setInMode] = useState('single');
-    const [outMode, setOutMode] = useState('double');
-    const [whoStartsUI, setWhoStartsUI] = useState('random');
+    
+    // Erweiterte Regeln
+    const [winType, setWinType] = useState('firstTo'); // Best Of / First to
+    const [inMode, setInMode] = useState('single');    // Single In / Double In
+    const [outMode, setOutMode] = useState('double');  // Single / Double / Master Out
+    const [whoStartsUI, setWhoStartsUI] = useState('random'); // Ich, Gegner, Ausbullen
+
+    // Chat & Listen
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [finishedGames, setFinishedGames] = useState([]);
     const [selectedGame, setSelectedGame] = useState(null);
     const [runningGames, setRunningGames] = useState([]);
-
+    
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -67,6 +74,7 @@ const Lobby = memo(() => {
         scrollToBottom();
     }, [messages]);
 
+    // Socket Listener
     useEffect(() => {
         if (socket) {
             socket.on('updateRooms', (updatedRooms) => setRooms(updatedRooms));
@@ -91,7 +99,8 @@ const Lobby = memo(() => {
             };
         }
     }, [socket, navigate]);
-
+    
+    // Defaults setzen bei Modus-Wechsel
     useEffect(() => {
         if (gameMode && gameModes[gameMode]) {
             const currentMode = gameModes[gameMode];
@@ -108,10 +117,13 @@ const Lobby = memo(() => {
         }
     }, [gameMode, winType]);
 
+    // --- ORIGINAL LOGIC WIEDERHERGESTELLT ---
     const handleCreateRoom = (e) => {
         e.preventDefault();
         try {
-            const winNumber = winType === 'firstTo' ? 1 : 3;
+            // Logik zur Bestimmung der Gewinnzahl (WinNumber)
+            const winNumberCalc = winType === 'firstTo' ? 1 : 3; // Standardwert, falls Logik erweitert wird
+            
             let gameOptions = {};
             if (gameMode === 'X01Game') {
                 gameOptions = {
@@ -121,26 +133,26 @@ const Lobby = memo(() => {
                     outMode,
                     inMode,
                     winType,
-                    winNumber,
-                    length: { type: winType, value: winNumber },
+                    winNumber: winNumberCalc, // Falls dein Backend das braucht
+                    length: { type: winType, value: winNumberCalc }, // Falls dein Backend das braucht
                 };
             } else if (gameMode === 'CricketGame') {
                 gameOptions = {
                     sets: parseInt(sets),
                     legs: legs === 'unlimited' ? -1 : parseInt(legs),
                     winType,
-                    winNumber,
-                    length: { type: winType, value: winNumber },
+                    winNumber: winNumberCalc,
+                    length: { type: winType, value: winNumberCalc },
                 };
             }
-
+            
             const roomData = {
                 roomName,
                 gameMode,
                 whoStarts: whoStartsUI,
                 gameOptions
             };
-
+            
             if (socket) {
                 socket.emit('createRoom', roomData);
             } else {
@@ -166,22 +178,34 @@ const Lobby = memo(() => {
         }
     };
 
-    // Helper für Raumbeschreibung
+    // Helper für Raumbeschreibung (Detaillierte Anzeige wie im Original)
     const formatRoomInfo = (room) => {
+        let info = '';
         if (room.gameMode === 'X01Game' || room.gameMode === 'x01') {
             const score = room.gameOptions?.startingScore || '501';
-            const inMode = room.gameOptions?.inMode === 'double' ? 'DO' : 'SI'; // Kurzform
-            const outMode = room.gameOptions?.outMode === 'double' ? 'DO' : 
-                          room.gameOptions?.outMode === 'master' ? 'MO' : 'SO';
-            return `X01 (${score}) • ${inMode}/${outMode} • Sets: ${room.gameOptions?.sets} Legs: ${room.gameOptions?.legs}`;
-        } 
-        return `Cricket • Sets: ${room.gameOptions?.sets} Legs: ${room.gameOptions?.legs}`;
+            const im = room.gameOptions?.inMode === 'double' ? 'Double In' : 'Single In';
+            const om = room.gameOptions?.outMode === 'double' ? 'Double Out' : 
+                          room.gameOptions?.outMode === 'master' ? 'Master Out' : 'Single Out';
+            const s = room.gameOptions?.sets || 0;
+            const l = room.gameOptions?.legs || 1;
+            const wt = room.gameOptions?.winType === 'bestOf' ? 'Best Of' : 'First To';
+            const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Host' : 'Gast';
+            
+            info = `${score} • ${im} / ${om} • ${wt} • Sets: ${s}, Legs: ${l} • Start: ${start}`;
+        } else if (room.gameMode === 'CricketGame' || room.gameMode === 'cricket') {
+            const s = room.gameOptions?.sets || 0;
+            const l = room.gameOptions?.legs || 1;
+            const wt = room.gameOptions?.winType === 'bestOf' ? 'Best Of' : 'First To';
+            const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Host' : 'Gast';
+            info = `Cricket • ${wt} • Sets: ${s}, Legs: ${l} • Start: ${start}`;
+        }
+        return info;
     };
 
     return (
         <LobbyErrorBoundary>
             <div className="lobby-wrapper">
-                {/* Header Area */}
+                {/* Header */}
                 <header className="lobby-topbar">
                     <div className="logo-area">
                         <h1>DOCA <span className="highlight">Lobby</span></h1>
@@ -197,7 +221,7 @@ const Lobby = memo(() => {
                 </header>
 
                 <div className="lobby-grid">
-                    {/* LEFT COLUMN: Social (Users & Chat) */}
+                    {/* LINKE SPALTE: User & Chat */}
                     <aside className="lobby-sidebar-left">
                         <div className="panel user-panel">
                             <h3>👥 Online ({onlineUsers})</h3>
@@ -222,81 +246,129 @@ const Lobby = memo(() => {
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Nachricht..."
+                                    placeholder="Nachricht eingeben..."
                                 />
                                 <button type="submit" disabled={!socketConnected}>➤</button>
                             </form>
                         </div>
                     </aside>
 
-                    {/* CENTER COLUMN: Create & Play */}
+                    {/* MITTLERE SPALTE: Erstellen & Liste */}
                     <main className="lobby-main">
                         <section className="panel create-room-panel">
                             <div className="panel-header">
-                                <h3>⚡ Schnelles Spiel starten</h3>
+                                <h3>🏗️ Raum erstellen</h3>
                             </div>
-                            <form onSubmit={handleCreateRoom} className="compact-form">
-                                <div className="form-grid">
+                            <form onSubmit={handleCreateRoom} className="room-form-grid">
+                                {/* Basis Infos */}
+                                <div className="form-section full-width">
                                     <div className="input-group">
                                         <label>Raumname</label>
                                         <input
                                             type="text"
                                             value={roomName}
                                             onChange={(e) => setRoomName(e.target.value)}
-                                            placeholder="z.B. Darts Arena"
+                                            placeholder="Name des Raums"
                                             required
                                         />
                                     </div>
+                                </div>
+
+                                <div className="form-section">
                                     <div className="input-group">
-                                        <label>Modus</label>
+                                        <label>Spielmodus</label>
                                         <select value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
                                             <option value="X01Game">X01</option>
                                             <option value="CricketGame">Cricket</option>
                                         </select>
                                     </div>
-                                    
-                                    {gameMode === 'X01Game' && (
-                                        <>
+                                </div>
+
+                                {/* X01 Spezifisch */}
+                                {gameMode === 'X01Game' && (
+                                    <>
+                                        <div className="form-section">
                                             <div className="input-group">
-                                                <label>Score</label>
+                                                <label>Anfangswert</label>
                                                 <select value={startingScore} onChange={(e) => setStartingScore(e.target.value)}>
                                                     <option value="301">301</option>
+                                                    <option value="401">401</option>
                                                     <option value="501">501</option>
                                                     <option value="701">701</option>
+                                                    <option value="801">801</option>
+                                                    <option value="901">901</option>
+                                                    <option value="1001">1001</option>
                                                 </select>
                                             </div>
+                                        </div>
+                                        <div className="form-section">
                                             <div className="input-group">
-                                                <label>Check Out</label>
+                                                <label>Modus Start (In)</label>
+                                                <select value={inMode} onChange={(e) => setInMode(e.target.value)}>
+                                                    <option value="single">Single In</option>
+                                                    <option value="double">Double In</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="form-section">
+                                            <div className="input-group">
+                                                <label>Modus Ende (Out)</label>
                                                 <select value={outMode} onChange={(e) => setOutMode(e.target.value)}>
                                                     <option value="single">Single Out</option>
                                                     <option value="double">Double Out</option>
                                                     <option value="master">Master Out</option>
                                                 </select>
                                             </div>
-                                        </>
-                                    )}
+                                        </div>
+                                    </>
+                                )}
 
-                                    <div className="input-group small">
+                                {/* Struktur & Regeln (Für alle Modi) */}
+                                <div className="form-section">
+                                    <div className="input-group">
                                         <label>Sets</label>
-                                        <input type="number" value={sets} onChange={(e) => setSets(e.target.value)} />
+                                        <input type="number" value={sets} onChange={(e) => setSets(e.target.value)} placeholder="0" />
                                     </div>
-                                    <div className="input-group small">
+                                </div>
+                                <div className="form-section">
+                                    <div className="input-group">
                                         <label>Legs</label>
-                                        <input type="number" value={legs} onChange={(e) => setLegs(e.target.value)} />
+                                        <input type="number" value={legs} onChange={(e) => setLegs(e.target.value)} placeholder="1" />
+                                    </div>
+                                </div>
+                                <div className="form-section">
+                                    <div className="input-group">
+                                        <label>Modus</label>
+                                        <select value={winType} onChange={(e) => setWinType(e.target.value)}>
+                                            <option value="firstTo">First To</option>
+                                            <option value="bestOf">Best Of</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="form-section">
+                                    <div className="input-group">
+                                        <label>Wer beginnt?</label>
+                                        <select value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
+                                            <option value="random">Ausbullen (Zufall)</option>
+                                            <option value="me">Ich</option>
+                                            <option value="opponent">Gegner</option>
+                                        </select>
                                     </div>
                                 </div>
                                 
-                                <button type="submit" className="action-button primary-btn" disabled={!socketConnected}>
-                                    Raum erstellen
-                                </button>
+                                <div className="full-width">
+                                    <button type="submit" className="action-button primary-btn" disabled={!socketConnected}>
+                                        🚀 Raum erstellen
+                                    </button>
+                                </div>
                             </form>
                         </section>
 
                         <section className="panel rooms-list-panel">
-                            <h3>🎯 Offene Räume</h3>
+                            <h3>🎯 Erstellte Räume</h3>
                             <div className="scrollable-content">
                                 {rooms.length === 0 ? (
-                                    <div className="empty-state">Keine offenen Räume. Erstelle einen!</div>
+                                    <div className="empty-state">Keine Räume offen.</div>
                                 ) : (
                                     <div className="rooms-grid">
                                         {rooms.map(room => (
@@ -323,17 +395,18 @@ const Lobby = memo(() => {
                         </section>
                     </main>
 
-                    {/* RIGHT COLUMN: Info & History */}
+                    {/* RECHTE SPALTE: Laufend & Historie */}
                     <aside className="lobby-sidebar-right">
                         <div className="panel running-panel">
-                            <h3>🔥 Live Spiele</h3>
+                            <h3>Laufende Spiele</h3>
                             <ul className="simple-list">
                                 {runningGames.length === 0 && <li className="empty-item">Keine Spiele aktiv</li>}
                                 {runningGames.map(game => (
                                     <li key={game.id} className="list-item clickable" onClick={() => navigate(`/game/${game.id}`)}>
                                         <span className="game-vs">
-                                            {game.players?.[0]?.name || '?'} <span className="vs">VS</span> {game.players?.[1]?.name || '?'}
+                                            {game.players?.[0]?.name || 'P1'} <span className="vs">VS</span> {game.players?.[1]?.name || 'P2'}
                                         </span>
+                                        <div className="game-subtext">{game.roomName || game.name}</div>
                                         <span className="watch-tag">Zuschauen</span>
                                     </li>
                                 ))}
@@ -341,7 +414,7 @@ const Lobby = memo(() => {
                         </div>
 
                         <div className="panel history-panel">
-                            <h3>🏆 Letzte Ergebnisse</h3>
+                            <h3>🏆 Letzte Spiele</h3>
                             <ul className="simple-list">
                                 {finishedGames.length === 0 && <li className="empty-item">Keine Historie</li>}
                                 {finishedGames.map(game => (
@@ -350,7 +423,7 @@ const Lobby = memo(() => {
                                             <span>👑 {game.winner?.name || 'Unbekannt'}</span>
                                         </div>
                                         <div className="game-subtext">
-                                            {game.roomName || game.name}
+                                            {game.roomName || game.name} ({game.gameMode})
                                         </div>
                                     </li>
                                 ))}
@@ -359,27 +432,26 @@ const Lobby = memo(() => {
                     </aside>
                 </div>
 
-                {/* Modal for Game Details */}
+                {/* MODAL FÜR SPIELDETAILS */}
                 {selectedGame && (
                     <div className="modal-overlay" onClick={() => setSelectedGame(null)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h2>Spielbericht</h2>
+                                <h2>Spieldetails</h2>
                                 <button className="close-btn" onClick={() => setSelectedGame(null)}>×</button>
                             </div>
                             <div className="modal-body">
-                                <div className="detail-row">
-                                    <label>Gewinner:</label>
-                                    <span className="winner-text">{selectedGame.winner?.name}</span>
-                                </div>
-                                <div className="detail-row">
-                                    <label>Raum:</label>
-                                    <span>{selectedGame.roomName}</span>
-                                </div>
-                                <div className="detail-row">
-                                    <label>Modus:</label>
-                                    <span>{selectedGame.gameMode}</span>
-                                </div>
+                                <div className="detail-row"><label>Raum:</label> <span>{selectedGame.roomName || selectedGame.name}</span></div>
+                                <div className="detail-row"><label>Modus:</label> <span>{selectedGame.gameMode}</span></div>
+                                <div className="detail-row"><label>Gewinner:</label> <span className="winner-text">{selectedGame.winner?.name || 'Unbekannt'}</span></div>
+                                <div className="detail-row"><label>Spieler:</label> <span>{selectedGame.players?.map(p => p.name).join(' vs ') || 'Unbekannt'}</span></div>
+                                {selectedGame.gameOptions && (
+                                    <div className="options-block">
+                                        {selectedGame.gameOptions.startingScore && <div className="detail-row"><label>Start:</label> <span>{selectedGame.gameOptions.startingScore}</span></div>}
+                                        <div className="detail-row"><label>Sets/Legs:</label> <span>{selectedGame.gameOptions.sets || 0} / {selectedGame.gameOptions.legs || 1}</span></div>
+                                    </div>
+                                )}
+                                <div className="detail-row"><label>Datum:</label> <span>{new Date(selectedGame.finishedAt).toLocaleString('de-DE')}</span></div>
                             </div>
                         </div>
                     </div>
