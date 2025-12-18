@@ -13,48 +13,73 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // VERSUCH: Short Leg aus der History berechnen
+    // VERSUCH: Short Leg aus dem gesamten GameState suchen
     // ---------------------------------------------------------
-    const calculateBestLegFromHistory = (player) => {
-        // 1. Priorität: Wenn das Backend doch mal den Wert liefert
-        if (player.bestLeg && player.bestLeg > 0) return player.bestLeg;
-        if (player.stats && player.stats.bestLeg > 0) return player.stats.bestLeg;
+    const findShortLegGlobal = (player, playerIndex) => {
+        // 1. Check im Player-Objekt (falls es doch da ist)
+        if (player.bestLeg > 0) return player.bestLeg;
+        if (player.bestLegDarts > 0) return player.bestLegDarts;
+        
+        let allLegs = [];
 
-        // 2. Wir durchsuchen die History
-        if (player.history && Array.isArray(player.history) && player.history.length > 0) {
-            
-            // Wir sammeln alle Werte, die wie eine Dart-Anzahl aussehen
-            const possibleDarts = player.history.map(entry => {
-                // Ist der Eintrag direkt eine Zahl? (Selten, aber möglich)
-                if (typeof entry === 'number') return entry;
-
-                // Ist es ein Objekt? Wir prüfen alle möglichen Schreibweisen
-                if (typeof entry === 'object' && entry !== null) {
-                    return entry.darts || 
-                           entry.dartsThrown || 
-                           entry.darts_thrown || 
-                           entry.throws || 
-                           entry.count || 
-                           0;
+        // 2. Wir suchen an allen möglichen Orten im gameState nach Listen
+        if (gameState.matchLog && Array.isArray(gameState.matchLog)) allLegs = gameState.matchLog;
+        else if (gameState.history && Array.isArray(gameState.history)) allLegs = gameState.history;
+        else if (gameState.legs && Array.isArray(gameState.legs)) allLegs = gameState.legs;
+        else if (gameState.timeline && Array.isArray(gameState.timeline)) allLegs = gameState.timeline;
+        
+        // Auch in Sets schauen
+        if (gameState.sets && Array.isArray(gameState.sets)) {
+            gameState.sets.forEach(set => {
+                if (set.legs && Array.isArray(set.legs)) {
+                    allLegs = [...allLegs, ...set.legs];
                 }
-                return 0;
             });
-
-            // Filtere alle 0er raus und nimm den kleinsten Wert
-            const validDarts = possibleDarts.filter(d => d > 0);
-            if (validDarts.length > 0) {
-                return Math.min(...validDarts);
-            }
         }
+
+        if (allLegs.length === 0) return 0;
+
+        // Wir filtern die Legs, die dieser Spieler gewonnen hat
+        const wonLegs = allLegs.filter(leg => {
+            const w = leg.winner || leg.winningPlayer || leg.winner_id;
+            // Prüfung auf Index, ID oder Name
+            return w === playerIndex || w === player.id || w === player.name;
+        });
+
+        // Darts zählen
+        const dartsCounts = wonLegs.map(leg => {
+            if (leg.darts > 0) return leg.darts;
+            if (leg.dartsThrown > 0) return leg.dartsThrown;
+            if (leg.throws > 0) return leg.throws;
+            // Falls Visits gespeichert sind
+            if (leg.visits && Array.isArray(leg.visits)) return leg.visits.length * 3;
+            return 0;
+        }).filter(d => d > 0);
+
+        if (dartsCounts.length > 0) return Math.min(...dartsCounts);
         
         return 0;
     };
 
-    const p1BestLeg = calculateBestLegFromHistory(p1);
-    const p2BestLeg = calculateBestLegFromHistory(p2);
+    const p1BestLeg = findShortLegGlobal(p1, 0);
+    const p2BestLeg = findShortLegGlobal(p2, 1);
 
     // ---------------------------------------------------------
-    // Standard Berechnungen
+    // DEBUG HELPERS
+    // ---------------------------------------------------------
+    const getGameStateKeys = () => {
+        // Wir zeigen nur die Schlüssel (Namen) der Felder an, um zu sehen was da ist
+        return Object.keys(gameState).join(', ');
+    };
+
+    const getArrayCheck = (key) => {
+        const val = gameState[key];
+        if (Array.isArray(val)) return `${key}: [Array mit ${val.length} Einträgen]`;
+        return null;
+    };
+
+    // ---------------------------------------------------------
+    // Standard Stats
     // ---------------------------------------------------------
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
@@ -72,7 +97,6 @@ const LiveStatistics = ({ gameState }) => {
     const getStat = (p, ...keys) => {
         for (let key of keys) {
             if (p[key] !== undefined) return p[key];
-            if (p.stats && p.stats[key] !== undefined) return p.stats[key];
         }
         return 0;
     };
@@ -125,20 +149,25 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* DEBUGGING - ZEIGT DEN INHALT DER HISTORY AN */}
+            {/* DEBUGGING - ZEIGT DIE STRUKTUR VOM SPIEL AN */}
             <div style={{
                 marginTop: '10px', 
                 padding: '10px', 
-                background: '#500', 
-                color: '#fff', 
+                background: '#222', 
+                color: '#0f0', 
                 textAlign: 'left',
                 fontSize: '11px',
                 fontFamily: 'monospace',
-                whiteSpace: 'pre-wrap',
-                border: '2px solid red'
+                border: '2px solid #0f0'
             }}>
-                <strong>HISTORY INHALT (Player 1):</strong><br/>
-                {p1.history ? JSON.stringify(p1.history, null, 2) : "Leer"}<br/><br/>
+                <strong>GAME STATE STRUKTUR:</strong><br/>
+                Keys: {getGameStateKeys()}<br/>
+                <br/>
+                <strong>Mögliche Listen:</strong><br/>
+                {getArrayCheck('matchLog') || '- kein matchLog'}<br/>
+                {getArrayCheck('history') || '- keine history'}<br/>
+                {getArrayCheck('timeline') || '- keine timeline'}<br/>
+                {getArrayCheck('sets') || '- keine sets'}
             </div>
         </div>
     );
