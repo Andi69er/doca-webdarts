@@ -239,7 +239,7 @@
     font-size: 1.2rem;
 }
 
-/* Form Grid System - Damit alles Platz hat */
+/* Form Grid System */
 .room-form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr; /* Zwei Spalten */
@@ -476,7 +476,7 @@
         grid-template-columns: 240px 1fr;
     }
     .lobby-sidebar-right {
-        display: none; /* Auf kleinen Desktop-Screens ausblenden oder nach unten verschieben */
+        display: none; /* Auf kleinen Desktop-Screens ausblenden */
     }
 }
 

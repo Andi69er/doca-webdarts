@@ -5,7 +5,7 @@ import gameModes from '../gameModes';
 import OnlineUsers from './OnlineUsers';
 import './Lobby.css';
 
-// Error Boundary
+// Error Boundary für Lobby-Rendering-Fehler
 class LobbyErrorBoundary extends Component {
     constructor(props) {
         super(props);
@@ -40,24 +40,19 @@ const Lobby = memo(() => {
     const { socket, socketConnected } = useSocket();
     const navigate = useNavigate();
 
-    // --- STATE VARIABLES (ALLE WIEDERHERGESTELLT) ---
+    // --- STATE VARIABLES (1:1 Original) ---
     const [rooms, setRooms] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState(0);
     const [roomName, setRoomName] = useState('');
-    
-    // Spieloptionen
-    const [gameMode, setGameMode] = useState('X01Game');
+    const [gameMode, setGameMode] = useState('X01Game'); 
     const [startingScore, setStartingScore] = useState('501');
     const [sets, setSets] = useState('0');
     const [legs, setLegs] = useState('1');
-    
-    // Erweiterte Regeln
-    const [winType, setWinType] = useState('firstTo'); // Best Of / First to
-    const [inMode, setInMode] = useState('single');    // Single In / Double In
-    const [outMode, setOutMode] = useState('double');  // Single / Double / Master Out
-    const [whoStartsUI, setWhoStartsUI] = useState('random'); // Ich, Gegner, Ausbullen
+    const [winType, setWinType] = useState('firstTo'); 
+    const [inMode, setInMode] = useState('single'); 
+    const [outMode, setOutMode] = useState('double'); 
+    const [whoStartsUI, setWhoStartsUI] = useState('random'); // Default
 
-    // Chat & Listen
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [finishedGames, setFinishedGames] = useState([]);
@@ -74,7 +69,6 @@ const Lobby = memo(() => {
         scrollToBottom();
     }, [messages]);
 
-    // Socket Listener
     useEffect(() => {
         if (socket) {
             socket.on('updateRooms', (updatedRooms) => setRooms(updatedRooms));
@@ -100,7 +94,6 @@ const Lobby = memo(() => {
         }
     }, [socket, navigate]);
     
-    // Defaults setzen bei Modus-Wechsel
     useEffect(() => {
         if (gameMode && gameModes[gameMode]) {
             const currentMode = gameModes[gameMode];
@@ -117,13 +110,10 @@ const Lobby = memo(() => {
         }
     }, [gameMode, winType]);
 
-    // --- ORIGINAL LOGIC WIEDERHERGESTELLT ---
     const handleCreateRoom = (e) => {
         e.preventDefault();
         try {
-            // Logik zur Bestimmung der Gewinnzahl (WinNumber)
-            const winNumberCalc = winType === 'firstTo' ? 1 : 3; // Standardwert, falls Logik erweitert wird
-            
+            const winNumber = winType === 'firstTo' ? 1 : 3;
             let gameOptions = {};
             if (gameMode === 'X01Game') {
                 gameOptions = {
@@ -133,16 +123,16 @@ const Lobby = memo(() => {
                     outMode,
                     inMode,
                     winType,
-                    winNumber: winNumberCalc, // Falls dein Backend das braucht
-                    length: { type: winType, value: winNumberCalc }, // Falls dein Backend das braucht
+                    winNumber,
+                    length: { type: winType, value: winNumber },
                 };
             } else if (gameMode === 'CricketGame') {
                 gameOptions = {
                     sets: parseInt(sets),
                     legs: legs === 'unlimited' ? -1 : parseInt(legs),
                     winType,
-                    winNumber: winNumberCalc,
-                    length: { type: winType, value: winNumberCalc },
+                    winNumber,
+                    length: { type: winType, value: winNumber },
                 };
             }
             
@@ -178,7 +168,7 @@ const Lobby = memo(() => {
         }
     };
 
-    // Helper für Raumbeschreibung (Detaillierte Anzeige wie im Original)
+    // Helper für Anzeige
     const formatRoomInfo = (room) => {
         let info = '';
         if (room.gameMode === 'X01Game' || room.gameMode === 'x01') {
@@ -188,16 +178,14 @@ const Lobby = memo(() => {
                           room.gameOptions?.outMode === 'master' ? 'Master Out' : 'Single Out';
             const s = room.gameOptions?.sets || 0;
             const l = room.gameOptions?.legs || 1;
-            const wt = room.gameOptions?.winType === 'bestOf' ? 'Best Of' : 'First To';
-            const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Host' : 'Gast';
+            const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Ich' : 'Gegner';
             
-            info = `${score} • ${im} / ${om} • ${wt} • Sets: ${s}, Legs: ${l} • Start: ${start}`;
+            info = `${score} • ${im}/${om} • Sets: ${s}, Legs: ${l} • ${start}`;
         } else if (room.gameMode === 'CricketGame' || room.gameMode === 'cricket') {
             const s = room.gameOptions?.sets || 0;
             const l = room.gameOptions?.legs || 1;
-            const wt = room.gameOptions?.winType === 'bestOf' ? 'Best Of' : 'First To';
-            const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Host' : 'Gast';
-            info = `Cricket • ${wt} • Sets: ${s}, Legs: ${l} • Start: ${start}`;
+            const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Ich' : 'Gegner';
+            info = `Cricket • Sets: ${s}, Legs: ${l} • ${start}`;
         }
         return info;
     };
@@ -278,7 +266,7 @@ const Lobby = memo(() => {
                                     <div className="input-group">
                                         <label>Spielmodus</label>
                                         <select value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
-                                            <option value="X01Game">X01</option>
+                                            <option value="X01Game">x01</option>
                                             <option value="CricketGame">Cricket</option>
                                         </select>
                                     </div>
@@ -301,9 +289,11 @@ const Lobby = memo(() => {
                                                 </select>
                                             </div>
                                         </div>
+                                        
+                                        {/* Struktur X01 */}
                                         <div className="form-section">
                                             <div className="input-group">
-                                                <label>Modus Start (In)</label>
+                                                <label>Modus Start</label>
                                                 <select value={inMode} onChange={(e) => setInMode(e.target.value)}>
                                                     <option value="single">Single In</option>
                                                     <option value="double">Double In</option>
@@ -312,7 +302,7 @@ const Lobby = memo(() => {
                                         </div>
                                         <div className="form-section">
                                             <div className="input-group">
-                                                <label>Modus Ende (Out)</label>
+                                                <label>Modus Ende</label>
                                                 <select value={outMode} onChange={(e) => setOutMode(e.target.value)}>
                                                     <option value="single">Single Out</option>
                                                     <option value="double">Double Out</option>
@@ -323,7 +313,7 @@ const Lobby = memo(() => {
                                     </>
                                 )}
 
-                                {/* Struktur & Regeln (Für alle Modi) */}
+                                {/* Struktur Allgemein */}
                                 <div className="form-section">
                                     <div className="input-group">
                                         <label>Sets</label>
@@ -336,22 +326,15 @@ const Lobby = memo(() => {
                                         <input type="number" value={legs} onChange={(e) => setLegs(e.target.value)} placeholder="1" />
                                     </div>
                                 </div>
-                                <div className="form-section">
-                                    <div className="input-group">
-                                        <label>Modus</label>
-                                        <select value={winType} onChange={(e) => setWinType(e.target.value)}>
-                                            <option value="firstTo">First To</option>
-                                            <option value="bestOf">Best Of</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="form-section">
+
+                                {/* Start-Regeln */}
+                                <div className="form-section full-width">
                                     <div className="input-group">
                                         <label>Wer beginnt?</label>
                                         <select value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
-                                            <option value="random">Ausbullen (Zufall)</option>
                                             <option value="me">Ich</option>
                                             <option value="opponent">Gegner</option>
+                                            <option value="random">Ausbullen</option>
                                         </select>
                                     </div>
                                 </div>
@@ -365,7 +348,7 @@ const Lobby = memo(() => {
                         </section>
 
                         <section className="panel rooms-list-panel">
-                            <h3>🎯 Erstellte Räume</h3>
+                            <h3>🎯 Offene Räume</h3>
                             <div className="scrollable-content">
                                 {rooms.length === 0 ? (
                                     <div className="empty-state">Keine Räume offen.</div>
@@ -404,7 +387,7 @@ const Lobby = memo(() => {
                                 {runningGames.map(game => (
                                     <li key={game.id} className="list-item clickable" onClick={() => navigate(`/game/${game.id}`)}>
                                         <span className="game-vs">
-                                            {game.players?.[0]?.name || 'P1'} <span className="vs">VS</span> {game.players?.[1]?.name || 'P2'}
+                                            {game.players?.[0]?.name || '?'} <span className="vs">VS</span> {game.players?.[1]?.name || '?'}
                                         </span>
                                         <div className="game-subtext">{game.roomName || game.name}</div>
                                         <span className="watch-tag">Zuschauen</span>
