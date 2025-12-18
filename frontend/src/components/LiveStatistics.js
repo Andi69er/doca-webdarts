@@ -13,73 +13,65 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // VERSUCH: Short Leg aus dem gesamten GameState suchen
+    // BERECHNUNG: Short Leg via 'checkoutDarts'
     // ---------------------------------------------------------
-    const findShortLegGlobal = (player, playerIndex) => {
-        // 1. Check im Player-Objekt (falls es doch da ist)
+    const findShortLeg = (player, playerIndex) => {
+        // 1. Zuerst schauen, ob es direkt beim Spieler steht (Standard-Weg)
         if (player.bestLeg > 0) return player.bestLeg;
-        if (player.bestLegDarts > 0) return player.bestLegDarts;
-        
-        let allLegs = [];
 
-        // 2. Wir suchen an allen möglichen Orten im gameState nach Listen
-        if (gameState.matchLog && Array.isArray(gameState.matchLog)) allLegs = gameState.matchLog;
-        else if (gameState.history && Array.isArray(gameState.history)) allLegs = gameState.history;
-        else if (gameState.legs && Array.isArray(gameState.legs)) allLegs = gameState.legs;
-        else if (gameState.timeline && Array.isArray(gameState.timeline)) allLegs = gameState.timeline;
-        
-        // Auch in Sets schauen
-        if (gameState.sets && Array.isArray(gameState.sets)) {
-            gameState.sets.forEach(set => {
-                if (set.legs && Array.isArray(set.legs)) {
-                    allLegs = [...allLegs, ...set.legs];
+        // 2. Wir untersuchen das Feld 'checkoutDarts' aus dem Haupt-GameState
+        const cd = gameState.checkoutDarts;
+
+        if (cd) {
+            // FALL A: Es ist ein Array von Objekten (z.B. [{winner: 0, darts: 15}])
+            if (Array.isArray(cd)) {
+                // Filtere Einträge, die zu diesem Spieler gehören
+                const playerCheckouts = cd.filter(entry => {
+                    // Prüfe auf Index, ID oder Name
+                    if (entry.winner === playerIndex) return true;
+                    if (entry.winnerIndex === playerIndex) return true;
+                    if (entry.player === player.name) return true;
+                    if (entry.playerId === player.id) return true;
+                    // Manchmal ist das Array einfach nach Spielerindex sortiert (Array in Array)
+                    if (Array.isArray(entry) && cd.indexOf(entry) === playerIndex) return true;
+                    return false;
+                });
+
+                // Sammle die Dart-Zahlen
+                const darts = playerCheckouts.map(entry => {
+                    if (typeof entry === 'number') return entry; // Falls es direkt Zahlen sind
+                    return entry.darts || entry.count || entry.throws || 0;
+                }).filter(d => d > 0);
+
+                if (darts.length > 0) return Math.min(...darts);
+            }
+            
+            // FALL B: Es ist ein Objekt mit Player-IDs als Keys (z.B. { "player_id": [15, 18] })
+            else if (typeof cd === 'object') {
+                // Suche nach der ID oder dem Index des Spielers im Objekt
+                let playerStats = cd[player.id] || cd[player.name] || cd[playerIndex];
+                
+                if (playerStats) {
+                    // Wenn es ein einzelner Wert ist
+                    if (typeof playerStats === 'number' && playerStats > 0) return playerStats;
+                    
+                    // Wenn es ein Array von Darts ist
+                    if (Array.isArray(playerStats)) {
+                        const valid = playerStats.filter(d => typeof d === 'number' && d > 0);
+                        if (valid.length > 0) return Math.min(...valid);
+                    }
                 }
-            });
+            }
         }
 
-        if (allLegs.length === 0) return 0;
-
-        // Wir filtern die Legs, die dieser Spieler gewonnen hat
-        const wonLegs = allLegs.filter(leg => {
-            const w = leg.winner || leg.winningPlayer || leg.winner_id;
-            // Prüfung auf Index, ID oder Name
-            return w === playerIndex || w === player.id || w === player.name;
-        });
-
-        // Darts zählen
-        const dartsCounts = wonLegs.map(leg => {
-            if (leg.darts > 0) return leg.darts;
-            if (leg.dartsThrown > 0) return leg.dartsThrown;
-            if (leg.throws > 0) return leg.throws;
-            // Falls Visits gespeichert sind
-            if (leg.visits && Array.isArray(leg.visits)) return leg.visits.length * 3;
-            return 0;
-        }).filter(d => d > 0);
-
-        if (dartsCounts.length > 0) return Math.min(...dartsCounts);
-        
         return 0;
     };
 
-    const p1BestLeg = findShortLegGlobal(p1, 0);
-    const p2BestLeg = findShortLegGlobal(p2, 1);
+    const p1BestLeg = findShortLeg(p1, 0);
+    const p2BestLeg = findShortLeg(p2, 1);
 
     // ---------------------------------------------------------
-    // DEBUG HELPERS
-    // ---------------------------------------------------------
-    const getGameStateKeys = () => {
-        // Wir zeigen nur die Schlüssel (Namen) der Felder an, um zu sehen was da ist
-        return Object.keys(gameState).join(', ');
-    };
-
-    const getArrayCheck = (key) => {
-        const val = gameState[key];
-        if (Array.isArray(val)) return `${key}: [Array mit ${val.length} Einträgen]`;
-        return null;
-    };
-
-    // ---------------------------------------------------------
-    // Standard Stats
+    // Restliche Stats (unverändert)
     // ---------------------------------------------------------
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
@@ -149,25 +141,20 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* DEBUGGING - ZEIGT DIE STRUKTUR VOM SPIEL AN */}
+            {/* DEBUGGING - WICHTIG: Zeigt Inhalt von checkoutDarts */}
             <div style={{
                 marginTop: '10px', 
                 padding: '10px', 
-                background: '#222', 
-                color: '#0f0', 
+                background: '#440', 
+                color: '#ff0', 
                 textAlign: 'left',
                 fontSize: '11px',
                 fontFamily: 'monospace',
-                border: '2px solid #0f0'
+                border: '2px solid yellow',
+                wordBreak: 'break-all'
             }}>
-                <strong>GAME STATE STRUKTUR:</strong><br/>
-                Keys: {getGameStateKeys()}<br/>
-                <br/>
-                <strong>Mögliche Listen:</strong><br/>
-                {getArrayCheck('matchLog') || '- kein matchLog'}<br/>
-                {getArrayCheck('history') || '- keine history'}<br/>
-                {getArrayCheck('timeline') || '- keine timeline'}<br/>
-                {getArrayCheck('sets') || '- keine sets'}
+                <strong>CHECKOUT DARTS DATEN:</strong><br/>
+                {JSON.stringify(gameState.checkoutDarts, null, 2)}
             </div>
         </div>
     );
