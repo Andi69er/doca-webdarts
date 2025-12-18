@@ -13,54 +13,34 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // BERECHNUNG: Short Leg via 'checkoutDarts'
+    // INTELLIGENTE SUCHE NACH SHORT LEG
     // ---------------------------------------------------------
     const findShortLeg = (player, playerIndex) => {
-        // 1. Zuerst schauen, ob es direkt beim Spieler steht (Standard-Weg)
+        // 1. Direkter Wert im Spieler?
         if (player.bestLeg > 0) return player.bestLeg;
+        if (player.stats && player.stats.bestLeg > 0) return player.stats.bestLeg;
 
-        // 2. Wir untersuchen das Feld 'checkoutDarts' aus dem Haupt-GameState
-        const cd = gameState.checkoutDarts;
+        // 2. Suche in 'legsWon' im Haupt-State
+        // Manche Systeme speichern hier Arrays: [{winner: 0, darts: 15}, ...]
+        if (gameState.legsWon && Array.isArray(gameState.legsWon)) {
+            const myLegs = gameState.legsWon.filter(l => 
+                l.winner === playerIndex || l.winnerId === player.id
+            );
+            const darts = myLegs.map(l => l.darts || l.dartsThrown || 0).filter(d => d > 0);
+            if (darts.length > 0) return Math.min(...darts);
+        }
 
-        if (cd) {
-            // FALL A: Es ist ein Array von Objekten (z.B. [{winner: 0, darts: 15}])
-            if (Array.isArray(cd)) {
-                // Filtere Einträge, die zu diesem Spieler gehören
-                const playerCheckouts = cd.filter(entry => {
-                    // Prüfe auf Index, ID oder Name
-                    if (entry.winner === playerIndex) return true;
-                    if (entry.winnerIndex === playerIndex) return true;
-                    if (entry.player === player.name) return true;
-                    if (entry.playerId === player.id) return true;
-                    // Manchmal ist das Array einfach nach Spielerindex sortiert (Array in Array)
-                    if (Array.isArray(entry) && cd.indexOf(entry) === playerIndex) return true;
-                    return false;
-                });
+        // 3. Suche in 'history' des Spielers (falls vorhanden)
+        if (player.history && Array.isArray(player.history)) {
+            const hDarts = player.history.map(h => h.darts || h.dartsThrown || h.throws || 0).filter(d => d > 0);
+            if (hDarts.length > 0) return Math.min(...hDarts);
+        }
 
-                // Sammle die Dart-Zahlen
-                const darts = playerCheckouts.map(entry => {
-                    if (typeof entry === 'number') return entry; // Falls es direkt Zahlen sind
-                    return entry.darts || entry.count || entry.throws || 0;
-                }).filter(d => d > 0);
-
-                if (darts.length > 0) return Math.min(...darts);
-            }
-            
-            // FALL B: Es ist ein Objekt mit Player-IDs als Keys (z.B. { "player_id": [15, 18] })
-            else if (typeof cd === 'object') {
-                // Suche nach der ID oder dem Index des Spielers im Objekt
-                let playerStats = cd[player.id] || cd[player.name] || cd[playerIndex];
-                
-                if (playerStats) {
-                    // Wenn es ein einzelner Wert ist
-                    if (typeof playerStats === 'number' && playerStats > 0) return playerStats;
-                    
-                    // Wenn es ein Array von Darts ist
-                    if (Array.isArray(playerStats)) {
-                        const valid = playerStats.filter(d => typeof d === 'number' && d > 0);
-                        if (valid.length > 0) return Math.min(...valid);
-                    }
-                }
+        // 4. Fallback: Wenn wir finishes haben, gibt es vielleicht ein 'darts' array gleicher Länge?
+        if (player.finishes && player.finishes.length > 0) {
+            // Check auf 'legDarts', 'dartsPerLeg'
+            if (player.legDarts && Array.isArray(player.legDarts)) {
+                return Math.min(...player.legDarts.filter(d => d > 0));
             }
         }
 
@@ -71,7 +51,24 @@ const LiveStatistics = ({ gameState }) => {
     const p2BestLeg = findShortLeg(p2, 1);
 
     // ---------------------------------------------------------
-    // Restliche Stats (unverändert)
+    // Debug Daten Vorbereitung
+    // ---------------------------------------------------------
+    const getP2Debug = () => {
+        // Wir kopieren P2, entfernen aber riesige Arrays für die Lesbarkeit
+        const cleanP2 = { ...p2 };
+        if (cleanP2.scores) cleanP2.scores = `[Array ${cleanP2.scores.length}]`;
+        // Wir wollen history sehen, falls es existiert
+        if (!cleanP2.history || cleanP2.history.length === 0) cleanP2.history = "Leer/Nicht vorhanden";
+        
+        return JSON.stringify(cleanP2, null, 2);
+    };
+
+    const getGlobalDebug = () => {
+        return `legsWon: ${JSON.stringify(gameState.legsWon)}\nsetsWon: ${JSON.stringify(gameState.setsWon)}`;
+    };
+
+    // ---------------------------------------------------------
+    // Restliche Stats
     // ---------------------------------------------------------
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
@@ -141,20 +138,23 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* DEBUGGING - WICHTIG: Zeigt Inhalt von checkoutDarts */}
+            {/* DEBUGGING - ZEIGT PLAYER 2 und GLOBALE LEGS */}
             <div style={{
                 marginTop: '10px', 
                 padding: '10px', 
-                background: '#440', 
-                color: '#ff0', 
+                background: '#000', 
+                color: '#0ff', 
                 textAlign: 'left',
                 fontSize: '11px',
                 fontFamily: 'monospace',
-                border: '2px solid yellow',
-                wordBreak: 'break-all'
+                border: '1px solid cyan',
+                whiteSpace: 'pre-wrap'
             }}>
-                <strong>CHECKOUT DARTS DATEN:</strong><br/>
-                {JSON.stringify(gameState.checkoutDarts, null, 2)}
+                <strong>CHECK (Player 2 & LegsWon):</strong><br/>
+                {getGlobalDebug()}<br/>
+                -----------------<br/>
+                P2 DATA:<br/>
+                {getP2Debug()}
             </div>
         </div>
     );
