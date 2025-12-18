@@ -5,6 +5,8 @@ import gameModes from '../gameModes';
 import OnlineUsers from './OnlineUsers';
 import './Lobby.css';
 
+// Font Awesome CDN wird in index.html hinzugefügt
+
 // Error Boundary für Lobby-Rendering-Fehler
 class LobbyErrorBoundary extends Component {
     constructor(props) {
@@ -187,83 +189,77 @@ const Lobby = memo(() => {
                     <OnlineUsers />
 
                     <section className="lobby-section">
-                        <h3>Raum erstellen</h3>
+                        <h3>🏗️ Raum erstellen</h3>
                         <form onSubmit={handleCreateRoom} className="room-form">
-                            <div className="form-row">
-                                <label>Raumname:</label>
-                                <input
-                                    type="text"
-                                    className="lobby-input"
-                                    value={roomName}
-                                    onChange={(e) => setRoomName(e.target.value)}
-                                    placeholder="Raumname"
-                                    required
-                                />
-                            </div>
+                            <div className="form-group">
+                                <h4>📋 Grundlagen</h4>
+                                <div className="form-row">
+                                    <label>Raumname:</label>
+                                    <input
+                                        type="text"
+                                        className="lobby-input"
+                                        value={roomName}
+                                        onChange={(e) => setRoomName(e.target.value)}
+                                        placeholder="Raumname"
+                                        required
+                                    />
+                                </div>
 
-                            <div className="form-row">
-                                <label>Wer:</label>
-                                <select className="lobby-input" value={playerCount} onChange={(e) => setPlayerCount(e.target.value)}>
-                                    <option value="single">Einzel</option>
-                                    <option value="double">Doppel</option>
-                                </select>
-                            </div>
-
-                            <div className="form-row">
-                                <label>Was:</label>
-                                <select className="lobby-input" value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
-                                    <option value="X01Game">x01</option>
-                                    <option value="CricketGame">Cricket</option>
-                                </select>
+                                <div className="form-row">
+                                    <label>Spielmodus:</label>
+                                    <select className="lobby-input" value={gameMode} onChange={(e) => setGameMode(e.target.value)}>
+                                        <option value="X01Game">x01</option>
+                                        <option value="CricketGame">Cricket</option>
+                                    </select>
+                                </div>
                             </div>
 
                             {gameMode === 'X01Game' && (
-                                <div className="form-row">
-                                    <label>Anfangswert:</label>
-                                    <select className="lobby-input" value={startingScore} onChange={(e) => setStartingScore(e.target.value)}>
-                                        <option value="301">301</option>
-                                        <option value="401">401</option>
-                                        <option value="501">501</option>
-                                        <option value="701">701</option>
-                                        <option value="801">801</option>
-                                        <option value="901">901</option>
-                                        <option value="1001">1001</option>
-                                    </select>
+                                <div className="form-group">
+                                    <h4>🎯 x01 Einstellungen</h4>
+                                    <div className="form-row">
+                                        <label>Anfangswert:</label>
+                                        <select className="lobby-input" value={startingScore} onChange={(e) => setStartingScore(e.target.value)}>
+                                            <option value="301">301</option>
+                                            <option value="401">401</option>
+                                            <option value="501">501</option>
+                                            <option value="701">701</option>
+                                            <option value="801">801</option>
+                                            <option value="901">901</option>
+                                            <option value="1001">1001</option>
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 
-                            <div className="form-row">
-                                <label>Sets:</label>
-                                <input
-                                    type="number"
-                                    className="lobby-input"
-                                    value={sets}
-                                    onChange={(e) => setSets(e.target.value)}
-                                    placeholder="0"
-                                />
-                            </div>
+                            <div className="form-group">
+                                <h4>🏆 Spielstruktur</h4>
+                                <div className="form-row">
+                                    <label>Sets:</label>
+                                    <input
+                                        type="number"
+                                        className="lobby-input"
+                                        value={sets}
+                                        onChange={(e) => setSets(e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
 
-                            <div className="form-row">
-                                <label>Legs:</label>
-                                <input
-                                    type="number"
-                                    className="lobby-input"
-                                    value={legs}
-                                    onChange={(e) => setLegs(e.target.value)}
-                                    placeholder="1"
-                                />
+                                <div className="form-row">
+                                    <label>Legs:</label>
+                                    <input
+                                        type="number"
+                                        className="lobby-input"
+                                        value={legs}
+                                        onChange={(e) => setLegs(e.target.value)}
+                                        placeholder="1"
+                                    />
+                                </div>
                             </div>
 
                             {gameMode !== 'CricketGame' && (
-                                <>
-                                    <div className="form-row">
-                                        <label>Best Of / First to:</label>
-                                        <select className="lobby-input" value={winType} onChange={(e) => setWinType(e.target.value)}>
-                                            <option value="firstTo">First to</option>
-                                            <option value="bestOf">Best Of</option>
-                                        </select>
-                                    </div>
-
+                                <div className="form-group">
+                                    <h4>⚙️ Spielregeln</h4>
                                     <div className="form-row">
                                         <label>Modus Start:</label>
                                         <select className="lobby-input" value={inMode} onChange={(e) => setInMode(e.target.value)}>
@@ -280,24 +276,31 @@ const Lobby = memo(() => {
                                             <option value="master">Master Out</option>
                                         </select>
                                     </div>
-                                </>
+                                </div>
                             )}
 
-                            <div className="form-row">
-                                <label>Wer beginnt:</label>
-                                <select className="lobby-input" value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
-                                    <option value="me">Ich</option>
-                                    <option value="opponent">Gegner</option>
-                                    <option value="random">Ausbullen</option>
-                                </select>
+                            <div className="form-group">
+                                <h4>🎲 Spielbeginn</h4>
+                                <div className="form-row">
+                                    <label>Wer beginnt:</label>
+                                    <select className="lobby-input" value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
+                                        <option value="me">Ich</option>
+                                        <option value="opponent">Gegner</option>
+                                        <option value="random">Ausbullen</option>
+                                    </select>
+                                </div>
                             </div>
 
-                            <button type="submit" className="lobby-button" disabled={!socketConnected}>Erstellen</button>
+                            <div className="form-group">
+                                <button type="submit" className="lobby-button create-room-btn" disabled={!socketConnected}>
+                                    🚀 Raum erstellen
+                                </button>
+                            </div>
                         </form>
                     </section>
 
                     <section className="lobby-section">
-                        <h3>Erstellte Räume</h3>
+                        <h3>🎯 Erstellte Räume</h3>
                         <ul className="lobby-list">
                             {rooms.map(room => {
                                 const formatRoomInfo = () => {
@@ -356,7 +359,7 @@ const Lobby = memo(() => {
                     </section>
 
                     <section className="lobby-section">
-                        <h3>Letzte Spiele</h3>
+                        <h3>🏆 Letzte Spiele</h3>
                         <ul className="lobby-list">
                             {finishedGames.map(game => (
                                 <li key={game.id} className="lobby-list-item">
@@ -370,7 +373,7 @@ const Lobby = memo(() => {
                 </div>
 
                 <div className="chat-container">
-                    <h3>Allgemeiner Lobby-Chat</h3>
+                    <h3>💬 Allgemeiner Lobby-Chat</h3>
                     <div className="messages-area">
                         {messages.map((msg, index) => (
                             <div key={index} className="message">

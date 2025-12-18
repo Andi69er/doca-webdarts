@@ -187,8 +187,55 @@
 }
 
 .room-form {
-  display: flex;
-  flex-direction: column;
+   display: flex;
+   flex-direction: column;
+   gap: 20px;
+}
+
+.form-group {
+   background: rgba(255, 255, 255, 0.05);
+   border: 1px solid rgba(255, 255, 255, 0.1);
+   border-radius: 8px;
+   padding: 15px;
+   margin-bottom: 10px;
+}
+
+.form-group h4 {
+   font-size: 1.1rem;
+   font-weight: 600;
+   color: #ffd700;
+   margin: 0 0 15px 0;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
+}
+
+.create-room-btn {
+   width: 100%;
+   padding: 18px !important;
+   font-size: 1.2rem !important;
+   font-weight: 700 !important;
+   text-transform: uppercase;
+   letter-spacing: 1px;
+   background: linear-gradient(45deg, #28a745, #20c997) !important;
+   border: none !important;
+   border-radius: 10px !important;
+   color: white !important;
+   cursor: pointer !important;
+   transition: all 0.3s ease !important;
+   box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4) !important;
+}
+
+.create-room-btn:hover:not(:disabled) {
+   transform: translateY(-2px) !important;
+   box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6) !important;
+   background: linear-gradient(45deg, #218838, #17a2b8) !important;
+}
+
+.create-room-btn:disabled {
+   background: #555 !important;
+   cursor: not-allowed !important;
+   box-shadow: none !important;
+   transform: none !important;
 }
 
 .game-details-popup {
