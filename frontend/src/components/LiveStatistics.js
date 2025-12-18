@@ -13,38 +13,48 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // BERECHNUNG: Short Leg aus History oder Variable
+    // VERSUCH: Short Leg aus der History berechnen
     // ---------------------------------------------------------
-    const calculateBestLeg = (player) => {
-        // 1. Prüfe, ob das Backend den Wert direkt liefert (bestLeg)
+    const calculateBestLegFromHistory = (player) => {
+        // 1. Priorität: Wenn das Backend doch mal den Wert liefert
         if (player.bestLeg && player.bestLeg > 0) return player.bestLeg;
-        
-        // 2. Fallback: Berechne aus der History
-        if (player.history && Array.isArray(player.history) && player.history.length > 0) {
-            // Wir sammeln alle "Darts"-Werte aus der Historie
-            const legsDarts = player.history.map(entry => {
-                // Verschiedene Schreibweisen prüfen
-                if (entry.dartsThrown) return entry.dartsThrown;
-                if (entry.darts) return entry.darts;
-                if (entry.throws) return entry.throws;
-                // Falls entry nur eine Zahl ist (unwahrscheinlich, aber möglich)
-                if (typeof entry === 'number') return entry;
-                return 0;
-            }).filter(d => d > 0); // Nur Werte > 0 behalten
+        if (player.stats && player.stats.bestLeg > 0) return player.stats.bestLeg;
 
-            if (legsDarts.length > 0) {
-                return Math.min(...legsDarts);
+        // 2. Wir durchsuchen die History
+        if (player.history && Array.isArray(player.history) && player.history.length > 0) {
+            
+            // Wir sammeln alle Werte, die wie eine Dart-Anzahl aussehen
+            const possibleDarts = player.history.map(entry => {
+                // Ist der Eintrag direkt eine Zahl? (Selten, aber möglich)
+                if (typeof entry === 'number') return entry;
+
+                // Ist es ein Objekt? Wir prüfen alle möglichen Schreibweisen
+                if (typeof entry === 'object' && entry !== null) {
+                    return entry.darts || 
+                           entry.dartsThrown || 
+                           entry.darts_thrown || 
+                           entry.throws || 
+                           entry.count || 
+                           0;
+                }
+                return 0;
+            });
+
+            // Filtere alle 0er raus und nimm den kleinsten Wert
+            const validDarts = possibleDarts.filter(d => d > 0);
+            if (validDarts.length > 0) {
+                return Math.min(...validDarts);
             }
         }
-
+        
         return 0;
     };
 
-    const p1BestLeg = calculateBestLeg(p1);
-    const p2BestLeg = calculateBestLeg(p2);
+    const p1BestLeg = calculateBestLegFromHistory(p1);
+    const p2BestLeg = calculateBestLegFromHistory(p2);
 
     // ---------------------------------------------------------
-    // First 9 Avg
+    // Standard Berechnungen
     // ---------------------------------------------------------
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
@@ -59,7 +69,6 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Stats Helper
     const getStat = (p, ...keys) => {
         for (let key of keys) {
             if (p[key] !== undefined) return p[key];
@@ -116,22 +125,20 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* DEBUGGING BEREICH - ZEIGT UNS DIE HISTORY VON PLAYER 2 */}
+            {/* DEBUGGING - ZEIGT DEN INHALT DER HISTORY AN */}
             <div style={{
                 marginTop: '10px', 
                 padding: '10px', 
-                background: '#400', 
-                border: '2px solid red', 
+                background: '#500', 
                 color: '#fff', 
                 textAlign: 'left',
                 fontSize: '11px',
                 fontFamily: 'monospace',
                 whiteSpace: 'pre-wrap',
-                maxHeight: '200px',
-                overflowY: 'auto'
+                border: '2px solid red'
             }}>
-                <strong>HISTORY CHECK (Player 2):</strong><br/>
-                {p2.history ? JSON.stringify(p2.history, null, 2) : "Keine History vorhanden"}
+                <strong>HISTORY INHALT (Player 1):</strong><br/>
+                {p1.history ? JSON.stringify(p1.history, null, 2) : "Leer"}<br/><br/>
             </div>
         </div>
     );
