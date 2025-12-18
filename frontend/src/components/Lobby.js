@@ -232,6 +232,30 @@ const Lobby = memo(() => {
                                 </div>
                             )}
 
+                            <div className="form-row">
+                                <label>Sets:</label>
+                                <select className="lobby-input" value={sets} onChange={(e) => setSets(e.target.value)}>
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                    <option value="3">3</option>
+                                    <option value="5">5</option>
+                                    <option value="7">7</option>
+                                    <option value="9">9</option>
+                                </select>
+                            </div>
+
+                            <div className="form-row">
+                                <label>Legs:</label>
+                                <select className="lobby-input" value={legs} onChange={(e) => setLegs(e.target.value)}>
+                                    <option value="1">1</option>
+                                    <option value="3">3</option>
+                                    <option value="5">5</option>
+                                    <option value="7">7</option>
+                                    <option value="9">9</option>
+                                    <option value="11">11</option>
+                                </select>
+                            </div>
+
                             {gameMode !== 'CricketGame' && (
                                 <>
                                     <div className="form-row">
