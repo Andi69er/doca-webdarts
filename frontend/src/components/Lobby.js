@@ -291,7 +291,7 @@ const Lobby = memo(() => {
                                 </div>
                             </div>
 
-                            <div className="form-group">
+                            <div className="form-group" style={{gridColumn: '1 / -1'}}>
                                 <button type="submit" className="lobby-button create-room-btn" disabled={!socketConnected}>
                                     🚀 Raum erstellen
                                 </button>
