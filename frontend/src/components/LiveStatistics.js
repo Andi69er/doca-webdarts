@@ -13,62 +13,59 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // INTELLIGENTE SUCHE NACH SHORT LEG
+    // VERSUCH: Short Leg aus den 'turns' (Würfen) rekonstruieren
     // ---------------------------------------------------------
-    const findShortLeg = (player, playerIndex) => {
-        // 1. Direkter Wert im Spieler?
+    const calculateBestLegFromTurns = (player, playerIndex) => {
+        // 1. Standard-Check
         if (player.bestLeg > 0) return player.bestLeg;
-        if (player.stats && player.stats.bestLeg > 0) return player.stats.bestLeg;
 
-        // 2. Suche in 'legsWon' im Haupt-State
-        // Manche Systeme speichern hier Arrays: [{winner: 0, darts: 15}, ...]
-        if (gameState.legsWon && Array.isArray(gameState.legsWon)) {
-            const myLegs = gameState.legsWon.filter(l => 
-                l.winner === playerIndex || l.winnerId === player.id
-            );
-            const darts = myLegs.map(l => l.darts || l.dartsThrown || 0).filter(d => d > 0);
-            if (darts.length > 0) return Math.min(...darts);
-        }
+        // 2. Wir analysieren jeden einzelnen Wurf im Spiel
+        if (gameState.turns && Array.isArray(gameState.turns) && gameState.turns.length > 0) {
+            let legDartsCounter = {}; // Zählt Darts pro Leg
+            let finishedLegsDarts = []; // Speichert Ergebnisse fertiger Legs
+            
+            // Wir müssen wissen, welche ID der Spieler hat
+            const pId = player.id;
 
-        // 3. Suche in 'history' des Spielers (falls vorhanden)
-        if (player.history && Array.isArray(player.history)) {
-            const hDarts = player.history.map(h => h.darts || h.dartsThrown || h.throws || 0).filter(d => d > 0);
-            if (hDarts.length > 0) return Math.min(...hDarts);
-        }
+            // Gehe alle Würfe durch
+            gameState.turns.forEach(turn => {
+                // Ermittle, wer geworfen hat
+                const throwerId = turn.player || turn.playerId || (turn.playerIndex === playerIndex ? pId : null);
+                
+                // Eine Leg-ID oder Zähler, um Würfe zuzuordnen (falls vorhanden)
+                // Wenn keine Leg-ID da ist, versuchen wir es anhand von "Reset"-Punkten zu erraten
+                // Aber oft gibt es 'legId' oder 'leg_id' im Turn
+                const legKey = turn.legId || turn.leg_id || "unknown";
 
-        // 4. Fallback: Wenn wir finishes haben, gibt es vielleicht ein 'darts' array gleicher Länge?
-        if (player.finishes && player.finishes.length > 0) {
-            // Check auf 'legDarts', 'dartsPerLeg'
-            if (player.legDarts && Array.isArray(player.legDarts)) {
-                return Math.min(...player.legDarts.filter(d => d > 0));
+                // Wenn dieser Spieler geworfen hat, zähle hoch (Annahme: 3 Darts pro Turn, außer es steht explizit da)
+                if (throwerId === pId || turn.playerIndex === playerIndex) {
+                    const dartsInTurn = turn.darts || turn.dartsThrown || 3; 
+                    
+                    if (!legDartsCounter[legKey]) legDartsCounter[legKey] = 0;
+                    legDartsCounter[legKey] += dartsInTurn;
+                }
+
+                // Prüfe, ob dieser Turn ein Leg beendet hat (Checkout)
+                if (turn.checkout || turn.isCheckout || turn.score === 0 || (turn.pointsLeft === 0 && throwerId === pId)) {
+                    if (legDartsCounter[legKey]) {
+                        finishedLegsDarts.push(legDartsCounter[legKey]);
+                    }
+                }
+            });
+
+            if (finishedLegsDarts.length > 0) {
+                return Math.min(...finishedLegsDarts);
             }
         }
-
+        
         return 0;
     };
 
-    const p1BestLeg = findShortLeg(p1, 0);
-    const p2BestLeg = findShortLeg(p2, 1);
+    const p1BestLeg = calculateBestLegFromTurns(p1, 0);
+    const p2BestLeg = calculateBestLegFromTurns(p2, 1);
 
     // ---------------------------------------------------------
-    // Debug Daten Vorbereitung
-    // ---------------------------------------------------------
-    const getP2Debug = () => {
-        // Wir kopieren P2, entfernen aber riesige Arrays für die Lesbarkeit
-        const cleanP2 = { ...p2 };
-        if (cleanP2.scores) cleanP2.scores = `[Array ${cleanP2.scores.length}]`;
-        // Wir wollen history sehen, falls es existiert
-        if (!cleanP2.history || cleanP2.history.length === 0) cleanP2.history = "Leer/Nicht vorhanden";
-        
-        return JSON.stringify(cleanP2, null, 2);
-    };
-
-    const getGlobalDebug = () => {
-        return `legsWon: ${JSON.stringify(gameState.legsWon)}\nsetsWon: ${JSON.stringify(gameState.setsWon)}`;
-    };
-
-    // ---------------------------------------------------------
-    // Restliche Stats
+    // Stats & Helpers
     // ---------------------------------------------------------
     const calculateFirst9Avg = (player) => {
         const scores = player.scores || [];
@@ -112,6 +109,31 @@ const LiveStatistics = ({ gameState }) => {
         </div>
     );
 
+    // DEBUG VORBEREITUNG
+    const getDeepDebug = () => {
+        let info = "";
+        
+        // Check global Scores
+        if (gameState.scores) {
+            info += `GLOBAL SCORES TYPE: ${typeof gameState.scores}\n`;
+            info += `GLOBAL SCORES: ${JSON.stringify(gameState.scores).substring(0, 150)}...\n\n`;
+        } else {
+            info += "GLOBAL SCORES: nicht vorhanden\n\n";
+        }
+
+        // Check global Turns
+        if (gameState.turns && Array.isArray(gameState.turns)) {
+            info += `TURNS: Array mit ${gameState.turns.length} Einträgen.\n`;
+            if (gameState.turns.length > 0) {
+                info += `Turn #1 Beispiel: ${JSON.stringify(gameState.turns[0])}\n`;
+            }
+        } else {
+            info += "TURNS: nicht vorhanden oder kein Array\n";
+        }
+
+        return info;
+    };
+
     return (
         <div className="stats-wrapper">
             <div className="stats-header">
@@ -138,23 +160,21 @@ const LiveStatistics = ({ gameState }) => {
                 <StatRow label="SHORT LEG" v1={val(p1BestLeg)} v2={val(p2BestLeg)} />
             </div>
 
-            {/* DEBUGGING - ZEIGT PLAYER 2 und GLOBALE LEGS */}
+            {/* DEBUGGING - FINALER CHECK DER GLOBALEN DATEN */}
             <div style={{
                 marginTop: '10px', 
                 padding: '10px', 
-                background: '#000', 
-                color: '#0ff', 
+                background: '#002', 
+                color: '#aaf', 
                 textAlign: 'left',
                 fontSize: '11px',
                 fontFamily: 'monospace',
-                border: '1px solid cyan',
-                whiteSpace: 'pre-wrap'
+                border: '1px solid blue',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
             }}>
-                <strong>CHECK (Player 2 & LegsWon):</strong><br/>
-                {getGlobalDebug()}<br/>
-                -----------------<br/>
-                P2 DATA:<br/>
-                {getP2Debug()}
+                <strong>DEEP DIVE DEBUG:</strong><br/>
+                {getDeepDebug()}
             </div>
         </div>
     );
