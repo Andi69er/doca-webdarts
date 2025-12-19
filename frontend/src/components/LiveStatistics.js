@@ -11,9 +11,8 @@ const LiveStatistics = ({ gameState }) => {
 
     const val = (v, suffix = '') => (v !== undefined && v !== null ? v + suffix : '0' + suffix);
 
-    // FIX: Berechnung Short Leg (Best Leg)
+    // FIX: Berechnung Short Leg (Best Leg) aus Backend-Daten
     const calculateBestLeg = (player) => {
-        // Nutze persistierte Statistik vom Backend
         if (player.bestLeg && parseInt(player.bestLeg) > 0) return player.bestLeg;
         return 0;
     };
@@ -35,7 +34,6 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Stats sicher abrufen
     const getStat = (p, key) => {
         if (p[key] !== undefined) return p[key];
         return 0;
@@ -54,7 +52,7 @@ const LiveStatistics = ({ gameState }) => {
     const p1HighFinish = p1.highestFinish || 0;
     const p2HighFinish = p2.highestFinish || 0;
 
-    // FIX: Doppelquote
+    // FIX: Doppelquote korrekt anzeigen
     const p1Doubles = (p1.doublesThrown > 0) 
         ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` 
         : '0% (0/0)';

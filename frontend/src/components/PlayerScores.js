@@ -98,8 +98,8 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
         const isHost = gameState.hostId === user?.id;
         const checkoutText = getCheckoutText(player.score);
         
-        // FIX: isSetMode richtig erkennen
-        const isSetMode = (gameState?.gameOptions?.sets || 0) > 0;
+        // FIX: Prüft nun, ob Sets im gameState.gameOptions größer als 0 sind
+        const isSetMode = (gameState?.gameOptions?.sets > 0);
 
         // --- STYLES ---
         const styles = {
@@ -153,7 +153,6 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             }
         };
 
-        // FIX: Anzeige von Sets UND Legs wenn Set Mode aktiv ist, oder nur Legs
         const LegsBlock = (
             <div className="legs-section-bild1" style={styles.legsContainer}>
                 {isSetMode ? (
