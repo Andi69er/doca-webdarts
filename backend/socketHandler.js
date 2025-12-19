@@ -282,11 +282,22 @@ socket.on('start-game', (data) => {
             console.log('2. Found room:', JSON.stringify(room, null, 2));
             console.log('3. Room gameOptions:', JSON.stringify(room.gameOptions, null, 2));
             
-            const isHost = room.players[0]?.id === userId || room.hostId === userId;
-            if (!isHost) {
-                console.log('ERROR: User is not host');
-                return socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
+            // KORREKTUR 1: Wer darf das Spiel starten?
+            // Der Host darf immer starten. Wenn der Gegner starten soll, darf dieser es auch.
+            const hostId = room.hostId;
+            const opponent = room.players.find(p => p.id !== hostId);
+            const isHostRequest = userId === hostId;
+            const isOpponentRequest = opponent && userId === opponent.id;
+
+            // Spiel darf gestartet werden, wenn der Anfragende der Host ist,
+            // ODER wenn der Gegner starten soll UND die Anfrage vom Gegner kommt.
+            const canStart = isHostRequest || (room.whoStarts === 'opponent' && isOpponentRequest);
+
+            if (!canStart) {
+                console.log('ERROR: User not authorized to start game.');
+                return socket.emit('gameError', { error: 'Du bist nicht berechtigt, das Spiel zu starten.' });
             }
+
             if (room.players.length < 2) {
                 console.log('ERROR: Not enough players:', room.players.length);
                 return socket.emit('gameError', { error: 'Warte auf zweiten Spieler' });
@@ -703,14 +714,13 @@ room.game.playerIds = room.players.map(p => p.id);
                 if (player.lastScore > (player.highestFinish || 0)) {
                     player.highestFinish = player.lastScore;
                 }
-                room.game.checkWinCondition(player.id);
             }
 
             if (room.game.setCheckoutDarts) {
                 room.game.setCheckoutDarts(dartCount);
             }
             
-            // Win Condition manuell auslösen um Legs/Sets in Game Logic zu updaten
+            // Win Condition auslösen, um Legs/Sets in der Game-Logik zu aktualisieren
             room.game.checkWinCondition(player.id);
 
             // Finalen GameState aus der Game-Logik holen
@@ -721,6 +731,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 ...gameInternalState,
                 players: room.players,
                 gameStatus: 'finished',
+                turns: room.game.turns, // KORREKTUR 4: Darthistorie mitsenden
                 winner: gameInternalState.winner,
                 legsWon: room.game.legsWon,
                 setsWon: room.game.setsWon,
@@ -728,7 +739,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 doubleAttemptsQuery: null,
                 gameOptions: room.gameOptions,
                 // Stelle sicher, dass die finalen Statistiken (bestLeg) enthalten sind
-                players: room.players.map(p => ({
+                players: room.players.map(p => ({ // KORREKTUR 2: Vollständige Spielerdaten senden
                     ...p,
                     score: gameInternalState.scores[p.id],
                     bestLeg: p.bestLeg, // Wichtig: bestLeg explizit mitsenden
@@ -788,17 +799,27 @@ room.game.playerIds = room.players.map(p => p.id);
                 room.gameState.checkoutQuery = null;
             }
             
-            const gameStateInner = room.game.getGameState();
+            // KORREKTUR 3: Sende ein vollständiges und aktuelles State-Update
+            // Erstelle ein sauberes Player-Array mit den neuesten Stats
+            const updatedPlayers = room.players.map(p => ({
+                ...p,
+                score: room.game.getGameState().scores[p.id],
+                doublesHit: p.doublesHit,
+                doublesThrown: p.doublesThrown
+            }));
+
             const updateData = {
-                ...room.gameState,
-                players: room.players,
-                gameState: gameStateInner,
-                winner: gameStateInner.winner,
-                gameStatus: gameStateInner.winner ? 'finished' : 'active',
+                ...room.game.getGameState(), // Nimm den aktuellsten State aus der Game-Engine
+                players: updatedPlayers,
+                gameStatus: 'active', // Das Spiel läuft weiter
                 legsWon: room.game.legsWon,
-                setsWon: room.game.setsWon
+                setsWon: room.game.setsWon,
+                turns: room.game.turns, // KORREKTUR 4: Darthistorie mitsenden
+                doubleAttemptsQuery: null, // Query wurde beantwortet
+                checkoutQuery: null
             };
 
+            room.gameState = { ...room.gameState, ...updateData };
             io.to(roomId).emit('game-state-update', updateData);
         });
 
