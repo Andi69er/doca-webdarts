@@ -182,14 +182,16 @@ const Lobby = memo(() => {
                           room.gameOptions?.outMode === 'master' ? 'Master Out' : 'Single Out';
             const s = room.gameOptions?.sets || 0;
             const l = room.gameOptions?.legs || 1;
+            const wt = room.gameOptions?.winType === 'bestOf' ? 'Best Of' : 'First To';
             const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Ich' : 'Gegner';
             
-            info = `${score} • ${im}/${om} • Sets: ${s}, Legs: ${l} • ${start}`;
+            info = `${score} • ${im}/${om} • ${wt} • Sets: ${s}, Legs: ${l} • ${start}`;
         } else if (room.gameMode === 'CricketGame' || room.gameMode === 'cricket') {
             const s = room.gameOptions?.sets || 0;
             const l = room.gameOptions?.legs || 1;
+            const wt = room.gameOptions?.winType === 'bestOf' ? 'Best Of' : 'First To';
             const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Ich' : 'Gegner';
-            info = `Cricket • Sets: ${s}, Legs: ${l} • ${start}`;
+            info = `Cricket • ${wt} • Sets: ${s}, Legs: ${l} • ${start}`;
         }
         return info;
     };
@@ -197,7 +199,7 @@ const Lobby = memo(() => {
     return (
         <LobbyErrorBoundary>
             <div className="lobby-wrapper">
-                {/* Header (ANGEPASST) */}
+                {/* Header */}
                 <header className="lobby-topbar">
                     <div className="brand-area">
                         <h1>🎯 DOCA <span className="highlight">WebDarts Pro</span></h1>
@@ -336,8 +338,18 @@ const Lobby = memo(() => {
                                     </div>
                                 </div>
 
-                                {/* Start-Regeln */}
-                                <div className="form-section full-width">
+                                {/* Start-Regeln & WinType (Wieder da!) */}
+                                <div className="form-section">
+                                    <div className="input-group">
+                                        <label>Sieger-Modus</label>
+                                        <select value={winType} onChange={(e) => setWinType(e.target.value)}>
+                                            <option value="firstTo">First To</option>
+                                            <option value="bestOf">Best Of</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div className="form-section">
                                     <div className="input-group">
                                         <label>Wer beginnt?</label>
                                         <select value={whoStartsUI} onChange={(e) => setWhoStartsUI(e.target.value)}>
