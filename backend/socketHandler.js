@@ -311,15 +311,15 @@ socket.on('start-game', (data) => {
             console.log('3. Room gameOptions:', JSON.stringify(room.gameOptions, null, 2));
             
             // KORREKTUR 1: Wer darf das Spiel starten?
-            // FIX: Nur der tatsächlich zugewiesene Starter darf starten.
-            let authorizedStarterId = room.hostId;
+            // FIX: Nur der zugewiesene Starter darf das Spiel starten.
+            let designatedStarterId = room.hostId;
             if (room.whoStarts === 'opponent') {
                 const opponent = room.players.find(p => p.id !== room.hostId);
-                if (opponent) authorizedStarterId = opponent.id;
+                if (opponent) designatedStarterId = opponent.id;
             }
             
-            const canStart = userId === authorizedStarterId;
-            console.log(`[START-GAME] Request by ${userId}. Authorized: ${authorizedStarterId}. Allowed: ${canStart}`);
+            const canStart = userId === designatedStarterId;
+            console.log(`[START-GAME] Request by ${userId}. Host: ${room.hostId}. Starter: ${designatedStarterId}. Allowed: ${canStart}`);
 
             if (!canStart) {
                 console.log('ERROR: User not authorized to start game.');
@@ -400,7 +400,8 @@ socket.on('start-game', (data) => {
                 gameOptions: room.gameOptions,
                 legsWon: room.game.legsWon,
                 setsWon: room.game.setsWon,
-                currentPlayerIndex: currentPlayerIndex
+                currentPlayerIndex: currentPlayerIndex,
+                turns: []
             };
 
             if (room.gameMode === 'CricketGame') {
