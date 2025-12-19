@@ -544,6 +544,20 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                     }
                 }
 
+                // Additional unlock for multi-leg games: unlock when it's the user's turn and player index changed
+                if (newState.gameStatus === 'active' && newIsMyTurn && currentPlayerIndex !== prevPlayerIndex) {
+                    setNumpadState(prev => ({
+                        ...prev,
+                        isLocked: false,
+                        canUndo: false,
+                        lockedPlayerId: null
+                    }));
+                    setTurnEndTime(null);
+                    if (numpadState.lockTimer) {
+                        clearTimeout(numpadState.lockTimer);
+                    }
+                }
+
 // Für Cricket: Immer entsperren wenn ich dran bin (auch nach eigenem Wurf)
                 if (newState.mode === 'cricket' && newIsMyTurn) {
                     setNumpadState(prev => ({

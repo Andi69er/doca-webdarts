@@ -1104,7 +1104,9 @@
 
 /* Begrenzung der Breite */
 .number-pad-container {
+    min-width: 200px !important;
     max-width: 200px !important;
+    width: 200px !important;
     margin: 0 auto !important;
     height: 100% !important;
 }

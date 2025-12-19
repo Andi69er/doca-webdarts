@@ -273,7 +273,15 @@ function initializeSocket(io, gameManager, auth) {
                         marks: {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
                         dartsThrown: 0,
                         isActive: index === currentPlayerIndex,
-                        legs: 0
+                        legs: 0,
+                        // Preserve persistent statistics
+                        doublesHit: p.doublesHit || 0,
+                        doublesThrown: p.doublesThrown || 0,
+                        highestFinish: p.highestFinish || 0,
+                        bestLeg: p.bestLeg || null,
+                        matchDartsThrown: p.matchDartsThrown || 0,
+                        matchPointsScored: p.matchPointsScored || 0,
+                        finishes: p.finishes || []
                     })),
                     currentPlayerIndex: currentPlayerIndex,
                     gameStatus: 'active',
@@ -294,16 +302,18 @@ function initializeSocket(io, gameManager, auth) {
                         legs: 0,
                         scores: [],
                         turns: [],
-                        doublesHit: 0,
-                        doublesThrown: 0,
+                        doublesHit: p.doublesHit || 0,
+                        doublesThrown: p.doublesThrown || 0,
                         scores180: 0,
                         scores60plus: 0,
                         scores100plus: 0,
                         scores140plus: 0,
-                        highestFinish: 0,
-                        bestLeg: null,
-                        finishes: [],
-                        lastThrownScore: 0
+                        highestFinish: p.highestFinish || 0,
+                        bestLeg: p.bestLeg || null,
+                        finishes: p.finishes || [],
+                        lastThrownScore: 0,
+                        matchDartsThrown: p.matchDartsThrown || 0,
+                        matchPointsScored: p.matchPointsScored || 0
                     })),
                     currentPlayerIndex: currentPlayerIndex,
                     gameStatus: 'active',
@@ -492,10 +502,16 @@ function initializeSocket(io, gameManager, auth) {
                     currentPlayerIndex: newGameStateFromGame.currentPlayerIndex,
                     lastThrow: { playerId: userId, score },
                     hostId: room.hostId,
-                    gameState: newGameStateFromGame,
+                    gameState: {
+                        ...newGameStateFromGame,
+                        legsWon: room.game.legsWon,
+                        setsWon: room.game.setsWon
+                    },
                     dartsThrownInTurn: result.dartsThrownInTurn,
                     doubleAttemptsQuery: doubleAttemptsQuery,
                     checkoutQuery: checkoutQuery,
+                    legsWon: room.game.legsWon,
+                    setsWon: room.game.setsWon,
                 };
 
                 // Wenn Checkout-Popup, Spiel aktiv lassen damit Popup sichtbar ist

@@ -97,7 +97,7 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
         const isMyPlayer = user && user.id === player.id;
         const isHost = gameState.hostId === user?.id;
         const checkoutText = getCheckoutText(player.score);
-        const isSetMode = gameState?.gameOptions?.distance === 'sets';
+        const isSetMode = (gameState?.gameOptions?.sets || 0) > 0;
 
         // --- STYLES ---
         const styles = {
