@@ -201,6 +201,7 @@ class X01Game {
             setsWon: this.setsWon,
             history: this.history,
             checkoutDarts: this.checkoutDarts,
+            gameOptions: this.gameOptions, // KRITISCH: Game Options für Frontend-Display
         };
     }
 
@@ -443,7 +444,8 @@ class CricketGame {
             legsWon: this.legsWon,
             setsWon: this.setsWon,
             winner: this.winner,
-            history: this.history
+            history: this.history,
+            gameOptions: this.gameOptions, // KRITISCH: Game Options für Frontend-Display
         };
     }
 }
