@@ -311,14 +311,15 @@ socket.on('start-game', (data) => {
             console.log('3. Room gameOptions:', JSON.stringify(room.gameOptions, null, 2));
             
             // KORREKTUR 1: Wer darf das Spiel starten?
-            // FIX: Nur der zugewiesene Starter darf das Spiel starten.
+            // FIX: Der Host darf immer starten (Fallback, falls Frontend Button nur beim Host zeigt).
+            // Der zugewiesene Starter darf natürlich auch.
             let designatedStarterId = room.hostId;
             if (room.whoStarts === 'opponent') {
                 const opponent = room.players.find(p => p.id !== room.hostId);
                 if (opponent) designatedStarterId = opponent.id;
             }
             
-            const canStart = userId === designatedStarterId;
+            const canStart = userId === room.hostId || userId === designatedStarterId;
             console.log(`[START-GAME] Request by ${userId}. Host: ${room.hostId}. Starter: ${designatedStarterId}. Allowed: ${canStart}`);
 
             if (!canStart) {
