@@ -682,7 +682,7 @@ room.game.playerIds = room.players.map(p => p.id);
             const player = room.players[playerIdx];
 
             if (player && player.id) { // Sicherstellen, dass der Spieler gültig ist
-                player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
+                player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed; // Korrigiere die Darts für das Leg
 
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
                 const pointsScored = startScore;
@@ -690,17 +690,16 @@ room.game.playerIds = room.players.map(p => p.id);
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
         
-                // DOPPELSTATISTIK: 1 Hit, 1 Attempt
+                // Doppelstatistik: 1 Treffer, 1 Versuch für diesen Wurf
                 player.doublesHit = (player.doublesHit || 0) + 1;
                 player.doublesThrown = (player.doublesThrown || 0) + 1;
         
-                // REPARATUR: BEST LEG TRACKING (Short Leg)
-                // Wenn noch kein Best Leg (null/0) oder aktuelles Leg schneller war
+                // Short Leg (Best Leg) Tracking
                 if (!player.bestLeg || player.dartsThrown < player.bestLeg) {
                     player.bestLeg = player.dartsThrown;
                 }
                 
-                // High Finish sicherstellen
+                // High Finish
                 if (player.lastScore > (player.highestFinish || 0)) {
                     player.highestFinish = player.lastScore;
                 }
@@ -712,32 +711,36 @@ room.game.playerIds = room.players.map(p => p.id);
             }
             
             // Win Condition manuell auslösen um Legs/Sets in Game Logic zu updaten
-            // room.game.checkWinCondition(player.id); // Bereits oben ausgeführt
+            room.game.checkWinCondition(player.id);
 
-            // KRITISCH: Preserve room metadata when updating game state
+            // Finalen GameState aus der Game-Logik holen
             const gameInternalState = room.game.getGameState();
-            room.gameState = {
-                ...room.gameState, // Preserve existing room metadata
-                ...gameInternalState, // Update with game internal state
-                gameOptions: room.gameOptions, // Ensure gameOptions are preserved
-                whoStarts: room.whoStarts, // Ensure whoStarts is preserved
-                hostId: room.hostId // Ensure hostId is preserved
-            };
-            
-            if (room.gameState) {
-                room.gameState.checkoutQuery = null;
-                room.gameState.doubleAttemptsQuery = null;
-            }
-            
+
+            // Erstelle ein sauberes, finales Update-Objekt
             const updateData = {
-                ...room.gameState,
+                ...gameInternalState,
                 players: room.players,
                 gameStatus: 'finished',
-                winner: player ? player.id : null,
+                winner: gameInternalState.winner,
                 legsWon: room.game.legsWon,
-                setsWon: room.game.setsWon
+                setsWon: room.game.setsWon,
+                checkoutQuery: null, // Alle Popups schließen
+                doubleAttemptsQuery: null,
+                gameOptions: room.gameOptions,
+                // Stelle sicher, dass die finalen Statistiken (bestLeg) enthalten sind
+                players: room.players.map(p => ({
+                    ...p,
+                    score: gameInternalState.scores[p.id],
+                    bestLeg: p.bestLeg, // Wichtig: bestLeg explizit mitsenden
+                    highestFinish: p.highestFinish,
+                    doublesHit: p.doublesHit,
+                    doublesThrown: p.doublesThrown
+                }))
             };
 
+            // Speichere den finalen Zustand im Raum
+            room.gameState = updateData;
+            
             io.to(room.id).emit('game-state-update', updateData);
         });
 
