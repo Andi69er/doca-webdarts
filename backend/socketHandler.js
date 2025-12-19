@@ -52,39 +52,35 @@ function initializeSocket(io, gameManager, auth) {
         });
 
 socket.on('createRoom', (roomData) => {
-            // KRITISCH: Logge EXAKT was wir empfangen
-            console.log('[KRITISCH] Backend - Received roomData:', roomData);
-            console.log('[KRITISCH] Backend - roomData.gameOptions:', roomData.gameOptions);
+            console.log('\n=== CREATE ROOM START ===');
+            console.log('1. RAW roomData received:', JSON.stringify(roomData, null, 2));
+            console.log('2. roomData.gameOptions:', JSON.stringify(roomData.gameOptions, null, 2));
             
             // REPARATUR: Daten aus der Lobby robust auslesen
             // Wir kombinieren roomData und gameOptions, falls das Frontend es unterschiedlich schickt
             const flatData = { ...roomData, ...(roomData.gameOptions || {}) };
             
-            console.log('[KRITISCH] Backend - flatData after merge:', flatData);
+            console.log('3. flatData after merge:', JSON.stringify(flatData, null, 2));
 
             const startScore = parseInt(flatData.startingScore, 10) || 501;
             const sets = parseInt(flatData.sets, 10) || 0;
             const legs = parseInt(flatData.legs, 10) || 1;
             
-            console.log('[KRITISCH] Backend - Parsed values:', {
+            console.log('4. Parsed values:', {
                 startScore,
                 sets,
                 legs,
-                startingScore: flatData.startingScore,
+                startingScore_raw: flatData.startingScore,
                 sets_raw: flatData.sets,
-                legs_raw: flatData.legs
+                legs_raw: flatData.legs,
+                winType_raw: flatData.winType
             });
             
             // Best Of / First To Logik
-            // Frontend sendet winType ('firstTo' oder 'bestOf'), Backend erwartet winMode
             const winType = flatData.winType || 'firstTo';
             const isBestOf = winType === 'bestOf';
             
-            console.log('[KRITISCH] Backend - WinType logic:', {
-                winType,
-                isBestOf,
-                flatData_winType: flatData.winType
-            });
+            console.log('5. WinType logic:', { winType, isBestOf });
 
             const gameOptions = {
                 startingScore: startScore,
@@ -92,6 +88,7 @@ socket.on('createRoom', (roomData) => {
                 outMode: flatData.outMode || 'double',
                 sets: sets,
                 legs: legs,
+                winType: winType,
                 length: { 
                     type: isBestOf ? 'bestOf' : 'firstTo', 
                     value: sets > 0 ? sets : legs 
@@ -100,13 +97,13 @@ socket.on('createRoom', (roomData) => {
                 checkOut: flatData.outMode || 'double'
             };
             
-            console.log('[KRITISCH] Backend - Final gameOptions:', gameOptions);
+            console.log('6. Final gameOptions object:', JSON.stringify(gameOptions, null, 2));
 
             const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
                 name: flatData.roomName || roomData.roomName,
                 gameMode: flatData.gameMode || roomData.gameMode,
-                gameOptions: gameOptions, // Hier die sauberen Options speichern
+                gameOptions: gameOptions,
                 whoStarts: flatData.whoStarts || roomData.whoStarts, 
                 hostId: socket.id, 
                 maxPlayers: 2,
@@ -116,21 +113,17 @@ socket.on('createRoom', (roomData) => {
                 game: null 
             };
             
-            // KRITISCH: Logge das komplette Room-Objekt
-            console.log('[KRITISCH] Backend - Final room object:', {
-                id: newRoom.id,
-                name: newRoom.name,
-                gameMode: newRoom.gameMode,
-                gameOptions: newRoom.gameOptions,
-                whoStarts: newRoom.whoStarts,
-                playerCount: newRoom.players.length
-            });
+            console.log('7. Complete newRoom object:', JSON.stringify(newRoom, null, 2));
+            console.log('8. newRoom.gameOptions:', JSON.stringify(newRoom.gameOptions, null, 2));
             
             newRoom.players[0].score = startScore;
             rooms.push(newRoom);
+            console.log('9. Room added to rooms array. Total rooms:', rooms.length);
+            
             socket.join(newRoom.id);
             socket.emit('roomCreated', { roomId: newRoom.id });
             io.emit('updateRooms', rooms);
+            console.log('=== CREATE ROOM END ===\n');
         });
 
         socket.on('joinRoom', (data) => {
@@ -259,25 +252,45 @@ const gameState = room.gameState || {
             io.emit('updateRooms', rooms);
         });
 
-        socket.on('start-game', (data) => {
+socket.on('start-game', (data) => {
+            console.log('\n=== START GAME START ===');
+            console.log('1. start-game data received:', JSON.stringify(data, null, 2));
+            
             const { roomId, userId, startingPlayerId } = data;
             const room = rooms.find(r => r.id === roomId);
 
-            if (!room) return socket.emit('gameError', { error: 'Raum nicht gefunden' });
+            if (!room) {
+                console.log('ERROR: Room not found:', roomId);
+                return socket.emit('gameError', { error: 'Raum nicht gefunden' });
+            }
+            
+            console.log('2. Found room:', JSON.stringify(room, null, 2));
+            console.log('3. Room gameOptions:', JSON.stringify(room.gameOptions, null, 2));
             
             const isHost = room.players[0]?.id === userId || room.hostId === userId;
-            if (!isHost) return socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
-            if (room.players.length < 2) return socket.emit('gameError', { error: 'Warte auf zweiten Spieler' });
+            if (!isHost) {
+                console.log('ERROR: User is not host');
+                return socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
+            }
+            if (room.players.length < 2) {
+                console.log('ERROR: Not enough players:', room.players.length);
+                return socket.emit('gameError', { error: 'Warte auf zweiten Spieler' });
+            }
 
             // REPARATUR: Optionen explizit aus dem Raumobjekt laden
             const gameOptions = room.gameOptions || {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
+            
+            console.log('4. Loaded gameOptions:', JSON.stringify(gameOptions, null, 2));
+            console.log('5. startScore:', startScore);
 
             if (room.gameMode === 'CricketGame') {
                 const { CricketGame } = require('./gameModes');
                 room.game = new CricketGame(gameOptions);
+                console.log('6. Created CricketGame with options:', JSON.stringify(gameOptions, null, 2));
             } else {
                 room.game = new X01Game(gameOptions);
+                console.log('6. Created X01Game with options:', JSON.stringify(gameOptions, null, 2));
             }
             
             // STATISTIK RESET: Hier werden Spielerdaten zurückgesetzt, aber persistente Statistiken bleiben erhalten!
@@ -391,17 +404,21 @@ const gameState = room.gameState || {
             
 room.game.playerIds = room.players.map(p => p.id);
             
-            // KRITISCH: Logge EXAKT was wir vor dem Senden haben
-            console.log('[KRITISCH] Backend - About to send game-started:', {
-                roomId,
-                room_gameOptions: room.gameOptions,
-                roomGameState_gameOptions: room.gameState?.gameOptions,
-                roomGameState_mode: room.gameState?.mode,
-                roomGameState_whoStarts: room.gameState?.whoStarts,
-                roomGameState_hostId: room.gameState?.hostId
-            });
+            console.log('7. room.gameState before sending:', JSON.stringify(room.gameState, null, 2));
+            console.log('8. room.gameOptions at send time:', JSON.stringify(room.gameOptions, null, 2));
+            console.log('9. About to emit game-started with room.gameState');
             
             io.to(roomId).emit('game-started', room.gameState);
+            console.log('10. game-started emitted');
+            console.log('=== START GAME END ===\n');
+            console.log('10. game-started event sent');
+            console.log('=== START GAME END ===\n');
+            console.log('10. game-started emitted');
+            console.log('=== START GAME END ===\n');
+            console.log('=== START GAME END ===\n');
+            console.log('=== START GAME END ===\n');
+            console.log('10. game-started event emitted');
+            console.log('=== START GAME END ===\n');
         });
 
         socket.on('score-input', (data) => {

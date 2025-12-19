@@ -117,6 +117,19 @@ const Lobby = memo(() => {
     const handleCreateRoom = (e) => {
         e.preventDefault();
         try {
+            console.log('\n=== FRONTEND CREATE ROOM START ===');
+            console.log('1. UI State values:', {
+                roomName,
+                gameMode,
+                whoStartsUI,
+                startingScore,
+                sets,
+                legs,
+                winType,
+                outMode,
+                inMode
+            });
+            
             const winNumber = winType === 'firstTo' ? 1 : 3;
             let gameOptions = {};
             if (gameMode === 'X01Game') {
@@ -140,6 +153,8 @@ const Lobby = memo(() => {
                 };
             }
             
+            console.log('2. Generated gameOptions:', JSON.stringify(gameOptions, null, 2));
+            
             const roomData = {
                 roomName,
                 gameMode,
@@ -147,19 +162,8 @@ const Lobby = memo(() => {
                 gameOptions
             };
             
-            // KRITISCH: Logge EXAKT was wir senden
-            console.log('[KRITISCH] Frontend - Sending createRoom:', {
-                roomName,
-                gameMode,
-                whoStarts: whoStartsUI,
-                startingScore,
-                sets,
-                legs,
-                winType,
-                outMode,
-                inMode,
-                gameOptions
-            });
+            console.log('3. Complete roomData to send:', JSON.stringify(roomData, null, 2));
+            console.log('=== FRONTEND CREATE ROOM END ===\n');
             
             if (socket) {
                 socket.emit('createRoom', roomData);
