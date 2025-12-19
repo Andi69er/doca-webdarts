@@ -7,6 +7,34 @@ let connectedUsers = [];
 let rooms = [];
 let finishedGames = []; 
 
+// Hilfsfunktion für konsistente State-Updates
+function createFullGameStateUpdate(room) {
+    if (!room || !room.game) return null;
+    const internalState = room.game.getGameState();
+    return {
+        ...internalState,
+        players: room.players.map((p, idx) => ({
+            ...p,
+            score: internalState.scores[p.id],
+            // KORREKTUR: Stellen Sie sicher, dass alle Statistiken immer aktuell sind
+            avg: p.avg || "0.00",
+            dartsThrown: p.dartsThrown || 0,
+            bestLeg: p.bestLeg || null,
+            highestFinish: p.highestFinish || 0,
+            doublesHit: p.doublesHit || 0,
+            doublesThrown: p.doublesThrown || 0,
+            isActive: internalState.currentPlayerIndex === idx
+        })),
+        gameStatus: internalState.winner ? 'finished' : 'active',
+        turns: room.game.turns,
+        legsWon: room.game.legsWon,
+        setsWon: room.game.setsWon,
+        gameOptions: room.gameOptions,
+        checkoutQuery: null,
+        doubleAttemptsQuery: null
+    };
+}
+
 function initializeSocket(io, gameManager, auth) {
     io.on('connection', (socket) => {
         // Add user to connected users list
@@ -521,32 +549,6 @@ room.game.playerIds = room.players.map(p => p.id);
                     }
                 }
 
-                // Erstelle den finalen Player-State für das Frontend
-                const updatedPlayersForFrontend = room.players.map((p, idx) => {
-                    return {
-                        ...p,
-                        score: newGameStateFromGame.scores[p.id],
-                        points: newGameStateFromGame.scores[p.id],
-                        marks: newGameStateFromGame.marks ? newGameStateFromGame.marks[p.id] : p.marks,
-                        isActive: idx === newGameStateFromGame.currentPlayerIndex,
-                        // Stelle sicher, dass alle Stats aktuell sind
-                        avg: p.avg || "0.00",
-                        dartsThrown: p.dartsThrown || 0,
-                        scores: p.scores || [],
-                        finishes: p.finishes || [],
-                        highestFinish: p.highestFinish || 0,
-                        scores180: p.scores180 || 0,
-                        scores60plus: p.scores60plus || 0,
-                        scores100plus: p.scores100plus || 0,
-                        scores140plus: p.scores140plus || 0,
-                        doublesHit: p.doublesHit || 0,
-                        doublesThrown: p.doublesThrown || 0,
-                        bestLeg: p.bestLeg || null,
-                        matchDartsThrown: p.matchDartsThrown || 0,
-                        matchPointsScored: p.matchPointsScored || 0
-                    };
-                });
-
                 // 4. Abfragen generieren
                 const currentScore = newGameStateFromGame.scores[userId];
                 
@@ -560,22 +562,21 @@ room.game.playerIds = room.players.map(p => p.id);
                 // Die Abfrage "Versuche auf Doppel" macht Sinn, wenn man sich im Finish-Bereich befindet.
                 const inFinishRange = canCheckoutFrom(scoreBeforeThrow);
 
-                let doubleAttemptsQuery = null;
-                let checkoutQuery = null;
+                // Basis-Update erstellen
+                let updateData = createFullGameStateUpdate(room);
                 
                 if (room.gameMode !== 'CricketGame') {
                     if (currentScore === 0) {
                         // CHECKOUT
                         const player = playerToUpdate; // Nehmen Sie den bereits gefundenen Spieler
-                        checkoutQuery = {
+                        updateData.checkoutQuery = {
                             player: player,
                             score: score,
                             startScore: scoreBeforeThrow
                         };
                     } else if (inFinishRange && currentScore > 1) {
                         // VERPASST
-                        checkoutQuery = null; // Stellen Sie sicher, dass keine Checkout-Abfrage gesendet wird
-                        doubleAttemptsQuery = {
+                        updateData.doubleAttemptsQuery = {
                             type: 'attempts',
                             playerId: userId,
                             question: 'Versuche auf Doppel?',
@@ -585,9 +586,8 @@ room.game.playerIds = room.players.map(p => p.id);
                         };
                     } else if (currentScore < 0 || currentScore === 1) {
                         // BUST
-                        checkoutQuery = null; // Stellen Sie sicher, dass keine Checkout-Abfrage gesendet wird
                         if (inFinishRange) {
-                            doubleAttemptsQuery = {
+                            updateData.doubleAttemptsQuery = {
                                 type: 'bust',
                                 playerId: userId,
                                 question: 'Versuche auf Doppel vor Überwerfen?',
@@ -599,42 +599,19 @@ room.game.playerIds = room.players.map(p => p.id);
                     }
                 }
 
-                // 5. Update-Payload
-                const updateData = {
-                    mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
-                    players: updatedPlayersForFrontend,
-                    gameStatus: newGameStateFromGame.winner ? 'finished' : 'active',
-                    winner: newGameStateFromGame.winner,
-                    currentPlayerIndex: newGameStateFromGame.currentPlayerIndex,
-                    lastThrow: { playerId: userId, score },
-                    hostId: room.hostId,
-                    gameState: {
-                        ...newGameStateFromGame,
-                        legsWon: room.game.legsWon,
-                        setsWon: room.game.setsWon
-                    },
-                    dartsThrownInTurn: result.dartsThrownInTurn,
-                    doubleAttemptsQuery: doubleAttemptsQuery,
-                    checkoutQuery: checkoutQuery,
-                    legsWon: room.game.legsWon,
-                    setsWon: room.game.setsWon,
-                    turns: room.game.turns,
-                    gameOptions: room.gameOptions
-                };
+                // Zusätzliche Infos für Animationen
+                updateData.lastThrow = { playerId: userId, score };
+                updateData.dartsThrownInTurn = result.dartsThrownInTurn;
 
                 // Wenn Checkout-Popup, Spiel aktiv lassen damit Popup sichtbar ist
-                if (checkoutQuery) {
+                if (updateData.checkoutQuery || updateData.doubleAttemptsQuery) {
                     updateData.winner = null;
                     updateData.gameStatus = 'active';
-                    if (updateData.gameState) {
-                        updateData.gameState = { ...updateData.gameState, winner: null };
-                    }
                 }
 
                 // KRITISCH: Preserve room metadata when updating game state
                 room.gameState = {
                     ...room.gameState, // Preserve existing room metadata
-                    turns: room.game.turns, // Darthistorie explizit hinzufügen
                     ...updateData, // Update with new data
                     gameOptions: room.gameOptions, // Ensure gameOptions are preserved
                     whoStarts: room.whoStarts, // Ensure whoStarts is preserved
@@ -692,7 +669,7 @@ room.game.playerIds = room.players.map(p => p.id);
             const playerIdx = room.game.currentPlayerIndex;
             const player = room.players[playerIdx];
 
-            if (player && player.id) { // Sicherstellen, dass der Spieler gültig ist
+            if (player) {
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed; // Korrigiere die Darts für das Leg
 
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
@@ -723,31 +700,7 @@ room.game.playerIds = room.players.map(p => p.id);
             // Win Condition auslösen, um Legs/Sets in der Game-Logik zu aktualisieren
             room.game.checkWinCondition(player.id);
 
-            // Finalen GameState aus der Game-Logik holen
-            const gameInternalState = room.game.getGameState();
-
-            // Erstelle ein sauberes, finales Update-Objekt
-            const updateData = {
-                ...gameInternalState,
-                players: room.players,
-                gameStatus: 'finished',
-                turns: room.game.turns, // KORREKTUR 4: Darthistorie mitsenden
-                winner: gameInternalState.winner,
-                legsWon: room.game.legsWon,
-                setsWon: room.game.setsWon,
-                checkoutQuery: null, // Alle Popups schließen
-                doubleAttemptsQuery: null,
-                gameOptions: room.gameOptions,
-                // Stelle sicher, dass die finalen Statistiken (bestLeg) enthalten sind
-                players: room.players.map(p => ({ // KORREKTUR 2: Vollständige Spielerdaten senden
-                    ...p,
-                    score: gameInternalState.scores[p.id],
-                    bestLeg: p.bestLeg, // Wichtig: bestLeg explizit mitsenden
-                    highestFinish: p.highestFinish,
-                    doublesHit: p.doublesHit,
-                    doublesThrown: p.doublesThrown
-                }))
-            };
+            const updateData = createFullGameStateUpdate(room);
 
             // Speichere den finalen Zustand im Raum
             room.gameState = updateData;
@@ -799,25 +752,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 room.gameState.checkoutQuery = null;
             }
             
-            // KORREKTUR 3: Sende ein vollständiges und aktuelles State-Update
-            // Erstelle ein sauberes Player-Array mit den neuesten Stats
-            const updatedPlayers = room.players.map(p => ({
-                ...p,
-                score: room.game.getGameState().scores[p.id],
-                doublesHit: p.doublesHit,
-                doublesThrown: p.doublesThrown
-            }));
-
-            const updateData = {
-                ...room.game.getGameState(), // Nimm den aktuellsten State aus der Game-Engine
-                players: updatedPlayers,
-                gameStatus: 'active', // Das Spiel läuft weiter
-                legsWon: room.game.legsWon,
-                setsWon: room.game.setsWon,
-                turns: room.game.turns, // KORREKTUR 4: Darthistorie mitsenden
-                doubleAttemptsQuery: null, // Query wurde beantwortet
-                checkoutQuery: null
-            };
+            const updateData = createFullGameStateUpdate(room);
 
             room.gameState = { ...room.gameState, ...updateData };
             io.to(roomId).emit('game-state-update', updateData);
