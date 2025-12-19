@@ -3,47 +3,54 @@ import React, { useState, useEffect, useCallback } from 'react';
 const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestions, isOpponentLocked, isMyTurn, canUseUndo, gameRunning }) => {
     const [currentInput, setCurrentInput] = useState('');
 
-    // Styles (wie gehabt Mittelgroß)
+    // Styles (Mittelgroß, fixiert um Springen zu verhindern)
     const styles = {
         wrapper: {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            width: '100%', margin: '0 auto', height: '100%', overflow: 'hidden', padding: '10px'
+            width: '200px', margin: '0 auto', height: '100%', overflow: 'hidden', padding: '10px'
         },
-        status: { fontSize: '0.9rem', color: isActive ? '#4CAF50' : '#888', marginBottom: '10px', textAlign: 'center', minHeight: '20px', fontWeight: 'bold' },
+        // FIX: Feste Höhe, overflow hidden und white-space nowrap verhindern Layout-Springen
+        status: { 
+            fontSize: '0.8rem', 
+            color: isActive ? '#4CAF50' : '#888', 
+            marginBottom: '5px', 
+            textAlign: 'center', 
+            height: '20px', 
+            minHeight: '20px', 
+            maxHeight: '20px',
+            lineHeight: '20px',
+            fontWeight: 'bold',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            width: '100%'
+        },
         preview: {
-            width: '100%', height: '70px', background: 'white', borderRadius: '8px',
+            width: '100%', height: '50px', background: 'white', borderRadius: '8px',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem',
-            fontWeight: 'bold', color: '#000', marginBottom: '15px', opacity: isLocked ? 0.6 : 1
+            fontWeight: 'bold', color: '#000', marginBottom: '10px', opacity: isLocked ? 0.6 : 1
         },
-        grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%', marginBottom: '10px' },
+        grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px', width: '100%', marginBottom: '5px' },
         btn: {
-            height: '55px', fontSize: '1.4rem', fontWeight: 'bold', border: 'none', borderRadius: '6px',
+            height: '45px', fontSize: '1.4rem', fontWeight: 'bold', border: 'none', borderRadius: '6px',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
         },
         btnNum: { backgroundColor: '#2a2a3e' },
         btnClear: { backgroundColor: '#d9534f' },
         btnEnter: { backgroundColor: '#4CAF50' },
-        btnUndo: { backgroundColor: '#d9534f', width: '100%', height: '45px', fontSize: '1rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', color: 'white', marginTop: '5px' }
+        btnUndo: { backgroundColor: '#d9534f', width: '100%', height: '35px', fontSize: '1rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', color: 'white', marginTop: '5px' }
     };
 
 
     const handleNumPress = useCallback((num) => {
-        // Wenn ich Undo nutzen kann (Score eingegeben), keine weiteren Eingaben
-        // if (canUseUndo) return; // ENTFERNT: Erlaube Eingabe auch während Undo-Phase
-        // Wenn Gegner gesperrt ist, keine Eingaben
         if (isOpponentLocked) return;
-        // Standard-Checks
         if (!isActive || isLocked) return;
         if (currentInput.length >= 3) return;
         setCurrentInput(prev => prev + num);
     }, [isActive, isLocked, isOpponentLocked, canUseUndo, currentInput]);
 
     const handleEnter = useCallback(() => {
-        // Wenn ich Undo nutzen kann (Score eingegeben), keine weitere Eingabe
-        // if (canUseUndo) return; // ENTFERNT: Erlaube Eingabe auch während Undo-Phase
-        // Wenn Gegner gesperrt ist, keine Eingabe
         if (isOpponentLocked) return;
-        // Standard-Checks
         if (!isActive || isLocked) return;
         if (currentInput === '') return;
         const score = parseInt(currentInput, 10);
@@ -59,19 +66,13 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
     // KEYBOARD LISTENER
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // Undo ist immer erlaubt wenn canUseUndo true ist
             if (e.key.toLowerCase() === 'u' && canUseUndo) {
                 if(onUndo) onUndo();
                 return;
             }
 
-            // Wenn ich Undo nutzen kann, keine anderen Eingaben
-            // if (canUseUndo) return; // ENTFERNT: Erlaube Eingabe auch während Undo-Phase
-
-            // Wenn Gegner gesperrt ist, keine Eingaben
             if (isOpponentLocked) return;
 
-            // Standard-Checks
             if (!gameRunning) return;
             if (!isActive) return;
             if (isLocked) return;
@@ -95,11 +96,11 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
     return (
         <div style={styles.wrapper}>
             <div style={styles.status}>
-                {!gameRunning ? "Spiel noch nicht gestartet" :
-                 canUseUndo ? "Score eingegeben - Undo möglich (U)" :
-                 isOpponentLocked ? "Warte 5 Sekunden..." :
-                 (!isActive ? "Gegner ist dran..." :
-                 (isLocked ? "Wurf gesendet..." : "Du bist dran!"))}
+                {!gameRunning ? "Warte auf Start" :
+                 canUseUndo ? "Undo möglich (U)" :
+                 isOpponentLocked ? "Warte 5s..." :
+                 (!isActive ? "Gegner ist dran" :
+                 (isLocked ? "Gesendet..." : "Du bist dran!"))}
             </div>
 
             <div style={styles.preview}>
@@ -107,7 +108,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
             </div>
 
             {checkoutSuggestions && checkoutSuggestions.length > 0 && isActive && (
-                <div style={{color:'#ffd700', marginBottom:'5px'}}>{checkoutSuggestions.map(s => `${s.score}: ${s.checkout}`).join(' | ')}</div>
+                <div style={{color:'#ffd700', marginBottom:'5px', fontSize:'0.8rem', height:'15px', overflow:'hidden'}}>{checkoutSuggestions.map(s => `${s.score}: ${s.checkout}`).join(' | ')}</div>
             )}
 
             <div style={styles.grid}>

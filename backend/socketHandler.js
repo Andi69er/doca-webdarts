@@ -240,10 +240,13 @@ function initializeSocket(io, gameManager, auth) {
                 p.scores60plus = 0;
                 p.scores100plus = 0;
                 p.scores140plus = 0;
-                p.highestFinish = p.highestFinish || 0; // Persistent
-                p.bestLeg = p.bestLeg || null; // Persistent
-                p.matchDartsThrown = p.matchDartsThrown || 0; // Persistent
-                p.matchPointsScored = p.matchPointsScored || 0; // Persistent
+                // FIX: Statistiken initialisieren, falls undefined, aber NICHT überschreiben, wenn vorhanden
+                p.highestFinish = p.highestFinish || 0; 
+                p.bestLeg = p.bestLeg || null;
+                p.matchDartsThrown = p.matchDartsThrown || 0;
+                p.matchPointsScored = p.matchPointsScored || 0;
+                p.doublesHit = p.doublesHit || 0;
+                p.doublesThrown = p.doublesThrown || 0;
             });
             
             let currentPlayerIndex = 0;
@@ -287,7 +290,10 @@ function initializeSocket(io, gameManager, auth) {
                     gameStatus: 'active',
                     lastThrow: null,
                     hostId: room.hostId,
-                    whoStarts: room.whoStarts
+                    whoStarts: room.whoStarts,
+                    gameOptions: room.gameOptions,
+                    legsWon: room.game.legsWon,
+                    setsWon: room.game.setsWon
                 };
             } else {
                 room.gameState = {
@@ -321,7 +327,10 @@ function initializeSocket(io, gameManager, auth) {
                     history: [],
                     hostId: room.hostId,
                     whoStarts: room.whoStarts,
-                    turns: {}
+                    turns: {},
+                    gameOptions: room.gameOptions,
+                    legsWon: room.game.legsWon,
+                    setsWon: room.game.setsWon
                 };
             }
             
@@ -384,6 +393,7 @@ function initializeSocket(io, gameManager, auth) {
                     // Live Statistics Updates
                     let newScores = p.scores || [];
                     let newFinishes = p.finishes || [];
+                    // FIX: Stats vom Player Objekt nehmen, nicht überschreiben
                     let newHighestFinish = p.highestFinish || 0;
                     let newScores180 = p.scores180 || 0;
                     let newScores60plus = p.scores60plus || 0;
@@ -391,6 +401,7 @@ function initializeSocket(io, gameManager, auth) {
                     let newScores140plus = p.scores140plus || 0;
                     let newDoublesHit = p.doublesHit || 0;
                     let newDoublesThrown = p.doublesThrown || 0;
+                    let newBestLeg = p.bestLeg || null;
 
                     if (isCurrentPlayer) {
                         newScores = [...newScores, score];
@@ -405,8 +416,8 @@ function initializeSocket(io, gameManager, auth) {
 
                         if (newGameStateFromGame.scores[p.id] === 0) {
                             newFinishes = [...newFinishes, score];
-                            if (score > (p.highestFinish || 0)) {
-                                p.highestFinish = score;
+                            if (score > newHighestFinish) {
+                                newHighestFinish = score;
                             }
                             // Double-Hit wird hier nur intern gezählt, die echte Statistik kommt über Checkout/Popup
                         }
@@ -432,13 +443,7 @@ function initializeSocket(io, gameManager, auth) {
                         doublesHit: newDoublesHit,
                         doublesThrown: newDoublesThrown,
                         lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
-                        bestLeg: (() => {
-                            const turns = room.gameState?.turns?.[p.id] || [];
-                            if (turns.length === 0) return null;
-                            const validTurns = turns.filter(t => t !== null && t !== undefined && t > 0);
-                            if (validTurns.length === 0) return null;
-                            return Math.min(...validTurns);
-                        })(),
+                        bestLeg: newBestLeg,
                     };
                 });
                 room.players = updatedPlayers;
@@ -512,6 +517,8 @@ function initializeSocket(io, gameManager, auth) {
                     checkoutQuery: checkoutQuery,
                     legsWon: room.game.legsWon,
                     setsWon: room.game.setsWon,
+                    turns: room.game.turns,
+                    gameOptions: room.gameOptions
                 };
 
                 // Wenn Checkout-Popup, Spiel aktiv lassen damit Popup sichtbar ist
@@ -543,7 +550,9 @@ function initializeSocket(io, gameManager, auth) {
                         players: room.players,
                         gameStatus: 'waiting',
                         hostId: room.hostId,
-                        whoStarts: room.whoStarts
+                        whoStarts: room.whoStarts,
+                        legsWon: room.game ? room.game.legsWon : {},
+                        setsWon: room.game ? room.game.setsWon : {}
                     });
                 }
             }
@@ -588,7 +597,7 @@ function initializeSocket(io, gameManager, auth) {
                 player.doublesHit = (player.doublesHit || 0) + 1;
                 player.doublesThrown = (player.doublesThrown || 0) + 1;
 
-                // BEST LEG TRACKING: Aktualisiere die beste Leg-Zeit
+                // BEST LEG TRACKING: Aktualisiere die beste Leg-Zeit (Persistent)
                 const legDarts = player.dartsThrown;
                 if (!player.bestLeg || legDarts < player.bestLeg) {
                     player.bestLeg = legDarts;
@@ -610,7 +619,9 @@ function initializeSocket(io, gameManager, auth) {
                 ...room.gameState,
                 players: room.players,
                 gameStatus: 'finished',
-                winner: gameStateInner.winner
+                winner: gameStateInner.winner,
+                legsWon: room.game.legsWon,
+                setsWon: room.game.setsWon
             };
 
             io.to(room.id).emit('game-state-update', updateData);
@@ -638,6 +649,12 @@ function initializeSocket(io, gameManager, auth) {
                 }
                 hitsToAdd = 1;
                 attemptsToAdd = 1; 
+                
+                // Best Leg update also here if checkout query via this path
+                 if (!player.bestLeg || player.dartsThrown < player.bestLeg) {
+                    player.bestLeg = player.dartsThrown;
+                }
+
             } else if (queryType === 'attempts' || queryType === 'bust') {
                 hitsToAdd = 0;
                 attemptsToAdd = parseInt(response);
@@ -657,7 +674,9 @@ function initializeSocket(io, gameManager, auth) {
                 players: room.players,
                 gameState: gameStateInner,
                 winner: gameStateInner.winner,
-                gameStatus: gameStateInner.winner ? 'finished' : 'active'
+                gameStatus: gameStateInner.winner ? 'finished' : 'active',
+                legsWon: room.game.legsWon,
+                setsWon: room.game.setsWon
             };
 
             io.to(roomId).emit('game-state-update', updateData);
@@ -684,6 +703,11 @@ function initializeSocket(io, gameManager, auth) {
                 player.doublesHit = 0;
                 player.doublesThrown = 0;
                 player.isActive = false;
+                // Full reset for rematch? Usually YES for match stats
+                player.bestLeg = null;
+                player.highestFinish = 0;
+                player.matchDartsThrown = 0;
+                player.matchPointsScored = 0;
             });
 
             const waitingState = {

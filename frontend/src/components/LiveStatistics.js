@@ -13,21 +13,16 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-// FINALE BERECHNUNG FÜR SHORT LEG
-// ---------------------------------------------------------
-    const calculateBestLeg = (player, playerIndex) => {
+    // FINALE BERECHNUNG FÜR SHORT LEG
+    // ---------------------------------------------------------
+    const calculateBestLeg = (player) => {
         // Verwende die persistente bestLeg-Statistik
         if (player.bestLeg && parseInt(player.bestLeg) > 0) return player.bestLeg;
-
-        // Fallback für ältere Daten
-        if (player.shortLeg && parseInt(player.shortLeg) > 0) return player.shortLeg;
-        if (player.stats && player.stats.bestLeg > 0) return player.stats.bestLeg;
-
         return 0;
     };
 
-    const p1BestLeg = calculateBestLeg(p1, 0);
-    const p2BestLeg = calculateBestLeg(p2, 1);
+    const p1BestLeg = calculateBestLeg(p1);
+    const p2BestLeg = calculateBestLeg(p2);
     // ---------------------------------------------------------
 
 

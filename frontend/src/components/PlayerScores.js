@@ -154,8 +154,9 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             }
         };
 
+        // FIX: Klasse "legs-section-bild1" hinzugefügt, damit CSS greift
         const LegsBlock = (
-            <div style={styles.legsContainer}>
+            <div className="legs-section-bild1" style={styles.legsContainer}>
                 {isSetMode ? (
                     <>
                         <span style={styles.legsLabel}>Sets</span>

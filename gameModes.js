@@ -5,7 +5,9 @@ class X01Game {
     this.startingScore = options.startingScore || 501;
     this.inMode = options.inMode || 'single'; // 'single', 'double', 'master'
     this.outMode = options.outMode || 'double'; // 'single', 'double', 'master'
-    this.distance = options.distance || 'leg'; // 'leg', 'set'
+    this.sets = options.sets || 0;
+    this.legs = options.legs || 1;
+    this.distance = (options.sets && options.sets > 0) ? 'set' : 'leg'; // 'leg', 'set'
     this.length = options.length || { type: 'firstTo', value: 1 }; // { type: 'firstTo'|'bestOf', value: number }
     this.scores = {}; // playerId -> remaining score
     this.turns = {}; // playerId -> array of turn scores
@@ -130,7 +132,9 @@ class CricketGame {
     this.targets = [15, 16, 17, 18, 19, 20, 25]; // Bullseye is 25
     this.inMode = options.inMode || 'single'; // 'single', 'double', 'master'
     this.outMode = options.outMode || 'double'; // 'single', 'double', 'master'
-    this.distance = options.distance || 'leg'; // 'leg', 'set'
+    this.sets = options.sets || 0;
+    this.legs = options.legs || 1;
+    this.distance = (options.sets && options.sets > 0) ? 'set' : 'leg'; // 'leg', 'set'
     this.length = options.length || { type: 'firstTo', value: 1 }; // { type: 'firstTo'|'bestOf', value: number }
     this.playerMarks = {}; // playerId -> { target: marks (0-3) }
     this.playerPoints = {}; // playerId -> points
