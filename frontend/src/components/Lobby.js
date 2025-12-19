@@ -147,6 +147,20 @@ const Lobby = memo(() => {
                 gameOptions
             };
             
+            // KRITISCH: Logge EXAKT was wir senden
+            console.log('[KRITISCH] Frontend - Sending createRoom:', {
+                roomName,
+                gameMode,
+                whoStarts: whoStartsUI,
+                startingScore,
+                sets,
+                legs,
+                winType,
+                outMode,
+                inMode,
+                gameOptions
+            });
+            
             if (socket) {
                 socket.emit('createRoom', roomData);
             } else {

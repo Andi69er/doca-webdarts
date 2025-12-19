@@ -113,20 +113,11 @@ const ensureStats = (player) => {
 
 // --- GAME INFO BAR COMPONENT ---
 const GameInfoBar = ({ gameState }) => {
-    // DEBUG: Logge was wir empfangen
-    console.log('[DEBUG] GameInfoBar - gameState:', gameState);
-    console.log('[DEBUG] GameInfoBar - gameOptions:', gameState?.gameOptions);
-    console.log('[DEBUG] GameInfoBar - mode:', gameState?.mode);
-    
     if (!gameState) return null;
 
     const { gameOptions, mode } = gameState;
     
-    // FALLBACK: Wenn keine gameOptions, versuche aus room data zu holen
-    if (!gameOptions) {
-        console.log('[DEBUG] GameInfoBar - No gameOptions found, returning null');
-        return null;
-    }
+    if (!gameOptions) return null;
     
     let infoText = '';
     if (mode === 'x01') {
@@ -513,8 +504,8 @@ function Game() {
     const handleGameState = useCallback((newState) => {
         if (!newState) return;
         
-        // DEBUG: Logge was wir empfangen
-        console.log('[DEBUG] handleGameState - Received newState:', {
+        // KRITISCH: Logge was wir empfangen
+        console.log('[KRITISCH] Frontend - handleGameState received:', {
             gameOptions: newState.gameOptions,
             mode: newState.mode,
             startingScore: newState?.gameOptions?.startingScore,
@@ -698,6 +689,7 @@ function Game() {
                 ...newState,
                 players: updatedPlayers,
                 gameStatus: newState.gameStatus || (prev?.gameStatus || 'waiting'),
+                gameOptions: newState.gameOptions || prev?.gameOptions, // KRITISCH: gameOptions explizit erhalten
                 gameState: {
                     ...(prev?.gameState || {}),
                     ...(newState.gameState || {}),
