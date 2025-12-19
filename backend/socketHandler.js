@@ -9,7 +9,6 @@ let finishedGames = [];
 
 function initializeSocket(io, gameManager, auth) {
     io.on('connection', (socket) => {
-        // Add user to connected users list
         const user = { id: socket.id, name: `User_${socket.id.substring(0, 4)}` };
         connectedUsers.push(user);
 
@@ -51,31 +50,57 @@ function initializeSocket(io, gameManager, auth) {
             socket.emit('runningGames', running);
         });
 
+        // ----------------------------------------------------------------------
+        // FIX: ROBUSTE RAUM-ERSTELLUNG (Übernimmt Lobby-Daten korrekt)
+        // ----------------------------------------------------------------------
         socket.on('createRoom', (roomData) => {
-            // FIX: Robuste Extraktion der Spieloptionen aus der Lobby
-            // Wenn roomData flach ist (direkte Eigenschaften), bauen wir gameOptions manuell
-            let rawOptions = (roomData && roomData.gameOptions) ? roomData.gameOptions : roomData;
-            
-            const gameOptions = {
-                startingScore: parseInt(rawOptions.startingScore, 10) || 501,
-                inMode: rawOptions.inMode || 'single',
-                outMode: rawOptions.outMode || 'double',
-                sets: parseInt(rawOptions.sets, 10) || 0,
-                legs: parseInt(rawOptions.legs, 10) || 1,
-                // Wenn 'length' fehlt, bauen wir es aus 'legs' (Standardverhalten First To)
-                length: rawOptions.length || { type: 'firstTo', value: parseInt(rawOptions.legs, 10) || 1 },
-                checkIn: rawOptions.checkIn || 'single',
-                checkOut: rawOptions.checkOut || 'double'
+            // Zusammenführen von direkten Daten und gameOptions, um Strukturprobleme zu beheben
+            const rawOptions = (roomData && roomData.gameOptions) ? { ...roomData, ...roomData.gameOptions } : roomData;
+
+            // Mapping Helper für Modes
+            const mapMode = (val) => {
+                if (!val) return 'single';
+                const lower = val.toString().toLowerCase();
+                if (lower.includes('double')) return 'double';
+                if (lower.includes('master')) return 'master';
+                return 'single';
             };
+
+            // Parsing der Werte mit Fallbacks, falls leer
+            const startScore = parseInt(rawOptions.startingScore, 10) || 501;
+            const sets = parseInt(rawOptions.sets, 10) || 0;
+            const legs = parseInt(rawOptions.legs, 10) || 1;
             
-            const startScore = gameOptions.startingScore;
+            // WinMode Analyse ("Best Of" vs "First To")
+            // Frontend sendet dies evtl. als 'winMode', 'siegerModus' oder im 'length' objekt
+            const rawWinMode = rawOptions.winMode || rawOptions.siegerModus || 'First To';
+            const isBestOf = rawWinMode.toString().toLowerCase().includes('best');
+
+            // Limit Value bestimmen (Sets haben Vorrang vor Legs)
+            const limitValue = sets > 0 ? sets : legs;
+
+            // Sauberes Options-Objekt bauen
+            const gameOptions = {
+                startingScore: startScore,
+                inMode: mapMode(rawOptions.inMode || rawOptions.modeStart), 
+                outMode: mapMode(rawOptions.outMode || rawOptions.modeEnd),
+                sets: sets,
+                legs: legs,
+                length: { 
+                    type: isBestOf ? 'bestOf' : 'firstTo', 
+                    value: limitValue 
+                },
+                // Zusätzliche Felder für Kompatibilität
+                checkIn: mapMode(rawOptions.inMode), 
+                checkOut: mapMode(rawOptions.outMode)
+            };
 
             const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
-                name: roomData.roomName,
-                gameMode: roomData.gameMode,
-                gameOptions: gameOptions, // Gesäuberte Optionen speichern
-                whoStarts: roomData.whoStarts, 
+                name: rawOptions.roomName || `Room ${Math.floor(Math.random()*100)}`,
+                gameMode: rawOptions.gameMode || 'x01',
+                gameOptions: gameOptions,
+                whoStarts: rawOptions.whoStarts || 'random', 
                 hostId: socket.id, 
                 maxPlayers: 2,
                 players: [{ id: socket.id, name: `Player ${Math.floor(Math.random() * 1000)}`}],
@@ -84,7 +109,9 @@ function initializeSocket(io, gameManager, auth) {
                 game: null 
             };
             
+            // Score initial setzen
             newRoom.players[0].score = startScore;
+            
             rooms.push(newRoom);
             socket.join(newRoom.id);
             socket.emit('roomCreated', { roomId: newRoom.id });
@@ -102,6 +129,7 @@ function initializeSocket(io, gameManager, auth) {
                     const oldId = room.players[existingPlayerIndex].id;
                     room.players[existingPlayerIndex].id = socket.id;
 
+                    // Update ID im GameState falls vorhanden
                     if (room.gameState && room.gameState.players) {
                         const gamePlayerIndex = room.gameState.players.findIndex(p => p.id === oldId);
                         if (gamePlayerIndex !== -1) {
@@ -119,6 +147,7 @@ function initializeSocket(io, gameManager, auth) {
                     };
                     socket.emit('gameState', gameState);
                 } else if (room.players.length < room.maxPlayers) {
+                    // FIX: StartScore aus den gespeicherten Options nehmen
                     const gameOptions = room.gameOptions || {};
                     const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
@@ -144,6 +173,7 @@ function initializeSocket(io, gameManager, auth) {
                     io.to(room.id).emit('game-state-update', room.gameState);
                     io.emit('updateRooms', rooms);
                 } else {
+                    // Spectator Logic
                     if (!room.spectators) room.spectators = [];
                     const newSpectator = {
                         id: socket.id,
@@ -195,10 +225,7 @@ function initializeSocket(io, gameManager, auth) {
             const { roomId, playerIdToKick } = data;
             const room = rooms.find(r => r.id === roomId);
             if (!room) return socket.emit('gameError', { error: 'Raum nicht gefunden.' });
-
-            if (room.hostId !== socket.id) {
-                return socket.emit('gameError', { error: 'Nur der Host kann Spieler kicken.' });
-            }
+            if (room.hostId !== socket.id) return socket.emit('gameError', { error: 'Nur der Host kann Spieler kicken.' });
 
             const playerToKick = room.players.find(p => p.id === playerIdToKick);
             if (!playerToKick) return socket.emit('gameError', { error: 'Spieler nicht im Raum gefunden.' });
@@ -225,7 +252,7 @@ function initializeSocket(io, gameManager, auth) {
             if (!isHost) return socket.emit('gameError', { error: 'Nur der Host kann das Spiel starten' });
             if (room.players.length < 2) return socket.emit('gameError', { error: 'Warte auf zweiten Spieler' });
 
-            // FIX: Optionen explizit aus dem Raum holen
+            // FIX: Optionen explizit aus dem Raum holen, nicht defaults
             const gameOptions = room.gameOptions || {};
             const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
@@ -236,16 +263,14 @@ function initializeSocket(io, gameManager, auth) {
                 room.game = new X01Game(gameOptions);
             }
             
-            // STATISTIK RESET: Hier werden Spielerdaten zurückgesetzt, aber persistente Statistiken bleiben erhalten!
+            // STATISTIK RESET: Neue Runde
             room.players.forEach(p => {
                 p.score = startScore;
-                
-                // Nicht-persistente Statistiken zurücksetzen (für das neue Leg/Spiel):
-                p.dartsThrown = 0; // Pro-Leg Darts
-                p.avg = "0.00"; // Pro-Leg Average
-                p.scores = []; // Pro-Leg Scores
-                p.legs = 0; // Wird vom Game-State verwaltet
-                p.sets = 0; // Wird vom Game-State verwaltet
+                p.dartsThrown = 0; 
+                p.avg = "0.00"; 
+                p.scores = []; 
+                p.legs = 0; 
+                p.sets = 0; 
                 p.history = [];
                 p.lastScore = 0;
                 p.scores180 = 0;
@@ -253,7 +278,8 @@ function initializeSocket(io, gameManager, auth) {
                 p.scores100plus = 0;
                 p.scores140plus = 0;
 
-                // FIX: Persistente Statistiken (Init falls nicht vorhanden)
+                // FIX: Persistente Statistiken (High Finish, Best Leg, Doubles)
+                // Diese NICHT nullen, wenn sie schon existieren
                 if (p.highestFinish === undefined) p.highestFinish = 0; 
                 if (p.bestLeg === undefined) p.bestLeg = null;
                 if (p.matchDartsThrown === undefined) p.matchDartsThrown = 0;
@@ -281,8 +307,7 @@ function initializeSocket(io, gameManager, auth) {
             room.game.initializePlayers(room.players.map(p => p.id), currentPlayerIndex);
             room.gameStarted = true;
 
-            // Common GameState props
-            const commonGameState = {
+            const baseState = {
                 gameStatus: 'active',
                 lastThrow: null,
                 hostId: room.hostId,
@@ -295,25 +320,18 @@ function initializeSocket(io, gameManager, auth) {
 
             if (room.gameMode === 'CricketGame') {
                 room.gameState = {
-                    ...commonGameState,
+                    ...baseState,
                     mode: 'cricket',
                     players: room.players.map((p, index) => ({
                         ...p,
                         points: 0,
                         marks: {15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0},
-                        isActive: index === currentPlayerIndex,
-                        // Stats passing
-                        doublesHit: p.doublesHit,
-                        doublesThrown: p.doublesThrown,
-                        highestFinish: p.highestFinish,
-                        bestLeg: p.bestLeg,
-                        matchDartsThrown: p.matchDartsThrown,
-                        matchPointsScored: p.matchPointsScored
+                        isActive: index === currentPlayerIndex
                     }))
                 };
             } else {
                 room.gameState = {
-                    ...commonGameState,
+                    ...baseState,
                     mode: 'x01',
                     history: [],
                     turns: {},
@@ -322,14 +340,7 @@ function initializeSocket(io, gameManager, auth) {
                         score: startScore,
                         isActive: index === currentPlayerIndex,
                         avg: '0.00',
-                        scores: [],
-                        // Stats passing
-                        doublesHit: p.doublesHit,
-                        doublesThrown: p.doublesThrown,
-                        highestFinish: p.highestFinish,
-                        bestLeg: p.bestLeg,
-                        matchDartsThrown: p.matchDartsThrown,
-                        matchPointsScored: p.matchPointsScored
+                        scores: []
                     }))
                 };
             }
@@ -338,6 +349,9 @@ function initializeSocket(io, gameManager, auth) {
             io.to(roomId).emit('game-started', room.gameState);
         });
 
+        // ----------------------------------------------------------------------
+        // SCORE INPUT & STATISTIK-LOGIK
+        // ----------------------------------------------------------------------
         socket.on('score-input', (data) => {
             const { roomId, score, userId } = data;
             const room = rooms.find(r => r.id === roomId);
@@ -354,7 +368,6 @@ function initializeSocket(io, gameManager, auth) {
             }
 
             try {
-                // Vorherigen Stand sichern für Logic-Checks
                 const preThrowGameState = room.game.getGameState();
                 const scoreBeforeThrow = preThrowGameState.scores[userId] || 0;
 
@@ -369,10 +382,9 @@ function initializeSocket(io, gameManager, auth) {
                 
                 const updatedPlayers = room.players.map((p, idx) => {
                     const isCurrentPlayer = p.id === userId;
-                    
                     const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
 
-                    // Average-Berechnung
+                    // Average
                     let average = p.avg || "0.00";
                     if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
                         const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
@@ -382,10 +394,9 @@ function initializeSocket(io, gameManager, auth) {
                         }
                     }
 
-                    // Live Statistics Updates
                     let newScores = p.scores || [];
                     
-                    // FIX: Persistente Stats holen
+                    // Stats laden
                     let newHighestFinish = p.highestFinish || 0;
                     let newBestLeg = p.bestLeg || null;
                     let newDoublesHit = p.doublesHit || 0;
@@ -405,11 +416,10 @@ function initializeSocket(io, gameManager, auth) {
                         if (score >= 100 && score < 180) newScores100plus += 1;
                         if (score >= 140 && score < 180) newScores140plus += 1;
 
-                        // Akkumuliere Match-Statistiken
                         newMatchDarts += (room.gameMode === 'CricketGame' ? 1 : 3);
                         newMatchPoints += score;
                         
-                        // FIX: High Finish Check bei Checkout (Score == Finish wenn 0 Rest)
+                        // FIX: HIGH FINISH LOGIK (Checkt direkt bei 0 Score)
                         if (newGameStateFromGame.scores[p.id] === 0) {
                              if (score > newHighestFinish) {
                                 newHighestFinish = score;
@@ -417,7 +427,7 @@ function initializeSocket(io, gameManager, auth) {
                         }
                     }
 
-                    // Update Persistent data in room object
+                    // Update Persistenz
                     p.matchDartsThrown = newMatchDarts;
                     p.matchPointsScored = newMatchPoints;
                     p.highestFinish = newHighestFinish;
@@ -436,6 +446,7 @@ function initializeSocket(io, gameManager, auth) {
                         lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
                         legs: p.legs || 0,
                         scores: newScores,
+                        // Stats mitsenden
                         highestFinish: newHighestFinish,
                         scores180: newScores180,
                         scores60plus: newScores60plus,
@@ -443,7 +454,6 @@ function initializeSocket(io, gameManager, auth) {
                         scores140plus: newScores140plus,
                         doublesHit: newDoublesHit,
                         doublesThrown: newDoublesThrown,
-                        lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
                         bestLeg: newBestLeg,
                         matchDartsThrown: newMatchDarts,
                         matchPointsScored: newMatchPoints
@@ -451,7 +461,7 @@ function initializeSocket(io, gameManager, auth) {
                 });
                 room.players = updatedPlayers;
 
-                // 4. Abfragen generieren
+                // Queries
                 const currentScore = newGameStateFromGame.scores[userId];
                 const canCheckoutFrom = (s) => {
                      if (s > 170) return false;
@@ -465,7 +475,6 @@ function initializeSocket(io, gameManager, auth) {
                 
                 if (room.gameMode !== 'CricketGame') {
                     if (currentScore === 0) {
-                        // CHECKOUT
                         const player = room.players.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
@@ -473,7 +482,6 @@ function initializeSocket(io, gameManager, auth) {
                             startScore: scoreBeforeThrow
                         };
                     } else if (inFinishRange && currentScore > 1) {
-                        // VERPASST
                         doubleAttemptsQuery = {
                             type: 'attempts',
                             playerId: userId,
@@ -483,7 +491,6 @@ function initializeSocket(io, gameManager, auth) {
                             startScore: scoreBeforeThrow
                         };
                     } else if (currentScore < 0 || currentScore === 1) {
-                        // BUST
                         if (inFinishRange) {
                             doubleAttemptsQuery = {
                                 type: 'bust',
@@ -497,7 +504,6 @@ function initializeSocket(io, gameManager, auth) {
                     }
                 }
 
-                // 5. Update-Payload
                 const updateData = {
                     mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                     players: updatedPlayers,
@@ -514,9 +520,8 @@ function initializeSocket(io, gameManager, auth) {
                     dartsThrownInTurn: result.dartsThrownInTurn,
                     doubleAttemptsQuery: doubleAttemptsQuery,
                     checkoutQuery: checkoutQuery,
-                    // FIX: Explizit Sets/Legs senden
-                    legsWon: room.game.legsWon,
-                    setsWon: room.game.setsWon,
+                    legsWon: room.game.legsWon, // WICHTIG
+                    setsWon: room.game.setsWon, // WICHTIG
                     turns: room.game.turns,
                     gameOptions: room.gameOptions
                 };
@@ -524,9 +529,7 @@ function initializeSocket(io, gameManager, auth) {
                 if (checkoutQuery) {
                     updateData.winner = null;
                     updateData.gameStatus = 'active';
-                    if (updateData.gameState) {
-                        updateData.gameState = { ...updateData.gameState, winner: null };
-                    }
+                    if (updateData.gameState) updateData.gameState = { ...updateData.gameState, winner: null };
                 }
 
                 room.gameState = { ...updateData };
@@ -562,10 +565,7 @@ function initializeSocket(io, gameManager, auth) {
             if (message.roomId) {
                 io.to(message.roomId).emit('receiveMessage', message);
             } else {
-                const lobbyMessage = {
-                    ...message,
-                    user: `User_${socket.id.substring(0, 4)}` 
-                };
+                const lobbyMessage = { ...message, user: `User_${socket.id.substring(0, 4)}` };
                 io.emit('receiveMessage', lobbyMessage);
             }
         });
@@ -578,22 +578,24 @@ function initializeSocket(io, gameManager, auth) {
             const actualDartsUsed = parseInt(dartCount, 10);
             
             const gameStateInner = room.game.getGameState();
-            const playerIdx = room.game.currentPlayerIndex;
+            const playerIdx = room.game.currentPlayerIndex; // Der Spieler der gecheckt hat ist noch dran
             const player = room.players[playerIdx];
 
             if (player) {
+                // Korrektur Darts
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
+
+                // Doppel Quote Update (100% für den letzten Wurf)
                 player.doublesHit = (player.doublesHit || 0) + 1;
                 player.doublesThrown = (player.doublesThrown || 0) + 1;
-                
-                // FIX: Short Leg Logic (Best Leg)
-                // Wenn noch kein Best Leg (null/0) ODER das neue Leg schneller war
+
+                // FIX: Short Leg Logik
+                // Wenn noch kein Best Leg existiert (0/null) ODER das aktuelle Leg kürzer war
                 if (!player.bestLeg || player.dartsThrown < player.bestLeg) {
                     player.bestLeg = player.dartsThrown;
                 }
                 
-                // FIX: High Finish Logic
-                // Der letzte geworfene Score (player.lastScore) ist das Finish
+                // High Finish wird schon bei score-input getrackt, aber Sicherheit:
                 if (player.lastScore > (player.highestFinish || 0)) {
                     player.highestFinish = player.lastScore;
                 }
@@ -603,11 +605,10 @@ function initializeSocket(io, gameManager, auth) {
                 room.game.setCheckoutDarts(dartCount);
             }
             
-            // Check Win Manually to update Legs/Sets in Game Class
+            // Win Condition in Logic prüfen (aktualisiert legsWon/setsWon)
             room.game.checkWinCondition(player.id);
 
             room.gameState = room.game.getGameState();
-            
             if (room.gameState) {
                 room.gameState.checkoutQuery = null;
                 room.gameState.doubleAttemptsQuery = null;
@@ -637,7 +638,6 @@ function initializeSocket(io, gameManager, auth) {
             let attemptsToAdd = 0;
             
             if (queryType === 'checkout') {
-                // Should use checkout-selection path usually, but backup:
                 const actualDartsUsed = parseInt(response) + 1;
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
                 hitsToAdd = 1;
@@ -696,6 +696,7 @@ function initializeSocket(io, gameManager, auth) {
                 player.marks = {}; 
                 player.lastScore = 0;
                 
+                // Full Reset
                 player.doublesHit = 0;
                 player.doublesThrown = 0;
                 player.bestLeg = null;
