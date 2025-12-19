@@ -193,7 +193,7 @@ class X01Game {
     }
 
     getGameState() {
-        return {
+        const gameState = {
             scores: this.scores,
             currentPlayerIndex: this.currentPlayerIndex,
             winner: this.winner,
@@ -203,6 +203,15 @@ class X01Game {
             checkoutDarts: this.checkoutDarts,
             gameOptions: this.gameOptions, // KRITISCH: Game Options für Frontend-Display
         };
+        
+        // DEBUG: Logge was wir zurückgeben
+        console.log('[DEBUG] X01Game.getGameState() - Returning:', {
+            gameOptions: gameState.gameOptions,
+            startingScore: gameState.gameOptions?.startingScore,
+            mode: 'x01'
+        });
+        
+        return gameState;
     }
 
     setCheckoutDarts(dartCount) {

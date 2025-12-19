@@ -113,9 +113,20 @@ const ensureStats = (player) => {
 
 // --- GAME INFO BAR COMPONENT ---
 const GameInfoBar = ({ gameState }) => {
-    if (!gameState || !gameState.gameOptions) return null;
+    // DEBUG: Logge was wir empfangen
+    console.log('[DEBUG] GameInfoBar - gameState:', gameState);
+    console.log('[DEBUG] GameInfoBar - gameOptions:', gameState?.gameOptions);
+    console.log('[DEBUG] GameInfoBar - mode:', gameState?.mode);
+    
+    if (!gameState) return null;
 
     const { gameOptions, mode } = gameState;
+    
+    // FALLBACK: Wenn keine gameOptions, versuche aus room data zu holen
+    if (!gameOptions) {
+        console.log('[DEBUG] GameInfoBar - No gameOptions found, returning null');
+        return null;
+    }
     
     let infoText = '';
     if (mode === 'x01') {
@@ -501,6 +512,15 @@ function Game() {
     // Game State Handling
     const handleGameState = useCallback((newState) => {
         if (!newState) return;
+        
+        // DEBUG: Logge was wir empfangen
+        console.log('[DEBUG] handleGameState - Received newState:', {
+            gameOptions: newState.gameOptions,
+            mode: newState.mode,
+            startingScore: newState?.gameOptions?.startingScore,
+            gameMode: newState.gameMode,
+            gameStatus: newState.gameStatus
+        });
         
         // Echo-Schutz: Ignoriere Updates wenn wir ein lokales Update haben
         const myId = socket?.id || user?.id;

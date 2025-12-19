@@ -61,10 +61,9 @@ socket.on('createRoom', (roomData) => {
             const legs = parseInt(flatData.legs, 10) || 1;
             
             // Best Of / First To Logik
-            // Wenn sets > 0 ist, ist es meist "Best Of Sets" oder "First To Sets", je nach Frontend Logik.
-            // Wir nutzen hier eine sichere Logik:
-            const winMode = (flatData.winMode || flatData.siegerModus || 'First To');
-            const isBestOf = winMode.toLowerCase().includes('best');
+            // Frontend sendet winType ('firstTo' oder 'bestOf'), Backend erwartet winMode
+            const winType = flatData.winType || 'firstTo';
+            const isBestOf = winType === 'bestOf';
 
             const gameOptions = {
                 startingScore: startScore,
@@ -93,6 +92,16 @@ socket.on('createRoom', (roomData) => {
                 gameState: null, 
                 game: null 
             };
+            
+            // DEBUG: Logge das komplette Room-Objekt
+            console.log('[DEBUG] Backend - Created room object:', {
+                id: newRoom.id,
+                name: newRoom.name,
+                gameMode: newRoom.gameMode,
+                gameOptions: newRoom.gameOptions,
+                whoStarts: newRoom.whoStarts,
+                playerCount: newRoom.players.length
+            });
             
             newRoom.players[0].score = startScore;
             rooms.push(newRoom);
@@ -357,7 +366,15 @@ const gameState = room.gameState || {
                 };
             }
             
-            room.game.playerIds = room.players.map(p => p.id);
+room.game.playerIds = room.players.map(p => p.id);
+            
+            // DEBUG: Logge was wir senden
+            console.log('[DEBUG] Backend - Sending game-started:', {
+                gameOptions: room.gameState.gameOptions,
+                mode: room.gameState.mode,
+                startingScore: room.gameState.gameOptions?.startingScore
+            });
+            
             io.to(roomId).emit('game-started', room.gameState);
         });
 
@@ -563,7 +580,14 @@ const gameState = room.gameState || {
                     }
                 }
 
-                room.gameState = { ...updateData };
+                // KRITISCH: Preserve room metadata when updating game state
+                room.gameState = {
+                    ...room.gameState, // Preserve existing room metadata
+                    ...updateData, // Update with new data
+                    gameOptions: room.gameOptions, // Ensure gameOptions are preserved
+                    whoStarts: room.whoStarts, // Ensure whoStarts is preserved
+                    hostId: room.hostId // Ensure hostId is preserved
+                };
                 io.to(roomId).emit('game-state-update', updateData);
 
             } catch (error) {
@@ -648,7 +672,15 @@ const gameState = room.gameState || {
             // Win Condition manuell auslösen um Legs/Sets in Game Logic zu updaten
             room.game.checkWinCondition(player.id);
 
-            room.gameState = room.game.getGameState();
+            // KRITISCH: Preserve room metadata when updating game state
+            const gameInternalState = room.game.getGameState();
+            room.gameState = {
+                ...room.gameState, // Preserve existing room metadata
+                ...gameInternalState, // Update with game internal state
+                gameOptions: room.gameOptions, // Ensure gameOptions are preserved
+                whoStarts: room.whoStarts, // Ensure whoStarts is preserved
+                hostId: room.hostId // Ensure hostId is preserved
+            };
             
             if (room.gameState) {
                 room.gameState.checkoutQuery = null;
