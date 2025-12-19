@@ -10,21 +10,16 @@ const LiveStatistics = ({ gameState }) => {
     const p2 = gameState.players[1] || {};
 
     const val = (v, suffix = '') => (v !== undefined && v !== null ? v + suffix : '0' + suffix);
-    const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
-    // ---------------------------------------------------------
-    // FINALE BERECHNUNG FÜR SHORT LEG
-    // ---------------------------------------------------------
+    // FIX: Berechnung Short Leg (Best Leg)
     const calculateBestLeg = (player) => {
-        // Verwende die persistente bestLeg-Statistik
+        // Nutze persistierte Statistik vom Backend
         if (player.bestLeg && parseInt(player.bestLeg) > 0) return player.bestLeg;
         return 0;
     };
 
     const p1BestLeg = calculateBestLeg(p1);
     const p2BestLeg = calculateBestLeg(p2);
-    // ---------------------------------------------------------
-
 
     // First 9 Average
     const calculateFirst9Avg = (player) => {
@@ -40,29 +35,33 @@ const LiveStatistics = ({ gameState }) => {
     const p1First9Avg = calculateFirst9Avg(p1);
     const p2First9Avg = calculateFirst9Avg(p2);
 
-    // Score Ranges & Stats
-    const getStat = (p, ...keys) => {
-        for (let key of keys) {
-            if (p[key] !== undefined) return p[key];
-            if (p.stats && p.stats[key] !== undefined) return p.stats[key];
-        }
+    // Stats sicher abrufen
+    const getStat = (p, key) => {
+        if (p[key] !== undefined) return p[key];
         return 0;
     };
 
-    const p1Scores60Plus = getStat(p1, 'scores60plus', 'scores60s');
-    const p2Scores60Plus = getStat(p2, 'scores60plus', 'scores60s');
-    const p1Scores100Plus = getStat(p1, 'scores100plus', 'scores100s');
-    const p2Scores100Plus = getStat(p2, 'scores100plus', 'scores100s');
-    const p1Scores140Plus = getStat(p1, 'scores140plus', 'scores140s');
-    const p2Scores140Plus = getStat(p2, 'scores140plus', 'scores140s');
-    const p1Scores180 = getStat(p1, 'scores180', 'scores180s');
-    const p2Scores180 = getStat(p2, 'scores180', 'scores180s');
-    const p1HighFinish = getStat(p1, 'highestFinish', 'highFinish');
-    const p2HighFinish = getStat(p2, 'highestFinish', 'highFinish');
+    const p1Scores60Plus = getStat(p1, 'scores60plus');
+    const p2Scores60Plus = getStat(p2, 'scores60plus');
+    const p1Scores100Plus = getStat(p1, 'scores100plus');
+    const p2Scores100Plus = getStat(p2, 'scores100plus');
+    const p1Scores140Plus = getStat(p1, 'scores140plus');
+    const p2Scores140Plus = getStat(p2, 'scores140plus');
+    const p1Scores180 = getStat(p1, 'scores180');
+    const p2Scores180 = getStat(p2, 'scores180');
+    
+    // FIX: High Finish direkt vom Objekt nehmen (wird im Backend persistiert)
+    const p1HighFinish = p1.highestFinish || 0;
+    const p2HighFinish = p2.highestFinish || 0;
 
-    // Verwende persistente Match-Statistiken für Doppelquote
-    const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
-    const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
+    // FIX: Doppelquote
+    const p1Doubles = (p1.doublesThrown > 0) 
+        ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` 
+        : '0% (0/0)';
+        
+    const p2Doubles = (p2.doublesThrown > 0) 
+        ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` 
+        : '0% (0/0)';
 
     // Berechne Match Average aus persistenten Statistiken
     const p1MatchAvg = p1.matchDartsThrown && p1.matchPointsScored ? (p1.matchPointsScored / (p1.matchDartsThrown / 3)).toFixed(2) : '0.00';

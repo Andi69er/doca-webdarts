@@ -3,41 +3,46 @@ import React, { useState, useEffect, useCallback } from 'react';
 const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestions, isOpponentLocked, isMyTurn, canUseUndo, gameRunning }) => {
     const [currentInput, setCurrentInput] = useState('');
 
-    // Styles (Mittelgroß, fixiert um Springen zu verhindern)
+    // Styles - FIXIERTE GRÖSSEN um Springen zu verhindern
     const styles = {
         wrapper: {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            width: '200px', margin: '0 auto', height: '100%', overflow: 'hidden', padding: '10px'
+            width: '200px', margin: '0 auto', height: '100%', overflow: 'hidden', padding: '5px'
         },
-        // FIX: Feste Höhe, overflow hidden und white-space nowrap verhindern Layout-Springen
+        // Feste Höhe für Status, Text wird abgeschnitten falls zu lang, kein Layout-Shift
         status: { 
             fontSize: '0.8rem', 
             color: isActive ? '#4CAF50' : '#888', 
             marginBottom: '5px', 
             textAlign: 'center', 
             height: '20px', 
-            minHeight: '20px', 
-            maxHeight: '20px',
             lineHeight: '20px',
             fontWeight: 'bold',
-            overflow: 'hidden',
             whiteSpace: 'nowrap',
+            overflow: 'hidden',
             textOverflow: 'ellipsis',
             width: '100%'
         },
+        // Feste Höhe für Preview
         preview: {
             width: '100%', height: '50px', background: 'white', borderRadius: '8px',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem',
             fontWeight: 'bold', color: '#000', marginBottom: '10px', opacity: isLocked ? 0.6 : 1
         },
+        // Grid Fixierung
         grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px', width: '100%', marginBottom: '5px' },
         btn: {
             height: '45px', fontSize: '1.4rem', fontWeight: 'bold', border: 'none', borderRadius: '6px',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+            padding: 0, margin: 0 // Reset padding/margin
         },
         btnNum: { backgroundColor: '#2a2a3e' },
         btnClear: { backgroundColor: '#d9534f' },
         btnEnter: { backgroundColor: '#4CAF50' },
+        // Checkout Suggestions Container mit fester Höhe
+        suggestions: {
+            color:'#ffd700', marginBottom:'5px', fontSize:'0.75rem', height:'16px', lineHeight:'16px', overflow:'hidden', width:'100%', textAlign:'center'
+        },
         btnUndo: { backgroundColor: '#d9534f', width: '100%', height: '35px', fontSize: '1rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', color: 'white', marginTop: '5px' }
     };
 
@@ -72,7 +77,6 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
             }
 
             if (isOpponentLocked) return;
-
             if (!gameRunning) return;
             if (!isActive) return;
             if (isLocked) return;
@@ -98,7 +102,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
             <div style={styles.status}>
                 {!gameRunning ? "Warte auf Start" :
                  canUseUndo ? "Undo möglich (U)" :
-                 isOpponentLocked ? "Warte 5s..." :
+                 isOpponentLocked ? "Warte..." :
                  (!isActive ? "Gegner ist dran" :
                  (isLocked ? "Gesendet..." : "Du bist dran!"))}
             </div>
@@ -107,9 +111,13 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
                 {currentInput || "0"}
             </div>
 
-            {checkoutSuggestions && checkoutSuggestions.length > 0 && isActive && (
-                <div style={{color:'#ffd700', marginBottom:'5px', fontSize:'0.8rem', height:'15px', overflow:'hidden'}}>{checkoutSuggestions.map(s => `${s.score}: ${s.checkout}`).join(' | ')}</div>
-            )}
+            {/* Feste Höhe für Suggestions, damit nichts springt wenn sie erscheinen/verschwinden */}
+            <div style={styles.suggestions}>
+                {checkoutSuggestions && checkoutSuggestions.length > 0 && isActive ? 
+                    checkoutSuggestions.map(s => `${s.score}: ${s.checkout}`).join(' | ') : 
+                    '\u00A0' // Non-breaking space um Höhe zu halten
+                }
+            </div>
 
             <div style={styles.grid}>
                 {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => {

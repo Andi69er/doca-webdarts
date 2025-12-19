@@ -97,43 +97,42 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
         const isMyPlayer = user && user.id === player.id;
         const isHost = gameState.hostId === user?.id;
         const checkoutText = getCheckoutText(player.score);
+        
+        // FIX: isSetMode richtig erkennen
         const isSetMode = (gameState?.gameOptions?.sets || 0) > 0;
 
         // --- STYLES ---
         const styles = {
-            // Container für beide Stats nebeneinander
             statsWrapper: {
                 display: 'flex',
-                flexDirection: 'row', // Nebeneinander
-                gap: '25px', // Platz zwischen den beiden Blöcken
+                flexDirection: 'row',
+                gap: '25px',
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '0 10px'
             },
-            // Ein einzelner Stat-Block (Icon oben, Wert unten)
             statBox: {
                 display: 'flex',
-                flexDirection: 'column', // Untereinander
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center'
             },
             iconTarget: {
-                fontSize: '2.8rem', // Großes Target Emoji
+                fontSize: '2.8rem',
                 lineHeight: '1',
-                marginBottom: '5px' // Abstand zum Wert
+                marginBottom: '5px'
             },
             iconSvg: {
-                width: '45px', // Großes Pfeil SVG
+                width: '45px',
                 height: '45px',
-                marginBottom: '5px' // Abstand zum Wert
+                marginBottom: '5px'
             },
             statValue: {
-                fontSize: '1.8rem', // Große Schrift
+                fontSize: '1.8rem',
                 fontWeight: 'bold',
                 lineHeight: '1',
                 color: '#fff'
             },
-            // Styles für Legs/Sets
             legsLabel: {
                 display: 'block',
                 fontSize: '0.9rem',
@@ -154,13 +153,18 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             }
         };
 
-        // FIX: Klasse "legs-section-bild1" hinzugefügt, damit CSS greift
+        // FIX: Anzeige von Sets UND Legs wenn Set Mode aktiv ist, oder nur Legs
         const LegsBlock = (
             <div className="legs-section-bild1" style={styles.legsContainer}>
                 {isSetMode ? (
                     <>
-                        <span style={styles.legsLabel}>Sets</span>
-                        <span style={styles.legsCount}>{gameState?.setsWon?.[player.id] ?? 0}</span>
+                        <div style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
+                            <span style={{fontSize:'0.7rem', opacity:0.7}}>SETS</span>
+                            <span style={{fontSize:'1.8rem', fontWeight:'bold'}}>{gameState?.setsWon?.[player.id] ?? 0}</span>
+                            <div style={{height:'1px', width:'30px', background:'#555', margin:'2px 0'}}></div>
+                            <span style={{fontSize:'0.7rem', opacity:0.7}}>LEGS</span>
+                            <span style={{fontSize:'1.4rem', fontWeight:'bold'}}>{gameState?.legsWon?.[player.id] ?? 0}</span>
+                        </div>
                     </>
                 ) : (
                     <>
@@ -171,7 +175,6 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             </div>
         );
 
-        // --- Block: Letzter Wurf (Icon oben, Wert unten) ---
         const LastScoreBlock = (
             <div style={styles.statBox}>
                 <span style={styles.iconTarget}>🎯</span>
@@ -179,7 +182,6 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             </div>
         );
 
-        // --- Block: Darts (Icon oben, Wert unten) ---
         const DartsThrownBlock = (
             <div style={styles.statBox}>
                 <svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={styles.iconSvg}>
@@ -192,7 +194,6 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             </div>
         );
 
-        // Wrapper der die beiden Blöcke enthält
         const StatsContainer = (
             <div style={styles.statsWrapper}>
                 {LastScoreBlock}
@@ -240,20 +241,12 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                     >{player.name} {isMyPlayer ? '(Du)' : ''}</h3>
                 )}
 
-                {/* Grid Layout für den Inhalt: Stats, Score, Legs */}
                 <div className="score-details-bild1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px' }}>
-                    
-                    {/* Linker Inhalt: Wenn Rechte Karte -> Stats, wenn Linke Karte -> Legs */}
                     {isRightSide ? StatsContainer : LegsBlock}
-                    
-                    {/* Mittlerer Inhalt: Hauptscore */}
                     <div className="main-score-wrapper-bild1">
                         <div className="main-score-bild1">{player.score}</div>
                     </div>
-                    
-                    {/* Rechter Inhalt: Wenn Rechte Karte -> Legs, wenn Linke Karte -> Stats */}
                     {isRightSide ? LegsBlock : StatsContainer}
-
                 </div>
 
                 <div className="checkout-path">{checkoutText}</div>
