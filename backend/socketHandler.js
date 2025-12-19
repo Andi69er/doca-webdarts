@@ -26,7 +26,7 @@ function createFullGameStateUpdate(room) {
             isActive: internalState.currentPlayerIndex === idx
         })),
         gameStatus: internalState.winner ? 'finished' : 'active',
-        turns: room.game.turns,
+        turns: internalState.turns || [],
         legsWon: room.game.legsWon,
         setsWon: room.game.setsWon,
         gameOptions: room.gameOptions,
@@ -311,15 +311,15 @@ socket.on('start-game', (data) => {
             console.log('3. Room gameOptions:', JSON.stringify(room.gameOptions, null, 2));
             
             // KORREKTUR 1: Wer darf das Spiel starten?
-            // Der Host darf immer starten. Wenn der Gegner starten soll, darf dieser es auch.
-            const hostId = room.hostId;
-            const opponent = room.players.find(p => p.id !== hostId);
-            const isHostRequest = userId === hostId;
-            const isOpponentRequest = opponent && userId === opponent.id;
-
-            // Spiel darf gestartet werden, wenn der Anfragende der Host ist,
-            // ODER wenn der Gegner starten soll UND die Anfrage vom Gegner kommt.
-            const canStart = isHostRequest || (room.whoStarts === 'opponent' && isOpponentRequest);
+            // FIX: Nur der tatsächlich zugewiesene Starter darf starten.
+            let authorizedStarterId = room.hostId;
+            if (room.whoStarts === 'opponent') {
+                const opponent = room.players.find(p => p.id !== room.hostId);
+                if (opponent) authorizedStarterId = opponent.id;
+            }
+            
+            const canStart = userId === authorizedStarterId;
+            console.log(`[START-GAME] Request by ${userId}. Authorized: ${authorizedStarterId}. Allowed: ${canStart}`);
 
             if (!canStart) {
                 console.log('ERROR: User not authorized to start game.');
@@ -429,7 +429,6 @@ socket.on('start-game', (data) => {
                     ...commonGameState,
                     mode: 'x01',
                     history: [],
-                    turns: {},
                     players: room.players.map((p, index) => ({
                         ...p,
                         score: startScore,
@@ -439,7 +438,6 @@ socket.on('start-game', (data) => {
                         isActive: index === currentPlayerIndex,
                         legs: 0,
                         scores: [],
-                        turns: [],
                         doublesHit: p.doublesHit,
                         doublesThrown: p.doublesThrown,
                         scores180: 0,
@@ -601,7 +599,7 @@ room.game.playerIds = room.players.map(p => p.id);
 
                 // Zusätzliche Infos für Animationen
                 updateData.lastThrow = { playerId: userId, score };
-                updateData.dartsThrownInTurn = result.dartsThrownInTurn;
+                updateData.dartsThrownInTurn = result.dartsThrownInTurn || 0;
 
                 // Wenn Checkout-Popup, Spiel aktiv lassen damit Popup sichtbar ist
                 if (updateData.checkoutQuery || updateData.doubleAttemptsQuery) {

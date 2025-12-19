@@ -79,6 +79,15 @@ class X01Game {
         if (!isBust) {
             this.scores[playerId] = newScoreAfterThrow;
         }
+        
+        // FIX: Wurf zur Historie hinzufügen
+        this.history.push({
+            playerId: playerId,
+            score: scoreValue,
+            remainingScore: isBust ? currentScore : newScoreAfterThrow,
+            isBust: isBust,
+            dartsThrown: this.dartsThrownInTurn + 1
+        });
 
         // Prüfe auf Gewinner
         if (newScoreAfterThrow === 0) {
@@ -118,21 +127,22 @@ class X01Game {
                 this.gameWinner = playerId;
                 this.winner = playerId; // Setze den finalen Gewinner
                 console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
-                return { valid: true, bust: false, winner: this.gameWinner, legWinner: this.legWinner };
+                return { valid: true, bust: false, winner: this.gameWinner, legWinner: this.legWinner, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
             }
             
             // Wenn kein Set gewonnen wurde, aber ein Leg, starte das nächste Leg
             if (!this.winner) {
                 this.startNextLeg();
             }
-            return { valid: true, bust: false, winner: null, legWinner: this.legWinner };
+            return { valid: true, bust: false, winner: null, legWinner: this.legWinner, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
         }
     
         // Nach jeder Eingabe (Turn) zum nächsten Spieler wechseln
+        const dartsThrown = this.dartsThrownInTurn + 1;
         this.nextTurn();
         console.log(`[X01Game] Zug beendet, nächster Spieler Index: ${this.currentPlayerIndex}`);
     
-        return { valid: true, bust: false, winner: null };
+        return { valid: true, bust: false, winner: null, dartsThrownInTurn: dartsThrown };
     }
 
     startNextLeg() {
@@ -200,6 +210,7 @@ class X01Game {
             legsWon: this.legsWon,
             setsWon: this.setsWon,
             history: this.history,
+            turns: this.history, // FIX: Frontend erwartet 'turns', wir mappen history darauf
             checkoutDarts: this.checkoutDarts,
             gameOptions: this.gameOptions, // KRITISCH: Game Options für Frontend-Display
         };
@@ -454,6 +465,7 @@ class CricketGame {
             setsWon: this.setsWon,
             winner: this.winner,
             history: this.history,
+            turns: this.history, // FIX: Konsistenz für Frontend
             gameOptions: this.gameOptions, // KRITISCH: Game Options für Frontend-Display
         };
     }
