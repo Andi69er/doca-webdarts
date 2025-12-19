@@ -542,7 +542,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 if (room.gameMode !== 'CricketGame') {
                     if (currentScore === 0) {
                         // CHECKOUT
-                        const player = updatedPlayersForFrontend.find(p => p.id === userId);
+                        const player = playerToUpdate; // Nehmen Sie den bereits gefundenen Spieler
                         checkoutQuery = {
                             player: player,
                             score: score,
@@ -550,6 +550,7 @@ room.game.playerIds = room.players.map(p => p.id);
                         };
                     } else if (inFinishRange && currentScore > 1) {
                         // VERPASST
+                        checkoutQuery = null; // Stellen Sie sicher, dass keine Checkout-Abfrage gesendet wird
                         doubleAttemptsQuery = {
                             type: 'attempts',
                             playerId: userId,
@@ -560,6 +561,7 @@ room.game.playerIds = room.players.map(p => p.id);
                         };
                     } else if (currentScore < 0 || currentScore === 1) {
                         // BUST
+                        checkoutQuery = null; // Stellen Sie sicher, dass keine Checkout-Abfrage gesendet wird
                         if (inFinishRange) {
                             doubleAttemptsQuery = {
                                 type: 'bust',
@@ -608,6 +610,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 // KRITISCH: Preserve room metadata when updating game state
                 room.gameState = {
                     ...room.gameState, // Preserve existing room metadata
+                    turns: room.game.turns, // Darthistorie explizit hinzufügen
                     ...updateData, // Update with new data
                     gameOptions: room.gameOptions, // Ensure gameOptions are preserved
                     whoStarts: room.whoStarts, // Ensure whoStarts is preserved
@@ -657,7 +660,7 @@ room.game.playerIds = room.players.map(p => p.id);
             const { roomId, dartCount } = data;
             const room = rooms.find(r => r.id === roomId);
             if (!room || !room.game) return;
-
+        
             const actualDartsUsed = parseInt(dartCount, 10);
             
             // Spieler finden (der gewonnen hat)
@@ -665,7 +668,7 @@ room.game.playerIds = room.players.map(p => p.id);
             const playerIdx = room.game.currentPlayerIndex;
             const player = room.players[playerIdx];
 
-            if (player) {
+            if (player && player.id) { // Sicherstellen, dass der Spieler gültig ist
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
 
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
@@ -673,21 +676,22 @@ room.game.playerIds = room.players.map(p => p.id);
                 if (player.dartsThrown > 0) {
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
-
+        
                 // DOPPELSTATISTIK: 1 Hit, 1 Attempt
                 player.doublesHit = (player.doublesHit || 0) + 1;
                 player.doublesThrown = (player.doublesThrown || 0) + 1;
-
+        
                 // REPARATUR: BEST LEG TRACKING (Short Leg)
                 // Wenn noch kein Best Leg (null/0) oder aktuelles Leg schneller war
                 if (!player.bestLeg || player.dartsThrown < player.bestLeg) {
                     player.bestLeg = player.dartsThrown;
                 }
                 
-                // High Finish sicherstellen (falls nicht in score-input erfasst)
+                // High Finish sicherstellen
                 if (player.lastScore > (player.highestFinish || 0)) {
                     player.highestFinish = player.lastScore;
                 }
+                room.game.checkWinCondition(player.id);
             }
 
             if (room.game.setCheckoutDarts) {
@@ -695,7 +699,7 @@ room.game.playerIds = room.players.map(p => p.id);
             }
             
             // Win Condition manuell auslösen um Legs/Sets in Game Logic zu updaten
-            room.game.checkWinCondition(player.id);
+            // room.game.checkWinCondition(player.id); // Bereits oben ausgeführt
 
             // KRITISCH: Preserve room metadata when updating game state
             const gameInternalState = room.game.getGameState();
@@ -716,7 +720,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 ...room.gameState,
                 players: room.players,
                 gameStatus: 'finished',
-                winner: player.id,
+                winner: player ? player.id : null,
                 legsWon: room.game.legsWon,
                 setsWon: room.game.setsWon
             };
