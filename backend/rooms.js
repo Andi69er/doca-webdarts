@@ -12,7 +12,7 @@ class RoomManager {
     const userId = socket.id; // Use socket.id as user identifier
     const room = {
       id: roomId,
-      name: roomData.name,
+      name: roomData.roomName || roomData.name, // FLEXIBEL: roomName ODER name
       host: userId,
       players: [],
       spectators: [],

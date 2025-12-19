@@ -51,7 +51,7 @@ function initializeSocket(io, gameManager, auth) {
             socket.emit('runningGames', running);
         });
 
-        socket.on('createRoom', (roomData) => {
+socket.on('createRoom', (roomData) => {
             // REPARATUR: Daten aus der Lobby robust auslesen
             // Wir kombinieren roomData und gameOptions, falls das Frontend es unterschiedlich schickt
             const flatData = { ...roomData, ...(roomData.gameOptions || {}) };
@@ -119,13 +119,14 @@ function initializeSocket(io, gameManager, auth) {
                         }
                     }
 
-                    const gameState = room.gameState || {
+const gameState = room.gameState || {
                         mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
                         players: room.players,
                         gameStatus: 'waiting',
                         hostId: room.hostId,
                         whoStarts: room.whoStarts,
-                        gameOptions: room.gameOptions
+                        gameOptions: room.gameOptions,
+                        gameMode: room.gameMode // FÜR DEBUG: Original Mode behalten
                     };
                     socket.emit('gameState', gameState);
                 } else if (room.players.length < room.maxPlayers) {
