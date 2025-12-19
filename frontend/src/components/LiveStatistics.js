@@ -13,35 +13,15 @@ const LiveStatistics = ({ gameState }) => {
     const avg = (v) => (v ? parseFloat(v).toFixed(2) : '0.00');
 
     // ---------------------------------------------------------
-    // FINALE BERECHNUNG FÜR SHORT LEG
-    // ---------------------------------------------------------
+// FINALE BERECHNUNG FÜR SHORT LEG
+// ---------------------------------------------------------
     const calculateBestLeg = (player, playerIndex) => {
-        // 1. Priorität: Der Wert steht direkt in der Variable (falls das Backend es doch mal sendet)
+        // Verwende die persistente bestLeg-Statistik
         if (player.bestLeg && parseInt(player.bestLeg) > 0) return player.bestLeg;
+
+        // Fallback für ältere Daten
         if (player.shortLeg && parseInt(player.shortLeg) > 0) return player.shortLeg;
         if (player.stats && player.stats.bestLeg > 0) return player.stats.bestLeg;
-
-        // 2. Fallback: DartsThrown verwenden
-        // Wenn der Spieler mindestens ein Finish geworfen hat (also ein Leg gewonnen hat),
-        // und kein explizites 'bestLeg' existiert, dann ist 'dartsThrown' 
-        // höchstwahrscheinlich die Anzahl der Darts für dieses gewonnene Leg.
-        const hasWonLeg = (player.finishes && player.finishes.length > 0) || 
-                          (player.legsWon > 0) || 
-                          (gameState.legsWon && gameState.legsWon[player.id] > 0);
-
-        if (hasWonLeg && player.dartsThrown > 0) {
-            // Wenn mehrere Legs gespielt wurden, ist dies nur das letzte Leg.
-            // Aber besser das letzte Leg anzeigen als "0".
-            return player.dartsThrown;
-        }
-
-        // 3. Letzter Versuch: CheckoutDarts + Scores (für komplexe Berechnungen)
-        // (Nur relevant, falls dartsThrown zurückgesetzt wurde, aber Scores noch da sind)
-        if (hasWonLeg && player.scores && Array.isArray(player.scores) && player.scores.length > 0) {
-             // Grobe Schätzung: Anzahl Aufnahmen * 3
-             // Wird nur genommen, wenn sonst nichts da ist
-             return player.scores.length * 3;
-        }
 
         return 0;
     };
@@ -85,8 +65,13 @@ const LiveStatistics = ({ gameState }) => {
     const p1HighFinish = getStat(p1, 'highestFinish', 'highFinish');
     const p2HighFinish = getStat(p2, 'highestFinish', 'highFinish');
 
+    // Verwende persistente Match-Statistiken für Doppelquote
     const p1Doubles = p1.doublesHit && p1.doublesThrown ? `${Math.round((p1.doublesHit / p1.doublesThrown) * 100)}% (${p1.doublesHit}/${p1.doublesThrown})` : '0% (0/0)';
     const p2Doubles = p2.doublesHit && p2.doublesThrown ? `${Math.round((p2.doublesHit / p2.doublesThrown) * 100)}% (${p2.doublesHit}/${p2.doublesThrown})` : '0% (0/0)';
+
+    // Berechne Match Average aus persistenten Statistiken
+    const p1MatchAvg = p1.matchDartsThrown && p1.matchPointsScored ? (p1.matchPointsScored / (p1.matchDartsThrown / 3)).toFixed(2) : '0.00';
+    const p2MatchAvg = p2.matchDartsThrown && p2.matchPointsScored ? (p2.matchPointsScored / (p2.matchDartsThrown / 3)).toFixed(2) : '0.00';
 
     const StatRow = ({ label, v1, v2, highlightP1, highlightP2 }) => (
         <div className="stat-row">
@@ -107,10 +92,10 @@ const LiveStatistics = ({ gameState }) => {
             <div className="stats-table">
                 <StatRow
                     label="MATCH Ø"
-                    v1={avg(p1.avg)}
-                    v2={avg(p2.avg)}
-                    highlightP1={parseFloat(p1.avg || 0) > parseFloat(p2.avg || 0)}
-                    highlightP2={parseFloat(p2.avg || 0) > parseFloat(p1.avg || 0)}
+                    v1={p1MatchAvg}
+                    v2={p2MatchAvg}
+                    highlightP1={parseFloat(p1MatchAvg || 0) > parseFloat(p2MatchAvg || 0)}
+                    highlightP2={parseFloat(p2MatchAvg || 0) > parseFloat(p1MatchAvg || 0)}
                 />
                 <StatRow label="FIRST 9 Ø" v1={p1First9Avg} v2={p2First9Avg} />
                 <StatRow label="DOPPEL %" v1={p1Doubles} v2={p2Doubles} />

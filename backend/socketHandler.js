@@ -219,18 +219,31 @@ function initializeSocket(io, gameManager, auth) {
                 room.game = new X01Game(gameOptions);
             }
             
-            // STATISTIK RESET: Hier werden alle Spielerdaten genullt!
+            // STATISTIK RESET: Hier werden Spielerdaten zurückgesetzt, aber persistente Statistiken bleiben erhalten!
             room.players.forEach(p => {
                 p.score = startScore;
-                p.dartsThrown = 0;
-                p.doublesHit = 0;
-                p.doublesThrown = 0;
-                p.avg = "0.00";
-                p.scores = [];
-                p.finishes = [];
-                p.legs = 0;
-                p.sets = 0;
+                // Persistente Statistiken über Legs hinweg erhalten:
+                // - doublesHit/doublesThrown (für Doppelquote)
+                // - finishes (für High Finish)
+                // - bestLeg (für Short Leg)
+                // - matchDartsThrown, matchPointsScored (für Match AVG)
+
+                // Nicht-persistente Statistiken zurücksetzen:
+                p.dartsThrown = 0; // Pro-Leg Darts
+                p.avg = "0.00"; // Pro-Leg Average
+                p.scores = []; // Pro-Leg Scores
+                p.legs = 0; // Wird vom Game-State verwaltet
+                p.sets = 0; // Wird vom Game-State verwaltet
                 p.history = [];
+                p.lastScore = 0;
+                p.scores180 = 0;
+                p.scores60plus = 0;
+                p.scores100plus = 0;
+                p.scores140plus = 0;
+                p.highestFinish = p.highestFinish || 0; // Persistent
+                p.bestLeg = p.bestLeg || null; // Persistent
+                p.matchDartsThrown = p.matchDartsThrown || 0; // Persistent
+                p.matchPointsScored = p.matchPointsScored || 0; // Persistent
             });
             
             let currentPlayerIndex = 0;
@@ -376,10 +389,14 @@ function initializeSocket(io, gameManager, auth) {
                         if (score >= 100 && score < 180) newScores100plus += 1;
                         if (score >= 140 && score < 180) newScores140plus += 1;
 
+                        // Akkumuliere Match-Statistiken
+                        p.matchDartsThrown = (p.matchDartsThrown || 0) + (room.gameMode === 'CricketGame' ? 1 : 3);
+                        p.matchPointsScored = (p.matchPointsScored || 0) + score;
+
                         if (newGameStateFromGame.scores[p.id] === 0) {
                             newFinishes = [...newFinishes, score];
-                            if (score > newHighestFinish) {
-                                newHighestFinish = score;
+                            if (score > (p.highestFinish || 0)) {
+                                p.highestFinish = score;
                             }
                             // Double-Hit wird hier nur intern gezählt, die echte Statistik kommt über Checkout/Popup
                         }
@@ -544,9 +561,9 @@ function initializeSocket(io, gameManager, auth) {
 
             if (player) {
                 player.dartsThrown = (player.dartsThrown - 3) + actualDartsUsed;
-                
+
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
-                const pointsScored = startScore; 
+                const pointsScored = startScore;
                 if (player.dartsThrown > 0) {
                     player.avg = (pointsScored / (player.dartsThrown / 3)).toFixed(2);
                 }
@@ -554,6 +571,12 @@ function initializeSocket(io, gameManager, auth) {
                 // DOPPELSTATISTIK: 1 Hit, 1 Attempt
                 player.doublesHit = (player.doublesHit || 0) + 1;
                 player.doublesThrown = (player.doublesThrown || 0) + 1;
+
+                // BEST LEG TRACKING: Aktualisiere die beste Leg-Zeit
+                const legDarts = player.dartsThrown;
+                if (!player.bestLeg || legDarts < player.bestLeg) {
+                    player.bestLeg = legDarts;
+                }
             }
 
             if (room.game.setCheckoutDarts) {

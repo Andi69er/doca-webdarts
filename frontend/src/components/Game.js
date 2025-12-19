@@ -515,6 +515,21 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                     }
                 }
 
+                // Zusätzliche Sicherheitslogik: Immer entsperren wenn Spiel aktiv ist und ich dran bin
+                // (für den Fall dass nach Leg-Wechsel die vorherige Logik nicht greift)
+                if (newState.gameStatus === 'active' && newIsMyTurn) {
+                    setNumpadState(prev => ({
+                        ...prev,
+                        isLocked: false,
+                        canUndo: false,
+                        lockedPlayerId: null
+                    }));
+                    setTurnEndTime(null);
+                    if (numpadState.lockTimer) {
+                        clearTimeout(numpadState.lockTimer);
+                    }
+                }
+
 // Unlock number pad when game becomes active and it's the user's turn
                 if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active' && newIsMyTurn) {
                     setNumpadState(prev => ({

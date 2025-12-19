@@ -7,7 +7,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
     const styles = {
         wrapper: {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            width: '100%', maxWidth: '280px', margin: '0 auto', height: '100%', overflow: 'hidden', padding: '10px'
+            width: '100%', margin: '0 auto', height: '100%', overflow: 'hidden', padding: '10px'
         },
         status: { fontSize: '0.9rem', color: isActive ? '#4CAF50' : '#888', marginBottom: '10px', textAlign: 'center', minHeight: '20px', fontWeight: 'bold' },
         preview: {

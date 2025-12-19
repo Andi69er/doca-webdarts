@@ -159,12 +159,12 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                 {isSetMode ? (
                     <>
                         <span style={styles.legsLabel}>Sets</span>
-                        <span style={styles.legsCount}>{gameState?.gameState?.setsWon?.[player.id] ?? 0}</span>
+                        <span style={styles.legsCount}>{gameState?.setsWon?.[player.id] ?? 0}</span>
                     </>
                 ) : (
                     <>
                         <span style={styles.legsLabel}>Legs</span>
-                        <span style={styles.legsCount}>{gameState?.gameState?.legsWon?.[player.id] ?? 0}</span>
+                        <span style={styles.legsCount}>{gameState?.legsWon?.[player.id] ?? 0}</span>
                     </>
                 )}
             </div>
