@@ -58,7 +58,9 @@ socket.on('createRoom', (roomData) => {
             
             // REPARATUR: Daten aus der Lobby robust auslesen
             // Wir kombinieren roomData und gameOptions, falls das Frontend es unterschiedlich schickt
-            const flatData = { ...roomData, ...(roomData.gameOptions || {}) };
+            // WICHTIG: Die spezifischeren gameOptions müssen die allgemeinen roomData überschreiben.
+            const flatData = { ...roomData, ...(roomData.gameOptions || {}), ...roomData.gameOptions };
+
             
             console.log('3. flatData after merge:', JSON.stringify(flatData, null, 2));
 
@@ -450,96 +452,76 @@ room.game.playerIds = room.players.map(p => p.id);
                 // 2. Neuen GameState holen (hier ist der Score schon abgezogen!)
                 const newGameStateFromGame = room.game.getGameState();
 
-                // 3. Spielerdaten für das Frontend aktualisieren
+                // 3. Spielerdaten für das Frontend aktualisieren (Refaktorisierte Logik)
                 const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
-                
-                const updatedPlayers = room.players.map((p, idx) => {
-                    const isCurrentPlayer = p.id === userId;
-                    
-                    // Standardmäßig +3 Darts rechnen. Das wird bei Checkout korrigiert.
-                    const newDartsThrown = (p.dartsThrown || 0) + (isCurrentPlayer ? (room.gameMode === 'CricketGame' ? 1 : 3) : 0);
+                const playerToUpdate = room.players[currentPlayerIndex];
 
-                    // Average-Berechnung
-                    let average = p.avg || "0.00";
-                    if (room.gameMode !== 'CricketGame' && newDartsThrown > 0) {
-                        const pointsScored = startScore - (newGameStateFromGame.scores[p.id] || startScore);
-                        const turnsPlayed = newDartsThrown / 3;
-                        if (turnsPlayed > 0) {
-                            average = (pointsScored / turnsPlayed).toFixed(2);
-                        } else {
-                            average = "0.00";
-                        }
-                    } else if (newDartsThrown === 0) {
-                        average = "0.00";
+                if (playerToUpdate) {
+                    // Temporäre Leg-Statistiken
+                    playerToUpdate.dartsThrown = (playerToUpdate.dartsThrown || 0) + (room.gameMode === 'CricketGame' ? 1 : 3);
+                    playerToUpdate.scores = [...(playerToUpdate.scores || []), score];
+                    playerToUpdate.lastScore = score;
+                    playerToUpdate.lastThrownScore = score;
+
+                    // Leg-Average
+                    if (room.gameMode !== 'CricketGame' && playerToUpdate.dartsThrown > 0) {
+                        const pointsScored = startScore - (newGameStateFromGame.scores[playerToUpdate.id] || startScore);
+                        const turnsPlayed = playerToUpdate.dartsThrown / 3;
+                        playerToUpdate.avg = turnsPlayed > 0 ? (pointsScored / turnsPlayed).toFixed(2) : "0.00";
                     }
 
-                    // Live Statistics Updates
-                    let newScores = p.scores || [];
-                    let newFinishes = p.finishes || [];
-                    
-                    // REPARATUR: Stats vom Player Objekt nehmen
-                    let newHighestFinish = p.highestFinish || 0;
-                    let newScores180 = p.scores180 || 0;
-                    let newScores60plus = p.scores60plus || 0;
-                    let newScores100plus = p.scores100plus || 0;
-                    let newScores140plus = p.scores140plus || 0;
-                    let newDoublesHit = p.doublesHit || 0;
-                    let newDoublesThrown = p.doublesThrown || 0;
-                    let newBestLeg = p.bestLeg || null;
-                    let newMatchDarts = p.matchDartsThrown || 0;
-                    let newMatchPoints = p.matchPointsScored || 0;
+                    // Match-Statistiken (persistent)
+                    playerToUpdate.matchDartsThrown = (playerToUpdate.matchDartsThrown || 0) + (room.gameMode === 'CricketGame' ? 1 : 3);
+                    playerToUpdate.matchPointsScored = (playerToUpdate.matchPointsScored || 0) + score;
 
-                    if (isCurrentPlayer) {
-                        newScores = [...newScores, score];
-                        if (score == 180) newScores180 += 1;
-                        if (score >= 60 && score < 100) newScores60plus += 1;
-                        if (score >= 100 && score < 180) newScores100plus += 1;
-                        if (score >= 140 && score < 180) newScores140plus += 1;
+                    // High-Scores
+                    if (score === 180) {
+                        playerToUpdate.scores180 = (playerToUpdate.scores180 || 0) + 1;
+                    }
+                    if (score >= 140 && score < 180) { // Muss vor 100+ geprüft werden
+                        playerToUpdate.scores140plus = (playerToUpdate.scores140plus || 0) + 1;
+                    }
+                    if (score >= 100 && score < 140) {
+                        playerToUpdate.scores100plus = (playerToUpdate.scores100plus || 0) + 1;
+                    }
+                    if (score >= 60 && score < 100) {
+                        playerToUpdate.scores60plus = (playerToUpdate.scores60plus || 0) + 1;
+                    }
 
-                        // Akkumuliere Match-Statistiken
-                        newMatchDarts += (room.gameMode === 'CricketGame' ? 1 : 3);
-                        newMatchPoints += score;
-
-                        // REPARATUR: High Finish Check wenn Rest 0 ist
-                        if (newGameStateFromGame.scores[p.id] === 0) {
-                            newFinishes = [...newFinishes, score];
-                            if (score > newHighestFinish) {
-                                newHighestFinish = score;
-                            }
+                    // High-Finish (wird bei Checkout finalisiert, hier vorläufig)
+                    if (newGameStateFromGame.scores[playerToUpdate.id] === 0) {
+                        playerToUpdate.finishes = [...(playerToUpdate.finishes || []), score];
+                        if (score > (playerToUpdate.highestFinish || 0)) {
+                            playerToUpdate.highestFinish = score;
                         }
                     }
-                    
-                    // Update Persistent data in room object
-                    p.matchDartsThrown = newMatchDarts;
-                    p.matchPointsScored = newMatchPoints;
-                    p.highestFinish = newHighestFinish;
+                }
 
+                // Erstelle den finalen Player-State für das Frontend
+                const updatedPlayersForFrontend = room.players.map((p, idx) => {
                     return {
                         ...p,
                         score: newGameStateFromGame.scores[p.id],
                         points: newGameStateFromGame.scores[p.id],
                         marks: newGameStateFromGame.marks ? newGameStateFromGame.marks[p.id] : p.marks,
-                        dartsThrown: newDartsThrown,
-                        avg: average,
                         isActive: idx === newGameStateFromGame.currentPlayerIndex,
-                        lastScore: isCurrentPlayer ? score : (p.lastScore || 0),
-                        legs: p.legs || 0,
-                        scores: newScores,
-                        finishes: newFinishes,
-                        highestFinish: newHighestFinish,
-                        scores180: newScores180,
-                        scores60plus: newScores60plus,
-                        scores100plus: newScores100plus,
-                        scores140plus: newScores140plus,
-                        doublesHit: newDoublesHit,
-                        doublesThrown: newDoublesThrown,
-                        lastThrownScore: isCurrentPlayer ? score : (p.lastThrownScore || 0),
-                        bestLeg: newBestLeg,
-                        matchDartsThrown: newMatchDarts,
-                        matchPointsScored: newMatchPoints
+                        // Stelle sicher, dass alle Stats aktuell sind
+                        avg: p.avg || "0.00",
+                        dartsThrown: p.dartsThrown || 0,
+                        scores: p.scores || [],
+                        finishes: p.finishes || [],
+                        highestFinish: p.highestFinish || 0,
+                        scores180: p.scores180 || 0,
+                        scores60plus: p.scores60plus || 0,
+                        scores100plus: p.scores100plus || 0,
+                        scores140plus: p.scores140plus || 0,
+                        doublesHit: p.doublesHit || 0,
+                        doublesThrown: p.doublesThrown || 0,
+                        bestLeg: p.bestLeg || null,
+                        matchDartsThrown: p.matchDartsThrown || 0,
+                        matchPointsScored: p.matchPointsScored || 0
                     };
                 });
-                room.players = updatedPlayers;
 
                 // 4. Abfragen generieren
                 const currentScore = newGameStateFromGame.scores[userId];
@@ -560,7 +542,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 if (room.gameMode !== 'CricketGame') {
                     if (currentScore === 0) {
                         // CHECKOUT
-                        const player = room.players.find(p => p.id === userId);
+                        const player = updatedPlayersForFrontend.find(p => p.id === userId);
                         checkoutQuery = {
                             player: player,
                             score: score,
@@ -594,7 +576,7 @@ room.game.playerIds = room.players.map(p => p.id);
                 // 5. Update-Payload
                 const updateData = {
                     mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
-                    players: updatedPlayers,
+                    players: updatedPlayersForFrontend,
                     gameStatus: newGameStateFromGame.winner ? 'finished' : 'active',
                     winner: newGameStateFromGame.winner,
                     currentPlayerIndex: newGameStateFromGame.currentPlayerIndex,
