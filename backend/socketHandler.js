@@ -104,8 +104,8 @@ socket.on('createRoom', (roomData) => {
             const newRoom = {
                 id: (Math.random().toString(36).substring(2, 8)),
                 name: flatData.roomName || roomData.roomName,
-                gameMode: flatData.gameMode || roomData.gameMode,
-                gameOptions: gameOptions,
+                gameMode: gameOptions.gameMode || flatData.gameMode || roomData.gameMode, // Nehmen Sie den Modus aus den finalen Optionen
+                gameOptions: gameOptions, // Verwenden Sie die neu erstellten, korrekten Optionen
                 whoStarts: flatData.whoStarts || roomData.whoStarts, 
                 hostId: socket.id, 
                 maxPlayers: 2,
@@ -475,13 +475,13 @@ room.game.playerIds = room.players.map(p => p.id);
                     playerToUpdate.matchPointsScored = (playerToUpdate.matchPointsScored || 0) + score;
 
                     // High-Scores
-                    if (score === 180) {
+                    if (score === 180) { // Zählt nur als 180
                         playerToUpdate.scores180 = (playerToUpdate.scores180 || 0) + 1;
                     }
-                    if (score >= 140 && score < 180) { // Muss vor 100+ geprüft werden
+                    if (score >= 140 && score < 180) { // Zählt als 140+
                         playerToUpdate.scores140plus = (playerToUpdate.scores140plus || 0) + 1;
                     }
-                    if (score >= 100 && score < 140) {
+                    if (score >= 100 && score < 180) { // Zählt als 100+ (inkl. 140+)
                         playerToUpdate.scores100plus = (playerToUpdate.scores100plus || 0) + 1;
                     }
                     if (score >= 60 && score < 100) {
