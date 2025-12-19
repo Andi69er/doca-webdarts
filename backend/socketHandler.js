@@ -132,12 +132,21 @@ socket.on('createRoom', (roomData) => {
             const room = rooms.find(r => r.id === data.roomId);
 
             if (room) {
+                // Allow rejoining by checking for a player with a matching name from the client
+                const rejoiningPlayer = data.playerName ? room.players.find(p => p.name === data.playerName && p.disconnected) : null;
                 const existingPlayerIndex = room.players.findIndex(p => p.id === socket.id);
 
-                if (existingPlayerIndex !== -1) {
+                if (rejoiningPlayer) {
+                    // Player is rejoining after a disconnect
+                    const oldId = rejoiningPlayer.id;
+                    rejoiningPlayer.id = socket.id; // Update to the new socket ID
+                    rejoiningPlayer.disconnected = false;
                     socket.join(room.id);
-                    const oldId = room.players[existingPlayerIndex].id;
-                    room.players[existingPlayerIndex].id = socket.id;
+
+                    io.to(room.id).emit('receiveMessage', {
+                        user: 'System',
+                        text: `${rejoiningPlayer.name} hat die Verbindung wiederhergestellt.`
+                    });
 
                     if (room.gameState && room.gameState.players) {
                         const gamePlayerIndex = room.gameState.players.findIndex(p => p.id === oldId);
@@ -145,6 +154,10 @@ socket.on('createRoom', (roomData) => {
                             room.gameState.players[gamePlayerIndex].id = socket.id;
                         }
                     }
+                    io.to(room.id).emit('game-state-update', room.gameState);
+                    socket.emit('gameState', room.gameState);
+
+                } else if (existingPlayerIndex !== -1) {
 
 const gameState = room.gameState || {
                         mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
@@ -869,13 +882,22 @@ room.game.playerIds = room.players.map(p => p.id);
                 const spectatorIndex = room.spectators.findIndex(s => s.id === socket.id);
 
                 if (playerIndex !== -1) {
-                    const leavingPlayer = room.players[playerIndex];
-                    room.players.splice(playerIndex, 1);
-                    if (room.players.length === 0) {
-                        rooms = rooms.filter(r => r.id !== room.id);
+                    const disconnectedPlayer = room.players[playerIndex];
+                    console.log(`Player ${disconnectedPlayer.name} disconnected from room ${room.id}`);
+                    
+                    // Mark player as disconnected instead of removing them
+                    disconnectedPlayer.disconnected = true;
+
+                    // Notify other players
+                    io.to(room.id).emit('receiveMessage', { user: 'System', text: `${disconnectedPlayer.name} hat die Verbindung verloren.` });
+                    
+                    // Update game state to show player as disconnected
+                    if (room.gameState && room.gameState.players) {
+                        const playerInGame = room.gameState.players.find(p => p.id === socket.id);
+                        if (playerInGame) playerInGame.disconnected = true;
                     }
-                    io.to(room.id).emit('game-state-update', room);
-                    io.to(room.id).emit('receiveMessage', { user: 'System', text: `${leavingPlayer.name} hat den Raum verlassen.` });
+                    io.to(room.id).emit('game-state-update', room.gameState);
+
                 } else if (spectatorIndex !== -1) {
                     const leavingSpectator = room.spectators[spectatorIndex];
                     room.spectators.splice(spectatorIndex, 1);
