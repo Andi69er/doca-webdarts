@@ -173,8 +173,9 @@ function Game() {
     }
             }
 
-            // Wenn Punkte gefallen sind, stelle sicher, dass das Spiel als gestartet markiert ist
-            if (newState.players.some(p => p.score < 501) && !localGameStarted) {
+// Wenn Punkte gefallen sind, stelle sicher, dass das Spiel als gestartet markiert ist
+            const startingScore = newState?.gameOptions?.startingScore || 501;
+            if (newState.players.some(p => p.score < startingScore) && !localGameStarted) {
                 console.log('Points detected, forcing game start');
                 setLocalGameStarted(true);
             }
@@ -294,8 +295,9 @@ function Game() {
                 const newDarts = oldDarts + 3;
                 
                 currentP.score = newScore;
-                currentP.dartsThrown = newDarts;
-                const totalPoints = 501 - newScore;
+currentP.dartsThrown = newDarts;
+                const startingScore = newState?.gameOptions?.startingScore || 501;
+                const totalPoints = startingScore - newScore;
                 currentP.avg = ((totalPoints / newDarts) * 3).toFixed(2);
                 currentP.first9 = currentP.avg;
 
@@ -417,8 +419,9 @@ function Game() {
     // --- RENDER ---
     if (!gameState || !gameState.players) return <div className="loading-screen">Lade...</div>;
 
-    // Status Berechnung
-    const pointsScored = gameState.players.some(p => p.score < 501);
+// Status Berechnung
+    const startingScore = gameState?.gameOptions?.startingScore || 501;
+    const pointsScored = gameState.players.some(p => p.score < startingScore);
     const isGameRunning = localGameStarted || gameState.gameStatus === 'active' || pointsScored;
 
     const currentIndex = gameState.gameState?.currentPlayerIndex || 0;

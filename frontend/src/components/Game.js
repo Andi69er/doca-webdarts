@@ -91,17 +91,63 @@ const ShotClock = ({ isActive, onTimeout }) => {
 const ensureStats = (player) => {
     if (!player) return player;
     const p = { ...player };
-    if ((!p.dartsThrown || p.dartsThrown === 0) && p.score < 501) {
-         p.dartsThrown = Math.ceil((501 - p.score) / 45) * 3;
+    const startingScore = 501;
+    
+    if ((!p.dartsThrown || p.dartsThrown === 0) && p.score < startingScore) {
+         p.dartsThrown = Math.ceil((startingScore - p.score) / 45) * 3;
+    }
+    if (p.dartsThrown > 0) {
+        p.avg = ((startingScore - p.score) / p.dartsThrown * 3).toFixed(2);
+    } else {
+        p.avg = "0.00";
     }
     if (!p.avg || p.avg === "0.00") {
         if (p.dartsThrown > 0) {
-            p.avg = ((501 - p.score) / p.dartsThrown * 3).toFixed(2);
+            p.avg = ((startingScore - p.score) / p.dartsThrown * 3).toFixed(2);
         } else {
             p.avg = "0.00";
         }
     }
     return p;
+};
+
+// --- GAME INFO BAR COMPONENT ---
+const GameInfoBar = ({ gameState }) => {
+    if (!gameState || !gameState.gameOptions) return null;
+
+    const { gameOptions, mode } = gameState;
+    
+    let infoText = '';
+    if (mode === 'x01') {
+        const score = gameOptions.startingScore || 501;
+        const im = gameOptions.inMode === 'double' ? 'Double In' : 'Single In';
+        const om = gameOptions.outMode === 'double' ? 'Double Out' : 
+                      gameOptions.outMode === 'master' ? 'Master Out' : 'Single Out';
+        const s = gameOptions.sets || 0;
+        const l = gameOptions.legs || 1;
+        const wt = gameOptions.winType === 'bestOf' ? 'Best Of' : 'First To';
+        
+        infoText = `${score} • ${im}/${om} • ${wt} • Sets: ${s}, Legs: ${l}`;
+    } else if (mode === 'cricket') {
+        const s = gameOptions.sets || 0;
+        const l = gameOptions.legs || 1;
+        const wt = gameOptions.winType === 'bestOf' ? 'Best Of' : 'First To';
+        
+        infoText = `Cricket • ${wt} • Sets: ${s}, Legs: ${l}`;
+    }
+
+    return (
+        <div style={{
+            backgroundColor: '#222',
+            color: '#fff',
+            padding: '8px 16px',
+            textAlign: 'center',
+            fontSize: '14px',
+            borderBottom: '1px solid #444'
+        }}>
+            <strong>Spiel-Einstellungen:</strong> {infoText}
+        </div>
+    );
 };
 
 // --- HELPERS ---
@@ -288,7 +334,6 @@ function Game() {
     const [user, setUser] = useState({ id: null, name: 'Gast' });
     const [gameState, setGameState] = useState(null);
     const [localGameStarted, setLocalGameStarted] = useState(false);
-    const [isMyTurn, setIsMyTurn] = useState(false);
     const [turnEndTime, setTurnEndTime] = useState(null);
     const [isStartingGame, setIsStartingGame] = useState(false);
     const startGameTimeoutRef = useRef(null);
@@ -457,11 +502,25 @@ function Game() {
     const handleGameState = useCallback((newState) => {
         if (!newState) return;
         
-const currentIndex = newState.currentPlayerIndex !== undefined 
-            ? newState.currentPlayerIndex 
-            : 0;
+        // Echo-Schutz: Ignoriere Updates wenn wir ein lokales Update haben
+        const myId = socket?.id || user?.id;
+        const serverMe = newState.players?.find(p => p.id === myId);
         
-setGameState(prev => {
+        if (localGameStarted && expectedLocalScore.current !== null && serverMe) {
+            if (serverMe.score > expectedLocalScore.current) {
+                console.log('Ignoring server update - local state is newer');
+                return;
+            }
+        }
+
+        // Wenn Punkte gefallen sind, stelle sicher, dass das Spiel als gestartet markiert ist
+        const startingScore = newState?.gameOptions?.startingScore || 501;
+        if (newState.players.some(p => p.score < startingScore) && !localGameStarted) {
+            console.log('Points detected, forcing game start');
+            setLocalGameStarted(true);
+        }
+
+        setGameState(prev => {
             if (!prev) {
                 setTurnEndTime(null);
             }
@@ -489,7 +548,7 @@ setGameState(prev => {
                 };
             });
 
-const currentPlayerIndex = newState.currentPlayerIndex !== undefined 
+            const currentPlayerIndex = newState.currentPlayerIndex !== undefined 
                 ? newState.currentPlayerIndex 
                 : (prev?.currentPlayerIndex || 0);
             
@@ -499,9 +558,8 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
             // WICHTIG: Lockout nur aufheben wenn Spielerwechsel stattgefunden hat
             if (currentPlayer && user.id) {
                 const newIsMyTurn = currentPlayer.id === user.id;
-                setIsMyTurn(newIsMyTurn);
 
-// Wenn ich jetzt dran bin und vorher nicht, dann Nummernpad entsperren
+                // Wenn ich jetzt dran bin und vorher nicht, dann Nummernpad entsperren
                 if (newIsMyTurn && prevPlayerIndex !== currentPlayerIndex) {
                     setNumpadState(prev => ({
                         ...prev,
@@ -530,7 +588,7 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
                     }
                 }
 
-// Unlock number pad when game becomes active and it's the user's turn
+                // Unlock number pad when game becomes active and it's the user's turn
                 if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active' && newIsMyTurn) {
                     setNumpadState(prev => ({
                         ...prev,
@@ -633,9 +691,11 @@ const currentPlayerIndex = newState.currentPlayerIndex !== undefined
     }, [user.id]); // <--- WICHTIG: user.id hinzugefügt, damit isMyTurn korrekt berechnet wird!
 
     const handleScoreInput = (scoreInput) => {
-        if (!isMyTurn || numpadState.isLocked) return;
         const currentIndex = gameState?.currentPlayerIndex || 0;
         const currentPlayer = gameState?.players?.[currentIndex];
+        const isMyTurn = currentPlayer?.id === user.id;
+        
+        if (!isMyTurn || numpadState.isLocked) return;
         if (!currentPlayer || !socket || !user?.id) return;
 
         let scorePayload;
@@ -1491,13 +1551,17 @@ socket.on('camera-ice', async (data) => {
         );
     }
 
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    const isGameRunning = gameState.gameStatus === 'active';
+    // Status Berechnung
+    const startingScore = gameState?.gameOptions?.startingScore || 501;
+    const pointsScored = gameState.players.some(p => p.score < startingScore);
+    const isGameRunning = localGameStarted || gameState.gameStatus === 'active' || pointsScored;
+
+    const currentIndex = gameState.gameState?.currentPlayerIndex || 0;
+    const currentPlayer = gameState.players[currentIndex];
+    const isHost = gameState.hostId === user.id || (gameState.players[0] && gameState.players[0].id === user.id);
+
     const isGameFinished = gameState.gameStatus === 'finished';
-
     const winner = gameState?.winner;
-
-const isHost = gameState.hostId === user.id;
     const canInput = !numpadState.isLocked;
     const showCountdown = false;
     const countdown = 0;
@@ -1545,11 +1609,14 @@ const isHost = gameState.hostId === user.id;
                         <div style={{padding: '10px 20px', backgroundColor: '#111', borderBottom: '1px solid #222'}}>
                             <CricketHeader gameState={gameState} user={user} />
                         </div>
+                        
+                        {/* Game Info Bar */}
+                        <GameInfoBar gameState={gameState} />
 
                         {/* Status Bar */}
-                        {isGameRunning && (
-                            <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`}>
-                                {isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}
+{isGameRunning && (
+                            <div className={`game-status-bar ${currentPlayer?.id === user.id ? 'my-turn' : 'opponent-turn'}`}>
+                                {currentPlayer?.id === user.id ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}
                             </div>
                         )}
 
@@ -1570,8 +1637,8 @@ const isHost = gameState.hostId === user.id;
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                 <CricketInputPanel
                                     onScoreInput={handleScoreInput}
-                                    isActive={isMyTurn && !numpadState.isLocked}
-                                    isLocked={!isMyTurn || numpadState.isLocked}
+                                    isActive={currentPlayer?.id === user.id && !numpadState.isLocked}
+                                    isLocked={!(currentPlayer?.id === user.id) || numpadState.isLocked}
                                     canUseUndo={numpadState.canUndo}
                                     onUndo={handleUndo}
                                     dartsThrownInTurn={gameState.dartsThrownInTurn || 0}
@@ -1731,7 +1798,7 @@ const isHost = gameState.hostId === user.id;
                         User Name: {user?.name || 'N/A'}<br/>
                         Is Host: {isHost ? '✅ Ja' : '❌ Nein'}<br/>
                         Is Spectator: {isSpectator ? '✅ Ja' : '❌ Nein'}<br/>
-                        Is My Turn: {isMyTurn ? '✅ Ja' : '❌ Nein'}
+                        Is My Turn: {currentPlayer?.id === user.id ? '✅ Ja' : '❌ Nein'}
                     </div>
 
                     <div style={{marginBottom: '15px'}}>
@@ -1806,9 +1873,10 @@ const isHost = gameState.hostId === user.id;
             <div className="game-layout">
                 <div className="game-main-area">
                     <PlayerScores gameState={gameState} user={user} />
-                    {isGameRunning ? (
-                        <div className={`game-status-bar ${isMyTurn ? 'my-turn' : 'opponent-turn'}`}>
-                            <div className="status-text">{isMyTurn ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}</div>
+                    <GameInfoBar gameState={gameState} />
+{isGameRunning ? (
+                        <div className={`game-status-bar ${currentPlayer?.id === user.id ? 'my-turn' : 'opponent-turn'}`}>
+                            <div className="status-text">{currentPlayer?.id === user.id ? 'DU BIST DRAN' : `${currentPlayer?.name} IST DRAN`}</div>
                         </div>
                     ) : null}
 
@@ -1832,7 +1900,7 @@ const isHost = gameState.hostId === user.id;
                         <div className="game-column-left">
                             {!isSpectator && (
                                 <div className="wurf-section">
-                                    <h3 className="wurf-title">{isMyTurn ? 'DEIN WURF' : `${currentPlayer?.name.toUpperCase()} WIRFT`}</h3>
+                                    <h3 className="wurf-title">{currentPlayer?.id === user.id ? 'DEIN WURF' : `${currentPlayer?.name.toUpperCase()} WIRFT`}</h3>
                                     <div className="number-pad-container">
                                         <div className="number-pad-wrapper">
                                             {showCountdown && (
@@ -1844,10 +1912,10 @@ const isHost = gameState.hostId === user.id;
                                                 onScoreInput={handleScoreInput}
                                                 onUndo={handleUndo}
                                                 checkoutSuggestions={gameState.checkoutSuggestions}
-                                                isActive={isMyTurn && canInput}
-                                                isLocked={!isMyTurn || numpadState.isLocked}
-                                                isOpponentLocked={!isMyTurn}
-                                                isMyTurn={isMyTurn}
+                                                isActive={currentPlayer?.id === user.id && canInput}
+                                                isLocked={!(currentPlayer?.id === user.id) || numpadState.isLocked}
+                                                isOpponentLocked={!(currentPlayer?.id === user.id)}
+                                                isMyTurn={currentPlayer?.id === user.id}
                                                 canUseUndo={numpadState.canUndo}
                                                 gameRunning={isGameRunning}
                                             />
