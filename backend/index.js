@@ -50,12 +50,13 @@ app.get('/healthz', (req, res) => {
     res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-app.use(express.static(path.join(__dirname, '..', 'frontend', 'build')));
-app.get('/:path(*)', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
+const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(frontendBuildPath));
+app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) {
         return next();
     }
-    res.sendFile(path.join(__dirname, '..', 'frontend', 'build', 'index.html'));
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
 });
 
 const io = new Server(server, {
