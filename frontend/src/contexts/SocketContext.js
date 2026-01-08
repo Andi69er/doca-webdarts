@@ -1,7 +1,50 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
 const SocketContext = createContext();
+
+const buildCandidateUrls = () => {
+    const urls = [];
+    const addUrl = (value) => {
+        const trimmed = value?.trim();
+        if (!trimmed) {
+            return;
+        }
+        const normalized = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+        if (!urls.includes(normalized)) {
+            urls.push(normalized);
+        }
+    };
+
+    if (process.env.REACT_APP_API_URL) {
+        addUrl(process.env.REACT_APP_API_URL);
+    }
+
+    if (typeof window !== 'undefined') {
+        const { protocol, hostname, port } = window.location;
+        const buildUrl = (customPort) => `${protocol}//${hostname}${customPort ? `:${customPort}` : ''}`;
+        if (port && port !== '3000') {
+            addUrl(buildUrl(port));
+        }
+        if (port === '3000') {
+            addUrl(buildUrl('3002'));
+            addUrl(buildUrl('3001'));
+        }
+        if (!port) {
+            addUrl(buildUrl());
+            addUrl(buildUrl('3001'));
+            addUrl(buildUrl('3002'));
+        }
+    } else {
+        addUrl('http://localhost:3001');
+        addUrl('http://localhost:3002');
+    }
+
+    addUrl('http://localhost:3001');
+    addUrl('http://localhost:3002');
+
+    return urls;
+};
 
 export const useSocket = () => {
     return useContext(SocketContext);
@@ -12,52 +55,78 @@ export const SocketProvider = ({ children }) => {
     const [socketConnected, setSocketConnected] = useState(false);
 
     useEffect(() => {
-        // URL definieren
-        const URL = process.env.REACT_APP_API_URL || 'https://doca-webdarts.onrender.com';
-        console.log('Connecting to socket server at:', URL);
+        const candidates = buildCandidateUrls();
+        let isMounted = true;
+        let activeSocket = null;
+        let attemptIndex = 0;
 
-        // --- VERBESSERTE SOCKET KONFIGURATION ---
-        const newSocket = io(URL, {
-            transports: ['websocket'],  // Nur WebSockets für bessere Performance
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            timeout: 10000,  // 10 Sekunden Timeout
-            withCredentials: false,  // Erstmal deaktivieren
-            autoConnect: true,
-            forceNew: true
-        });
+        const connectToNext = () => {
+            if (!isMounted || attemptIndex >= candidates.length) {
+                console.error('No reachable socket server candidates:', candidates);
+                return;
+            }
 
-        // Debugging-Ausgaben
-        console.log('Socket-Initialisierung abgeschlossen');
-        console.log('Verbindungsparameter:', {
-            url: URL,
-            connected: newSocket.connected,
-            id: newSocket.id
-        });
-        // -------------------------------------------
+            const targetUrl = candidates[attemptIndex++];
+            console.log('Connecting to socket server at:', targetUrl);
 
-        newSocket.on('connect', () => {
-            console.log(`[FRONTEND_CONNECT] Connected to server: ${newSocket.id}, Timestamp: ${new Date().toISOString()}`);
-            setSocketConnected(true);
-        });
+            const nextSocket = io(targetUrl, {
+                transports: ['websocket'],
+                reconnection: false,
+                timeout: 10000,
+                withCredentials: false,
+                autoConnect: true,
+                forceNew: true
+            });
 
-        newSocket.on('connect_error', (error) => {
-            console.error('Connection error:', error.message);
-            // Wir setzen es nicht sofort auf false, vielleicht klappt der nächste Versuch
-            // Aber für die UI Anzeige ist es okay:
+            activeSocket = nextSocket;
+            setSocket(nextSocket);
             setSocketConnected(false);
-        });
 
-        newSocket.on('disconnect', (reason) => {
-            console.log('Disconnected from server:', reason);
-            setSocketConnected(false);
-        });
+            const handleConnect = () => {
+                if (!isMounted) {
+                    return;
+                }
+                nextSocket.io.opts.reconnection = true;
+                console.log(`[FRONTEND_CONNECT] Connected to server: ${nextSocket.id}, Timestamp: ${new Date().toISOString()}`);
+                setSocketConnected(true);
+            };
 
-        setSocket(newSocket);
+            const handleDisconnect = (reason) => {
+                if (!isMounted) {
+                    return;
+                }
+                console.log('Disconnected from server:', reason);
+                setSocketConnected(false);
+            };
+
+            const handleConnectError = (error) => {
+                console.error('Connection error for', targetUrl, error.message);
+                nextSocket.off('connect', handleConnect);
+                nextSocket.off('disconnect', handleDisconnect);
+                nextSocket.off('connect_error', handleConnectError);
+                nextSocket.close();
+                if (!isMounted) {
+                    return;
+                }
+                if (activeSocket === nextSocket) {
+                    activeSocket = null;
+                }
+                setSocket(null);
+                connectToNext();
+            };
+
+            nextSocket.once('connect', handleConnect);
+            nextSocket.on('disconnect', handleDisconnect);
+            nextSocket.once('connect_error', handleConnectError);
+        };
+
+        connectToNext();
 
         return () => {
-            newSocket.disconnect();
+            isMounted = false;
+            if (activeSocket) {
+                activeSocket.disconnect();
+            }
         };
     }, []);
 

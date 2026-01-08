@@ -127,14 +127,17 @@ class X01Game {
                 this.gameWinner = playerId;
                 this.winner = playerId; // Setze den finalen Gewinner
                 console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
-                return { valid: true, bust: false, winner: this.gameWinner, legWinner: this.legWinner, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
+                return { valid: true, bust: false, winner: this.gameWinner, legWinner: playerId, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
             }
+            
+            // Speichere legWinner BEVOR wir startNextLeg() aufrufen
+            const winnerOfThisLeg = this.legWinner;
             
             // Wenn kein Set gewonnen wurde, aber ein Leg, starte das nächste Leg
             if (!this.winner) {
                 this.startNextLeg();
             }
-            return { valid: true, bust: false, winner: null, legWinner: this.legWinner, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
+            return { valid: true, bust: false, winner: null, legWinner: winnerOfThisLeg, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
         }
     
         // Nach jeder Eingabe (Turn) zum nächsten Spieler wechseln
@@ -207,6 +210,7 @@ class X01Game {
             scores: this.scores,
             currentPlayerIndex: this.currentPlayerIndex,
             winner: this.winner,
+            legWinner: this.legWinner,
             legsWon: this.legsWon,
             setsWon: this.setsWon,
             history: this.history,
@@ -219,7 +223,8 @@ class X01Game {
         console.log('[DEBUG] X01Game.getGameState() - Returning:', {
             gameOptions: gameState.gameOptions,
             startingScore: gameState.gameOptions?.startingScore,
-            mode: 'x01'
+            mode: 'x01',
+            legWinner: gameState.legWinner
         });
         
         return gameState;
@@ -227,6 +232,52 @@ class X01Game {
 
     setCheckoutDarts(dartCount) {
         this.checkoutDarts = dartCount;
+    }
+
+    checkWinCondition(playerId) {
+        if (this.scores[playerId] !== 0) {
+            return false;
+        }
+
+        this.legWinner = playerId;
+        this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
+        console.log(`[X01Game] LEG GEWONNEN: ${playerId}!`);
+
+        let gameHasBeenWon = false;
+        if (this.distance === 'legs') {
+            if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+                gameHasBeenWon = true;
+            } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+                gameHasBeenWon = true;
+            }
+        } else if (this.distance === 'sets') {
+            if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
+                this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
+                console.log(`[X01Game] SET GEWONNEN: ${playerId}!`);
+
+                if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                    gameHasBeenWon = true;
+                } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                    gameHasBeenWon = true;
+                }
+
+                if (!gameHasBeenWon) {
+                    this.startNextSet();
+                }
+            }
+        }
+
+        if (gameHasBeenWon) {
+            this.gameWinner = playerId;
+            this.winner = playerId;
+            console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
+            return true;
+        }
+
+        if (!this.winner) {
+            this.startNextLeg();
+        }
+        return false;
     }
 }
 
@@ -378,6 +429,7 @@ class CricketGame {
                     }
                 }
 
+                const winnerOfThisLeg = playerId;
                 if (gameHasBeenWon) {
                     this.winner = playerId;
                     console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId}!`);
@@ -385,6 +437,8 @@ class CricketGame {
                     // Nächstes Leg vorbereiten
                     this.startNextLeg();
                 }
+                
+                return { valid: true, winner: this.winner, legWinner: winnerOfThisLeg, dartsThrownInTurn: this.dartsThrownInTurn };
             }
         }
 
@@ -393,7 +447,7 @@ class CricketGame {
             this.nextTurn();
         }
 
-        return { valid: true, winner: this.winner, legWinner: this.legWinner, dartsThrownInTurn: this.dartsThrownInTurn };
+        return { valid: true, winner: this.winner, legWinner: null, dartsThrownInTurn: this.dartsThrownInTurn };
     }
 
     startNextLeg() {
@@ -464,10 +518,64 @@ class CricketGame {
             legsWon: this.legsWon,
             setsWon: this.setsWon,
             winner: this.winner,
+            legWinner: this.legWinner,
             history: this.history,
             turns: this.history, // FIX: Konsistenz für Frontend
             gameOptions: this.gameOptions, // KRITISCH: Game Options für Frontend-Display
         };
+    }
+
+    checkWinCondition(playerId) {
+        const allNumbers = [15, 16, 17, 18, 19, 20, 25];
+        const playerHasClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
+
+        if (!playerHasClosedAll) {
+            return false;
+        }
+
+        const highestScore = Math.max(...this.players.map(p => this.scores[p]));
+        if (this.scores[playerId] < highestScore) {
+            return false;
+        }
+
+        this.legWinner = playerId;
+        this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
+        console.log(`[CricketGame] LEG GEWONNEN: ${playerId}!`);
+
+        let gameHasBeenWon = false;
+        if (this.distance === 'legs') {
+            if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+                gameHasBeenWon = true;
+            } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+                gameHasBeenWon = true;
+            }
+        } else if (this.distance === 'sets') {
+            if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
+                this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
+                console.log(`[CricketGame] SET GEWONNEN: ${playerId}!`);
+
+                if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                    gameHasBeenWon = true;
+                } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                    gameHasBeenWon = true;
+                }
+
+                if (!gameHasBeenWon) {
+                    this.startNextSet();
+                }
+            }
+        }
+
+        if (gameHasBeenWon) {
+            this.winner = playerId;
+            console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId}!`);
+            return true;
+        }
+
+        if (!this.winner) {
+            this.startNextLeg();
+        }
+        return false;
     }
 }
 

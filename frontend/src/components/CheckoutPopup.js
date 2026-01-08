@@ -8,13 +8,7 @@ const CheckoutPopup = ({ isActive, onSelect, user, checkoutPlayer }) => {
     const isMe = user && checkoutPlayer && user.id === checkoutPlayer.id;
 
     if (!isMe) {
-         return (
-            <div style={overlayStyle}>
-                <div style={modalStyle}>
-                    <h2 style={{color: '#fff', margin: 0}}>Gegner checkt aus...</h2>
-                </div>
-            </div>
-        );
+        return null;
     }
 
     return (
@@ -28,30 +22,17 @@ const CheckoutPopup = ({ isActive, onSelect, user, checkoutPlayer }) => {
                 </h3>
                 
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-                    <button 
-                        onClick={() => onSelect(1)}
-                        style={buttonStyle}
-                        onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
-                        onMouseLeave={e => e.target.style.transform = 'scale(1)'}
-                    >
-                        1. Dart
-                    </button>
-                    <button 
-                        onClick={() => onSelect(2)}
-                        style={buttonStyle}
-                        onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
-                        onMouseLeave={e => e.target.style.transform = 'scale(1)'}
-                    >
-                        2. Dart
-                    </button>
-                    <button 
-                        onClick={() => onSelect(3)}
-                        style={buttonStyle}
-                        onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
-                        onMouseLeave={e => e.target.style.transform = 'scale(1)'}
-                    >
-                        3. Dart
-                    </button>
+                    {[1, 2, 3].map((dartNumber) => (
+                        <button
+                            key={dartNumber}
+                            onClick={() => onSelect(dartNumber)}
+                            style={buttonStyle}
+                            onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+                            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+                        >
+                            {dartNumber}. Dart
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>

@@ -56,6 +56,9 @@ const Lobby = memo(() => {
     const [inMode, setInMode] = useState('single'); 
     const [outMode, setOutMode] = useState('double'); 
     const [whoStartsUI, setWhoStartsUI] = useState('random'); 
+    const [teamMode, setTeamMode] = useState('singles');
+    const [teamAName, setTeamAName] = useState('Team A');
+    const [teamBName, setTeamBName] = useState('Team B');
 
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -127,7 +130,10 @@ const Lobby = memo(() => {
                 legs,
                 winType,
                 outMode,
-                inMode
+                inMode,
+                teamMode,
+                teamAName,
+                teamBName
             });
             
             const winNumber = winType === 'firstTo' ? 1 : 3;
@@ -155,11 +161,18 @@ const Lobby = memo(() => {
             
             console.log('2. Generated gameOptions:', JSON.stringify(gameOptions, null, 2));
             
+            const normalizedTeamMode = teamMode === 'doubles' ? 'doubles' : 'singles';
+            const normalizedTeamA = (teamAName || 'Team A').trim() || 'Team A';
+            const normalizedTeamB = (teamBName || 'Team B').trim() || 'Team B';
+
             const roomData = {
                 roomName,
                 gameMode,
                 whoStarts: whoStartsUI,
-                gameOptions
+                gameOptions,
+                teamMode: normalizedTeamMode,
+                teamAName: normalizedTeamA,
+                teamBName: normalizedTeamB
             };
             
             console.log('3. Complete roomData to send:', JSON.stringify(roomData, null, 2));
@@ -211,8 +224,13 @@ const Lobby = memo(() => {
             const start = room.whoStarts === 'random' ? 'Ausbullen' : room.whoStarts === 'me' ? 'Ich' : 'Gegner';
             info = `Cricket • ${wt} • Sets: ${s}, Legs: ${l} • ${start}`;
         }
-        return info;
+        const teamLabel = room.teamMode === 'doubles'
+            ? `Teams: ${(room.teamNames?.teamA || 'Team A')} vs ${(room.teamNames?.teamB || 'Team B')}`
+            : 'Einzel';
+        return info ? `${info} • ${teamLabel}` : teamLabel;
     };
+
+    const getRoomCapacity = (room) => room?.maxPlayers || (room?.teamMode === 'doubles' ? 4 : 2);
 
     return (
         <LobbyErrorBoundary>
@@ -377,6 +395,43 @@ const Lobby = memo(() => {
                                         </select>
                                     </div>
                                 </div>
+
+                                <div className="form-section">
+                                    <div className="input-group">
+                                        <label>Spieler-Modus</label>
+                                        <select value={teamMode} onChange={(e) => setTeamMode(e.target.value)}>
+                                            <option value="singles">Einzel (1 vs 1)</option>
+                                            <option value="doubles">Doppel (2 vs 2)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {teamMode === 'doubles' && (
+                                    <>
+                                        <div className="form-section">
+                                            <div className="input-group">
+                                                <label>Team A Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={teamAName}
+                                                    onChange={(e) => setTeamAName(e.target.value)}
+                                                    placeholder="Team A"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-section">
+                                            <div className="input-group">
+                                                <label>Team B Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={teamBName}
+                                                    onChange={(e) => setTeamBName(e.target.value)}
+                                                    placeholder="Team B"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                                 
                                 <div className="full-width">
                                     <button type="submit" className="action-button primary-btn" disabled={!socketConnected}>
@@ -393,24 +448,36 @@ const Lobby = memo(() => {
                                     <div className="empty-state">Keine Räume offen.</div>
                                 ) : (
                                     <div className="rooms-grid">
-                                        {rooms.map(room => (
-                                            <div key={room.id} className="room-card">
-                                                <div className="room-card-header">
-                                                    <span className="room-title">{room.name || room.roomName}</span>
-                                                    <span className="room-badge">{room.players?.length || 0}/2</span>
+                                        {rooms.map(room => {
+                                            const playerCount = room.players?.length || 0;
+                                            const capacity = getRoomCapacity(room);
+                                            const isFull = playerCount >= capacity;
+                                            const teamLabel = room.teamMode === 'doubles' ? 'Doppel' : 'Einzel';
+                                            return (
+                                                <div key={room.id} className="room-card">
+                                                    <div className="room-card-header">
+                                                        <span className="room-title">{room.name || room.roomName}</span>
+                                                        <span className="room-badge">{playerCount}/{capacity}</span>
+                                                    </div>
+                                                    <div className="room-details">
+                                                        <div className="room-mode">{teamLabel}</div>
+                                                        <div>{formatRoomInfo(room)}</div>
+                                                        {room.teamMode === 'doubles' && (
+                                                            <div className="room-team-line">
+                                                                {(room.teamNames?.teamA || 'Team A')} vs {(room.teamNames?.teamB || 'Team B')}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleJoinRoom(room.id)} 
+                                                        className="join-btn"
+                                                        disabled={!socketConnected || isFull}
+                                                    >
+                                                        {isFull ? 'Voll' : 'Beitreten'}
+                                                    </button>
                                                 </div>
-                                                <div className="room-details">
-                                                    {formatRoomInfo(room)}
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleJoinRoom(room.id)} 
-                                                    className="join-btn"
-                                                    disabled={!socketConnected || (room.players?.length || 0) >= 2}
-                                                >
-                                                    Beitreten
-                                                </button>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

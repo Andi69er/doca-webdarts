@@ -52,7 +52,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
         if (!isActive || isLocked) return;
         if (currentInput.length >= 3) return;
         setCurrentInput(prev => prev + num);
-    }, [isActive, isLocked, isOpponentLocked, canUseUndo, currentInput]);
+    }, [isActive, isLocked, isOpponentLocked, currentInput]);
 
     const handleEnter = useCallback(() => {
         if (isOpponentLocked) return;
@@ -65,7 +65,7 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
         }
         onScoreInput(score);
         setCurrentInput('');
-    }, [currentInput, isActive, isLocked, isOpponentLocked, canUseUndo, onScoreInput]);
+    }, [currentInput, isActive, isLocked, isOpponentLocked, onScoreInput]);
 
 
     // KEYBOARD LISTENER

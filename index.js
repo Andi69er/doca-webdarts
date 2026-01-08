@@ -4,6 +4,8 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
+const path = require('path'); 
+
 const { generateJWT, verifyJWT, mockOAuthLogin, mockOAuthCallback, refreshJWT } = require('./auth');
 
 dotenv.config();
@@ -166,8 +168,21 @@ app.use(bodyParser.json());
 
 const roomManager = new RoomManager();
 
+// --- CLIENT FILES (React App Serving) ---
+// WICHTIG: Hier MUSS der Pfad zu Ihrem kompilierten React-Code stehen!
+// Da Sie die UI sehen, NEHME ICH AN, dass Ihr Frontend im Ordner 'frontend/build' oder 'frontend/dist' liegt.
+// PASSEN SIE DIESEN PFAD AN IHRE VERZEICHNISSTRUKTUR AN!
+app.use(express.static(path.join(__dirname, 'frontend', 'build'))); 
+// FALLBACK: Wenn die obige Zeile fehlschlägt, versuchen Sie es mit 'public' oder 'dist'
+// app.use(express.static(path.join(__dirname, 'public'))); 
+
+
 // --- ROUTES ---
-app.get('/', (req, res) => res.send("Darts Server läuft!")); 
+app.get('/', (req, res) => {
+    // Sende die index.html der React App für alle nicht-API-Anfragen, damit das Routing funktioniert
+    res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
+});
+
 app.post('/api/auth/login', (req, res) => res.json({ redirectUrl: mockOAuthLogin() }));
 app.post('/api/auth/callback', (req, res) => res.json({ token: generateJWT({id: 'test'}), user: {id: 'test'} }));
 app.get('/api/auth/me', (req, res) => res.json({ user: 'guest' }));
@@ -178,6 +193,10 @@ app.post('/api/rooms', (req, res) => res.json({ message: 'OK' }));
 // --- SOCKETS ---
 io.on('connection', (socket) => { 
     console.log('User connected:', socket.id); 
+    
+    // *** AUTOMATISCHER RELOAD TRIGGER BEI NEUER VERBINDUNG (nach Nodemon Neustart) ***
+    socket.emit('server_reload_trigger'); 
+    // **********************************************************************************
     
     socket.on('createRoom', (data) => { 
         const room = roomManager.createRoom(data); 
@@ -236,10 +255,10 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => { 
         console.log('User disconnected:', socket.id); 
-    }); 
+    });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

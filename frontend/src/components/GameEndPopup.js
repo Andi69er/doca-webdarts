@@ -1,31 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import './GameEndPopup.css';
 
-function GameEndPopup({ winner, countdown, onRematch }) {
-  const [countdownTime, setCountdownTime] = useState(countdown || 10);
-
-  useEffect(() => {
-    if (countdownTime > 0) {
-      const timer = setTimeout(() => {
-        setCountdownTime(countdownTime - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-      // Auto rematch or close after countdown
-      handleRematch();
-    }
-  }, [countdownTime]);
-
+function GameEndPopup({ winner, onRematch, onExit }) {
   const handleRematch = useCallback(() => {
-    onRematch();
+    if (onRematch) onRematch();
   }, [onRematch]);
 
-  const winnerName = winner ? winner.name || winner : 'Unknown';
+  const handleExit = useCallback(() => {
+    if (onExit) onExit();
+  }, [onExit]);
+
+  const winnerName = winner ? winner.name || winner : 'Spieler';
 
   return (
     <div className="game-end-popup">
       <div className="fireworks-container">
-        {/* Fireworks animation particles */}
+        <div className="firework"></div>
+        <div className="firework"></div>
+        <div className="firework"></div>
         <div className="firework"></div>
         <div className="firework"></div>
         <div className="firework"></div>
@@ -34,14 +26,16 @@ function GameEndPopup({ winner, countdown, onRematch }) {
       </div>
       <div className="popup-content">
         <h2 className="winner-announcement">
-          🏆 Winner: {winnerName} 🏆
+          🏆 {winnerName} gewinnt! 🏆
         </h2>
-        <div className="countdown">
-          Rematch in {countdownTime} seconds...
+        <div className="buttons-container">
+          <button className="revenge-button" onClick={handleRematch}>
+            🔄 Revanche
+          </button>
+          <button className="exit-button" onClick={handleExit}>
+            🏠 Zur Lobby
+          </button>
         </div>
-        <button className="revenge-button" onClick={handleRematch}>
-          Revenge! (Switch Players)
-        </button>
       </div>
     </div>
   );

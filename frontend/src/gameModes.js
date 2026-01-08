@@ -550,8 +550,6 @@ class GameManager {
   }
 }
 
-const gameModes = { X01Game, CricketGame, BullOffGame, GameManager };
-
 // Export metadata as default, classes as named exports
 export { X01Game, CricketGame, BullOffGame, GameManager };
 export default gameModesMetadata;

@@ -61,8 +61,8 @@ app.post('/api/games/:gameId/throw', (req, res) => { res.json({ message: 'Record
 app.use(express.static(path.join(__dirname, '..', 'frontend', 'build')));
 
 // Wildcard-Route für SPA
-app.get(/(.*)/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build', 'ml'));
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'frontend', 'build', 'index.html'));
 });
 
 
@@ -75,7 +75,7 @@ const io = new Server(server, {
 // Die Logik in socketHandler muss jetzt die Funktionen von gameManager und auth benötigen
 initializeSocket(io, null, { generateJWT, verifyJWT }); // gameManager ist null, da es nicht verwendet wird
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

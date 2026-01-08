@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './BullOffModal.css';
 
 const BullOffModal = ({ isOpen, onClose, players, onBullOffComplete, socket, roomId, user }) => {
@@ -60,49 +60,38 @@ useEffect(() => {
         };
     }, [socket, players]);
 
+    const determineWinner = useCallback(() => {
+        const p1Throws = throws[players[0]?.id];
+        const p2Throws = throws[players[1]?.id];
+
+        for (let i = 0; i < 3; i++) {
+            const p1Hit = p1Throws[i] === 25 || p1Throws[i] === 50;
+            const p2Hit = p2Throws[i] === 25 || p2Throws[i] === 50;
+
+            if (p1Hit && !p2Hit) {
+                return players[0]?.id;
+            }
+            if (p2Hit && !p1Hit) {
+                return players[1]?.id;
+            }
+            if (p1Hit && p2Hit) {
+                if (p1Throws[i] > p2Throws[i]) {
+                    return players[0]?.id;
+                } else if (p2Throws[i] > p1Throws[i]) {
+                    return players[1]?.id;
+                }
+            }
+        }
+
+        return null;
+    }, [players, throws]);
+
     useEffect(() => {
-        // Check for winner when both players have submitted
         if (submitted[players[0]?.id] && submitted[players[1]?.id]) {
             const winnerId = determineWinner();
             setWinner(winnerId);
         }
-    }, [submitted, throws, players]);
-
-const determineWinner = () => {
-        const p1Throws = throws[players[0]?.id];
-        const p2Throws = throws[players[1]?.id];
-
-        // Jeder Spieler wirft 3 Darts - wer als erster Bull (25 oder 50) trifft gewinnt
-        for (let i = 0; i < 3; i++) {
-            const p1Hit = p1Throws[i] === 25 || p1Throws[i] === 50; // Bull-Treffer
-            const p2Hit = p2Throws[i] === 25 || p2Throws[i] === 50; // Bull-Treffer
-
-            if (p1Hit && !p2Hit) {
-                // P1 trifft Bull, P2 nicht -> P1 gewinnt
-                return players[0]?.id;
-            }
-            if (p2Hit && !p1Hit) {
-                // P2 trifft Bull, P1 nicht -> P2 gewinnt
-                return players[1]?.id;
-            }
-            if (p1Hit && p2Hit) {
-                // BEIDE treffen Bull -> wer hat den höheren Wert?
-                if (p1Throws[i] > p2Throws[i]) {
-                    // P1 hat höheren Wert (50 > 25) -> P1 gewinnt
-                    return players[0]?.id;
-                } else if (p2Throws[i] > p1Throws[i]) {
-                    // P2 hat höheren Wert (50 > 25) -> P2 gewinnt
-                    return players[1]?.id;
-                }
-                // Beide haben gleichen Wert (beide 25 oder beide 50) -> weiter zum nächsten Dart
-            }
-            // Wenn beide verfehlen, weiter zum nächsten Dart
-        }
-
-        // Wenn nach 3 Darts noch unentschieden (beide haben gleiche Treffer oder beide missen)
-        // Dann geht es in die Sudden Death Phase - weiter werfen bis jemand gewinnt
-        return null; // Unentschieden - beide müssen erneut werfen
-    };
+    }, [determineWinner, submitted, players]);
 
     const handleThrowChange = (playerId, dartIndex, value) => {
         const numValue = parseInt(value, 10);
