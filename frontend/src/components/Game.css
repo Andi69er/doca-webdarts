@@ -960,7 +960,7 @@
   font-weight: 500;
 }
 /* Responsive adjustments */
-@media (max-width: 1200px) {
+@media (max-width: 992px) {
   .game-layout {
     flex-direction: column;
   }
