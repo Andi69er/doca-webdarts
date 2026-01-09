@@ -113,7 +113,7 @@ const GameVideoPanel = ({
                     {isCameraEnabled ? '📹 Stop' : '📹 Start'}
                 </button>
                 {showConnectButton && (
-                    <button type="button" onClick={autoConnectToOpponents}>🔌 Verbinden</button>
+                    <button type="button" onClick={() => autoConnectToOpponents({ force: true })}>🔌 Verbinden</button>
                 )}
                 {showRecordingButton && (
                     <button

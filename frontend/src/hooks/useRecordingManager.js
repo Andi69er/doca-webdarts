@@ -41,53 +41,81 @@ const useRecordingManager = ({ localStream, remoteStreams, filePrefix = 'Darts-A
     const [recordingError, setRecordingError] = useState(null);
     const mediaRecorderRef = useRef(null);
     const recordedChunksRef = useRef([]);
+    const captureStreamRef = useRef(null);
 
-    const startRecording = useCallback(() => {
+    const stopRecording = useCallback(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+        if (captureStreamRef.current) {
+            captureStreamRef.current.getTracks().forEach((track) => track.stop());
+            captureStreamRef.current = null;
+        }
+    }, []);
+
+    const startRecording = useCallback(async () => {
         if (isRecording) {
             return;
         }
-        const composite = buildCompositeStream(localStream, remoteStreams);
-        if (!composite || composite.getTracks().length === 0) {
-            setRecordingError('Keine aktiven Streams für die Aufnahme verfügbar.');
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+            setRecordingError('Aufnahme ist in diesem Browser nicht verfügbar.');
             return;
         }
 
-        recordedChunksRef.current = [];
+        const beginRecording = (stream) => {
+            recordedChunksRef.current = [];
+            let recorder = null;
+            try {
+                recorder = new MediaRecorder(stream, { mimeType });
+            } catch (error) {
+                try {
+                    recorder = new MediaRecorder(stream);
+                } catch (fallbackError) {
+                    setRecordingError(fallbackError.message);
+                    return;
+                }
+            }
+
+            mediaRecorderRef.current = recorder;
+            recorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunksRef.current.push(event.data);
+                }
+            };
+            recorder.onstop = () => {
+                setIsRecording(false);
+                const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+                triggerDownload(blob, defaultFileName(filePrefix));
+            };
+            recorder.start();
+            setIsRecording(true);
+        };
+
         setRecordingError(null);
 
-        let recorder;
         try {
-            recorder = new MediaRecorder(composite, { mimeType });
-        } catch (error) {
-            try {
-                recorder = new MediaRecorder(composite);
-            } catch (fallbackError) {
-                setRecordingError(fallbackError.message);
-                return;
-            }
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: { frameRate: 30 },
+                audio: true
+            });
+            captureStreamRef.current = displayStream;
+            displayStream.getTracks().forEach((track) => {
+                track.addEventListener('ended', stopRecording, { once: true });
+            });
+            beginRecording(displayStream);
+            return;
+        } catch (displayError) {
+            console.warn('Display capture failed, falling back to in-app streams', displayError);
+            captureStreamRef.current = null;
         }
 
-        mediaRecorderRef.current = recorder;
-        recorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                recordedChunksRef.current.push(event.data);
-            }
-        };
-        recorder.onstop = () => {
-            setIsRecording(false);
-            const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-            triggerDownload(blob, defaultFileName(filePrefix));
-        };
-        recorder.start();
-        setIsRecording(true);
-    }, [filePrefix, isRecording, localStream, mimeType, remoteStreams]);
-
-    const stopRecording = useCallback(() => {
-        if (!mediaRecorderRef.current) {
+        const composite = buildCompositeStream(localStream, remoteStreams);
+        if (!composite || composite.getTracks().length === 0) {
+            setRecordingError('Bildschirmaufnahme abgelehnt oder keine Streams verfügbar.');
             return;
         }
-        mediaRecorderRef.current.stop();
-    }, []);
+        beginRecording(composite);
+    }, [filePrefix, isRecording, localStream, mimeType, remoteStreams, stopRecording]);
 
     return {
         isRecording,

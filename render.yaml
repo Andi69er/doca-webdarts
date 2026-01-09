@@ -8,5 +8,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: KEEPALIVE_URL
+        value: https://doca-webdarts.onrender.com
+      - key: KEEPALIVE_INTERVAL_MS
+        value: "840000"
+      - key: DISABLE_KEEPALIVE
+        value: "false"
     healthCheckPath: /
 

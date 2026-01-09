@@ -435,7 +435,7 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
         return localValue < remoteValue;
     }, [socketId, user?.id]);
 
-    const autoConnectToOpponents = useCallback(() => {
+    const autoConnectToOpponents = useCallback(({ force = false } = {}) => {
         console.log('[AutoConnect] 🔄 Versuche automatische Verbindung...');
         console.log('[AutoConnect] localStream:', !!localStream);
         console.log('[AutoConnect] isCameraEnabled:', isCameraEnabled);
@@ -483,7 +483,7 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                 return;
             }
 
-            if (!shouldInitiateCall(opponent)) {
+            if (!force && !shouldInitiateCall(opponent)) {
                 console.log('[AutoConnect] ⏭ Warte auf Remote-Initiator für:', opponentLabel);
                 return;
             }
