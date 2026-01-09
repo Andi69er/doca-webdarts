@@ -960,22 +960,9 @@
   font-weight: 500;
 }
 /* Responsive adjustments */
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
   .game-layout {
     flex-direction: column;
-  }
-
-  .game-layout > .game-main-area {
-    order: 1;
-  }
-
-  .game-layout > .video-shell {
-    order: 2;
-  }
-
-  .game-top-header {
-    grid-template-columns: 1fr;
-    gap: 12px;
   }
 
   .game-main-area {

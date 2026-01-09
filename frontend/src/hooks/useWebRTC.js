@@ -489,8 +489,13 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
             }
 
             if (peerConnections.current[targetSocketId]) {
-                console.log('[AutoConnect] ✅ Bereits verbunden mit:', opponentLabel);
-                return;
+                if (force) {
+                    console.log('[AutoConnect] ♻️ Erzwinge Neuaufbau für:', opponentLabel);
+                    dropPeerConnection(targetSocketId, 'force-reconnect');
+                } else {
+                    console.log('[AutoConnect] ✅ Bereits verbunden mit:', opponentLabel);
+                    return;
+                }
             }
 
             console.log('[AutoConnect] Initiating call to:', opponentLabel, targetSocketId);
@@ -499,7 +504,7 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                 initiateCall(targetSocketId);
             }, (index + 1) * 1000);
         });
-    }, [gameState?.players, initiateCall, isCameraEnabled, localStream, shouldInitiateCall, socketId, user?.id]);
+    }, [dropPeerConnection, gameState?.players, initiateCall, isCameraEnabled, localStream, shouldInitiateCall, socketId, user?.id]);
 
     useEffect(() => {
         autoConnectRef.current = autoConnectToOpponents;
