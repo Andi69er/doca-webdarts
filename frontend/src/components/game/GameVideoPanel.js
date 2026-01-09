@@ -12,11 +12,12 @@ const getTeamName = (player, fallbackIndex = 0) => {
     return player.teamName || player.team || (fallbackIndex % 2 === 0 ? 'Team A' : 'Team B');
 };
 
-const buildLabel = (player, fallbackIndex, isLocal = false) => {
-    if (isLocal) {
-        return `${getTeamName(player, fallbackIndex)} – ${player?.name || 'Du'}`;
+const buildLabel = (player, fallbackIndex, { isLocal = false, isDoubles = false } = {}) => {
+    const baseName = player?.name || (isLocal ? 'Du' : 'Spieler');
+    if (!isDoubles) {
+        return baseName;
     }
-    return `${getTeamName(player, fallbackIndex)} – ${player?.name || 'Spieler'}`;
+    return `${getTeamName(player, fallbackIndex)} – ${baseName}`;
 };
 
 const GameVideoPanel = ({
@@ -44,13 +45,14 @@ const GameVideoPanel = ({
     const [showDebug, setShowDebug] = useState(false);
 
     const opponents = useMemo(() => (gameState.players || []).filter(p => p.id !== user.id), [gameState.players, user.id]);
+    const isDoubles = gameState?.teamMode === 'doubles';
 
     const participants = useMemo(() => {
         const entries = [];
         entries.push({
             id: 'local',
             playerId: user?.id,
-            label: buildLabel(user, 0, true),
+            label: buildLabel(user, 0, { isLocal: true, isDoubles }),
             stream: localStream,
             type: 'local'
         });
@@ -58,14 +60,14 @@ const GameVideoPanel = ({
             entries.push({
                 id: player.id,
                 playerId: player.id,
-                label: buildLabel(player, index + 1),
+                label: buildLabel(player, index + 1, { isDoubles }),
                 stream: remoteStreams[player.id],
                 type: 'remote',
                 name: player.name
             });
         });
         return entries;
-    }, [opponents, remoteStreams, user, localStream]);
+    }, [isDoubles, opponents, remoteStreams, user, localStream]);
 
     const { mutedState, toggleMute } = useAudioControls({ participants });
 
