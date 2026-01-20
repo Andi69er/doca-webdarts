@@ -6,6 +6,7 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
     const iceCandidateQueue = useRef({});
     const remoteStreamCache = useRef({});
     const receiverPolls = useRef({});
+    const disconnectionTimers = useRef({});
     const autoConnectRef = useRef(null);
     const gameStateRef = useRef(gameState);
     const [localStream, setLocalStream] = useState(null);
@@ -49,6 +50,11 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
             if (receiverPolls.current[key]) {
                 clearInterval(receiverPolls.current[key]);
                 delete receiverPolls.current[key];
+            }
+
+            if (disconnectionTimers.current[key]) {
+                clearTimeout(disconnectionTimers.current[key]);
+                delete disconnectionTimers.current[key];
             }
 
             if (iceCandidateQueue.current[key]) {
@@ -154,6 +160,21 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                     autoConnectRef.current?.();
                 }, 1000);
             }
+        };
+
+        const clearDisconnectionTimer = () => {
+            if (disconnectionTimers.current[targetKey]) {
+                clearTimeout(disconnectionTimers.current[targetKey]);
+                delete disconnectionTimers.current[targetKey];
+            }
+        };
+
+        const triggerReconnectWithDelay = (reason) => {
+            clearDisconnectionTimer();
+            disconnectionTimers.current[targetKey] = setTimeout(() => {
+                delete disconnectionTimers.current[targetKey];
+                scheduleReconnect(reason);
+            }, 3000);
         };
 
         pc.onicecandidate = (event) => {
@@ -306,10 +327,17 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                 pc.restartIce();
             }
             if (state === 'connected' || state === 'completed') {
+                clearDisconnectionTimer();
                 syncReceiversToRemoteStreams();
                 startReceiverPoll();
+                return;
             }
-            if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+            if (state === 'disconnected') {
+                triggerReconnectWithDelay(`connectionState:${state}`);
+                return;
+            }
+            if (state === 'failed' || state === 'closed') {
+                clearDisconnectionTimer();
                 stopReceiverPoll();
                 scheduleReconnect(`connectionState:${state}`);
             }
@@ -322,10 +350,17 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                 pc.restartIce();
             }
             if (state === 'connected' || state === 'completed') {
+                clearDisconnectionTimer();
                 syncReceiversToRemoteStreams();
                 startReceiverPoll();
+                return;
             }
-            if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+            if (state === 'disconnected') {
+                triggerReconnectWithDelay(`iceConnectionState:${state}`);
+                return;
+            }
+            if (state === 'failed' || state === 'closed') {
+                clearDisconnectionTimer();
                 stopReceiverPoll();
                 scheduleReconnect(`iceConnectionState:${state}`);
             }

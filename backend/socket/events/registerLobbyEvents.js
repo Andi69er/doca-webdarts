@@ -1,6 +1,8 @@
 function registerLobbyEvents({ io, socket, state }) {
     const defaultTeamNames = { teamA: 'Team A', teamB: 'Team B' };
 
+    const getPerTeamLimit = (room) => Math.max(1, Math.floor((room?.maxPlayers || 2) / 2));
+
     const ensureTeamData = (room, overrides = {}) => {
         if (!room) {
             return;
@@ -70,7 +72,7 @@ function registerLobbyEvents({ io, socket, state }) {
             return null;
         }
         ensureTeamData(room);
-        const perTeamLimit = Math.max(1, Math.floor((room.maxPlayers || 2) / 2));
+        const perTeamLimit = getPerTeamLimit(room);
         const counts = getTeamCounts(room);
         let targetKey = preferredTeamKey;
         if (targetKey && counts[targetKey] >= perTeamLimit) {
@@ -375,6 +377,73 @@ function registerLobbyEvents({ io, socket, state }) {
         socket.emit('joinedAsSpectator', { roomId: room.id });
         attachTeamMetadata(room.gameState, room);
         socket.emit('game-state-update', room.gameState);
+    });
+
+    socket.on('switchTeam', (data) => {
+        const { roomId, teamKey } = data || {};
+        const room = state.rooms.find(r => r.id === roomId);
+        if (!room) {
+            socket.emit('gameError', { error: 'Raum nicht gefunden.' });
+            return;
+        }
+
+        ensureTeamData(room);
+
+        if (room.teamMode !== 'doubles') {
+            socket.emit('gameError', { error: 'Teamwechsel ist nur im Doppelmodus möglich.' });
+            return;
+        }
+
+        const normalizedTeam = teamKey === 'teamB' ? 'teamB' : 'teamA';
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) {
+            socket.emit('gameError', { error: 'Spieler nicht im Raum.' });
+            return;
+        }
+
+        const status = room.gameState?.gameStatus;
+        if (status && status !== 'waiting') {
+            socket.emit('gameError', { error: 'Teamwechsel nach Spielstart nicht möglich.' });
+            return;
+        }
+
+        const currentTeam = room.teamAssignments?.[player.id];
+        if (currentTeam === normalizedTeam) {
+            socket.emit('teamSwitchAck', { teamKey: currentTeam, teamName: room.teamNames?.[currentTeam] });
+            return;
+        }
+
+        const perTeamLimit = getPerTeamLimit(room);
+        const counts = getTeamCounts(room);
+        if (counts[normalizedTeam] >= perTeamLimit) {
+            socket.emit('gameError', { error: 'Dieses Team ist bereits voll.' });
+            return;
+        }
+
+        room.teamAssignments[player.id] = normalizedTeam;
+        applyTeamMeta(player, normalizedTeam, room.teamNames);
+        syncPlayerTeams(room);
+
+        if (!room.gameState) {
+            room.gameState = {
+                mode: room.gameMode === 'CricketGame' ? 'cricket' : 'x01',
+                players: room.players,
+                gameStatus: 'waiting',
+                hostId: room.hostId,
+                whoStarts: room.whoStarts,
+                gameOptions: room.gameOptions
+            };
+        }
+
+        attachTeamMetadata(room.gameState, room);
+
+        io.to(room.id).emit('receiveMessage', {
+            user: 'System',
+            text: `${player.name} spielt jetzt für ${room.teamNames?.[normalizedTeam] || normalizedTeam}.`
+        });
+
+        io.to(room.id).emit('game-state-update', room.gameState);
+        io.emit('updateRooms', state.rooms);
     });
 
     socket.on('changePlayerName', (data) => {
