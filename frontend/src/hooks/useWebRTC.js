@@ -570,7 +570,22 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
             } catch (videoError) {
                 console.error('Kamera konnte nicht gestartet werden:', videoError);
-                alert('Kamera konnte nicht gestartet werden. Bitte prüfe die Berechtigungen in deinem Browser.');
+                
+                let errorMessage = 'Kamera konnte nicht gestartet werden.\n\n';
+                
+                if (videoError.name === 'NotAllowedError' || videoError.name === 'PermissionDeniedError') {
+                    errorMessage += '🚫 ZUGRIFF VERWEIGERT:\nBitte klicke oben in der Adresszeile auf das SCHLOSS-SYMBOL (oder "Nicht sicher") und stelle Kamera auf "Zulassen".';
+                } else if (videoError.name === 'NotFoundError' || videoError.name === 'DevicesNotFoundError') {
+                    errorMessage += '🔍 KEINE KAMERA GEFUNDEN:\nBitte stelle sicher, dass eine Kamera angeschlossen und eingeschaltet ist.';
+                } else if (videoError.name === 'NotReadableError' || videoError.name === 'TrackStartError') {
+                    errorMessage += '📷 KAMERA WIRD BEREITS GENUTZT:\nEin anderes Programm (Teams, Zoom, ein anderer Browser-Tab) blockiert die Kamera.';
+                } else if (!window.isSecureContext) {
+                    errorMessage += '🔒 UNSICHERE VERBINDUNG:\nChrome erlaubt Kamera nur über HTTPS oder Localhost. Nutze http://localhost:3000 oder richte die Chrome-Flags ein.';
+                } else {
+                    errorMessage += `Fehler: ${videoError.message || videoError.name}`;
+                }
+                
+                alert(errorMessage);
                 return;
             }
         }

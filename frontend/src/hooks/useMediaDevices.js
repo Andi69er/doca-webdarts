@@ -6,19 +6,29 @@ const useMediaDevices = () => {
 
     const refreshDevices = useCallback(async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            const list = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = list.filter(device => device.kind === 'videoinput');
+            // Erst versuchen Geräte aufzulisten
+            let list = await navigator.mediaDevices.enumerateDevices();
+            let videoDevices = list.filter(device => device.kind === 'videoinput');
+            
+            // Wenn keine Labels da sind (wegen fehlender Rechte), einmal kurz anfragen
+            if (videoDevices.length > 0 && !videoDevices[0].label) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    list = await navigator.mediaDevices.enumerateDevices();
+                    videoDevices = list.filter(device => device.kind === 'videoinput');
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (e) {
+                    console.warn('Labels konnten nicht geladen werden (keine Rechte)');
+                }
+            }
+            
             setDevices(videoDevices);
 
             if (videoDevices.length > 0 && !selectedDeviceId) {
                 setSelectedDeviceId(videoDevices[0].deviceId);
             }
-
-            stream.getTracks().forEach(track => track.stop());
         } catch (error) {
             console.error('Geräte konnten nicht geladen werden:', error);
-            alert('Kamera-Zugriff wurde verweigert. Die Kamera-Funktionen sind deaktiviert.');
         }
     }, [selectedDeviceId]);
 
