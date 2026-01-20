@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestions, isOpponentLocked, isMyTurn, canUseUndo, gameRunning }) => {
+const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestions, isOpponentLocked, isRemoteLocked, isMyTurn, canUseUndo, gameRunning }) => {
     const [currentInput, setCurrentInput] = useState('');
 
     // Styles - FIXIERTE GRÖSSEN um Springen zu verhindern
@@ -102,9 +102,9 @@ const NumberPad = ({ onScoreInput, onUndo, isActive, isLocked, checkoutSuggestio
             <div style={styles.status}>
                 {!gameRunning ? "Warte auf Start" :
                  canUseUndo ? "Undo möglich (U)" :
-                 isOpponentLocked ? "Warte..." :
-                 (!isActive ? "Gegner ist dran" :
-                 (isLocked ? "Gesendet..." : "Du bist dran!"))}
+                 isRemoteLocked ? "Gesperrt..." :
+                 isLocked ? (isActive ? "Gesperrt..." : "Warte...") :
+                 (!isActive ? "Gegner ist dran" : "Du bist dran!")}
             </div>
 
             <div style={styles.preview}>

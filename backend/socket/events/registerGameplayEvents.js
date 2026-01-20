@@ -166,8 +166,59 @@ function registerGameplayEvents({ io, socket, state, utils }) {
                 console.log('[DEBUG] LEG WON EVENT NOT EMITTED - condition not met');
             }
         } catch (error) {
+            console.error(`[SCORE-INPUT] Fehler:`, error);
+            socket.emit('gameError', { error: 'Interner Serverfehler bei der Score-Eingabe.' });
+        }
+    });
+
+    socket.on('undo', (data) => {
+        const { roomId, userId } = data;
+        const room = state.rooms.find(r => r.id === roomId);
+
+        if (!room || !room.game) {
+            socket.emit('gameError', { error: 'Raum oder Spiel nicht gefunden' });
+            return;
+        }
+
+        try {
+            const result = room.game.undoLastThrow();
+            if (!result.success) {
+                socket.emit('gameError', { error: result.reason });
+                return;
+            }
+
+            const lastThrow = result.lastThrow;
+            const affectedPlayerId = lastThrow.playerId;
+            const affectedPlayer = room.players.find(p => p.id === affectedPlayerId);
+
+            if (affectedPlayer) {
+                if (room.gameMode === 'CricketGame') {
+                    affectedPlayer.dartsThrown = Math.max(0, (affectedPlayer.dartsThrown || 0) - 1);
+                    affectedPlayer.matchDartsThrown = Math.max(0, (affectedPlayer.matchDartsThrown || 0) - 1);
+                } else {
+                    affectedPlayer.dartsThrown = Math.max(0, (affectedPlayer.dartsThrown || 0) - 3);
+                    affectedPlayer.matchDartsThrown = Math.max(0, (affectedPlayer.matchDartsThrown || 0) - 3);
+                    
+                    // Schnitt neu berechnen
+                    const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
+                    const pointsScored = startScore - (room.game.scores[affectedPlayerId] || startScore);
+                    const turnsPlayed = affectedPlayer.dartsThrown / 3;
+                    affectedPlayer.avg = turnsPlayed > 0 ? (pointsScored / turnsPlayed).toFixed(2) : '0.00';
+                }
+                
+                affectedPlayer.score = room.game.scores[affectedPlayerId];
+            }
+
+            const updateData = createFullGameStateUpdate(room);
+            room.gameState = { ...room.gameState, ...updateData, checkoutQuery: null, doubleAttemptsQuery: null };
+            
+            io.to(roomId).emit('game-state-update', updateData);
+            // Lock aufheben für alle
+            io.to(roomId).emit('score-locked', { userId: 'system', duration: 0 });
+            
+        } catch (error) {
             console.error(`[UNDO] Fehler:`, error);
-            socket.emit('gameError', { error: 'Interner Serverfehler beim Rückgängigmachen.' });
+            socket.emit('gameError', { error: 'Fehler beim Rückgängigmachen.' });
         }
     });
 

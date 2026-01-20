@@ -550,6 +550,11 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
     }, [autoConnectToOpponents]);
 
     const startCamera = useCallback(async (targetDeviceId) => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Kamera-Zugriff wird von deinem Browser nicht unterstützt (wahrscheinlich wegen einer unsicheren Verbindung/HTTP).');
+            return;
+        }
+
         const idToUse = targetDeviceId || selectedDeviceId;
         console.log('Starte Kamera mit ID:', idToUse);
         let stream = null;

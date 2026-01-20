@@ -24,57 +24,57 @@ const useNumpadLock = () => {
         setNumpadState(defaultState);
     }, [clearLockTimer]);
 
-    const lockForCricket = useCallback((playerId) => {
-        setNumpadState(prev => ({
-            ...prev,
-            isLocked: true,
-            canUndo: true,
-            lockedPlayerId: playerId
-        }));
-    }, []);
-
     const startUndoWindow = useCallback((playerId, duration = 5000) => {
         clearLockTimer();
         const timer = setTimeout(() => {
             lockTimerRef.current = null;
-            setNumpadState(prev => ({
-                ...prev,
-                isLocked: false,
-                canUndo: false,
-                lockedPlayerId: null,
-                lockTimer: null
-            }));
+            setNumpadState(prev => {
+                if (prev.lockTimer === timer) {
+                    return defaultState;
+                }
+                return prev;
+            });
         }, duration);
         lockTimerRef.current = timer;
-        setNumpadState(prev => ({
-            ...prev,
-            isLocked: false,
+        setNumpadState({
+            isLocked: true,
             canUndo: true,
             lockedPlayerId: playerId,
             lockTimer: timer
-        }));
+        });
     }, [clearLockTimer]);
+
+    const lockForCricket = useCallback((playerId, duration = 5000) => {
+        startUndoWindow(playerId, duration);
+    }, [startUndoWindow]);
+
+    const confirmScore = useCallback(() => {
+        setNumpadState(prev => {
+            if (prev.lockedPlayerId !== 'remote' && prev.canUndo) {
+                return { ...prev, isLocked: false };
+            }
+            return prev;
+        });
+    }, []);
 
     const remoteLock = useCallback((duration = 5000) => {
         clearLockTimer();
-        setNumpadState(prev => ({
-            ...prev,
+        const timer = setTimeout(() => {
+            lockTimerRef.current = null;
+            setNumpadState(prev => {
+                if (prev.lockTimer === timer) {
+                    return defaultState;
+                }
+                return prev;
+            });
+        }, duration);
+        lockTimerRef.current = timer;
+        setNumpadState({
             isLocked: true,
             canUndo: false,
             lockedPlayerId: 'remote',
-            lockTimer: null
-        }));
-        const timer = setTimeout(() => {
-            lockTimerRef.current = null;
-            setNumpadState(prev => ({
-                ...prev,
-                isLocked: false,
-                canUndo: false,
-                lockedPlayerId: null,
-                lockTimer: null
-            }));
-        }, duration);
-        lockTimerRef.current = timer;
+            lockTimer: timer
+        });
     }, [clearLockTimer]);
 
     return {
@@ -82,6 +82,7 @@ const useNumpadLock = () => {
         setNumpadState,
         lockForCricket,
         startUndoWindow,
+        confirmScore,
         remoteLock,
         forceUnlock,
         clearLockTimer

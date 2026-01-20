@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUndo, dartsThrownInTurn = 0 }) => {
+const CricketInputPanel = ({ onScoreInput, isActive, isLocked, isRemoteLocked, canUseUndo, onUndo, dartsThrownInTurn = 0 }) => {
     // This component no longer tracks the number of throws.
     // It sends each throw event immediately.
 
@@ -56,14 +56,16 @@ const CricketInputPanel = ({ onScoreInput, isActive, isLocked, canUseUndo, onUnd
             <div style={{
                 marginBottom: '15px',
                 padding: '10px',
-                backgroundColor: isActive && !isLocked ? '#4caf50' : '#333',
+                backgroundColor: (isActive && !isLocked) ? '#4caf50' : '#333',
                 borderRadius: '5px',
                 textAlign: 'center',
                 fontSize: '14px',
                 fontWeight: 'bold',
-                color: isActive && !isLocked ? 'black' : 'white'
+                color: (isActive && !isLocked) ? 'black' : 'white'
             }}>
-                {isActive && !isLocked ? `Du bist dran (${dartsThrownInTurn}/3)` : 'Warte...'}
+                {canUseUndo ? "Undo möglich" :
+                 isRemoteLocked ? "Gesperrt..." :
+                 (isActive && !isLocked) ? `Du bist dran (${dartsThrownInTurn}/3)` : 'Warte...'}
             </div>
 
             {/* Grid for numbers 20-15 */}

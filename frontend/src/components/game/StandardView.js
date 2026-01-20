@@ -96,6 +96,7 @@ const StandardView = ({
                                         isActive={currentPlayer?.id === user.id && canInput}
                                         isLocked={!(currentPlayer?.id === user.id) || numpadState.isLocked}
                                         isOpponentLocked={!(currentPlayer?.id === user.id)}
+                                        isRemoteLocked={numpadState.lockedPlayerId === 'remote'}
                                         isMyTurn={currentPlayer?.id === user.id}
                                         canUseUndo={numpadState.canUndo}
                                         gameRunning={isGameRunning}

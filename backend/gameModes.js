@@ -202,7 +202,7 @@ class X01Game {
         // Entferne den letzten Wurf aus der Historie
         this.history.splice(lastThrowIndex, 1);
 
-        return { success: true };
+        return { success: true, lastThrow };
     }
 
     getGameState() {
@@ -507,7 +507,7 @@ class CricketGame {
         this.dartsThrownInTurn = (this.dartsThrownInTurn - 1 + this.maxDartsPerTurn) % this.maxDartsPerTurn;
         
         this.winner = null; // Ein eventueller Gewinn wird rückgängig gemacht
-        return { success: true };
+        return { success: true, lastThrow };
     }
 
     getGameState() {

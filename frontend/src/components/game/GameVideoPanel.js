@@ -44,7 +44,7 @@ const GameVideoPanel = ({
 }) => {
     const [showDebug, setShowDebug] = useState(false);
 
-    const opponents = useMemo(() => (gameState.players || []).filter(p => p.id !== user.id), [gameState.players, user.id]);
+    const opponents = useMemo(() => (gameState?.players || []).filter(p => p.id !== user.id), [gameState?.players, user.id]);
     const isDoubles = gameState?.teamMode === 'doubles';
 
     const participants = useMemo(() => {

@@ -35,7 +35,7 @@ export const GameProvider = ({ roomId, socket, children }) => {
     const expectedLocalScore = useRef(null);
     const pollRef = useRef(null);
 
-    const { numpadState, setNumpadState, lockForCricket, startUndoWindow, remoteLock, forceUnlock, clearLockTimer } = useNumpadLock();
+    const { numpadState, setNumpadState, lockForCricket, startUndoWindow, confirmScore, remoteLock, forceUnlock, clearLockTimer } = useNumpadLock();
     const {
         devices,
         selectedDeviceId,
@@ -152,24 +152,17 @@ export const GameProvider = ({ roomId, socket, children }) => {
             if (currentPlayer && user.id) {
                 const newIsMyTurn = currentPlayer.id === user.id;
 
-                if (newIsMyTurn && prevPlayerIndex !== currentPlayerIndex) {
-                    releaseLock();
-                }
+                // Nur entsperren wenn sich der Spieler wirklich geändert hat
+                // oder das Spiel gerade erst aktiv wurde
+                const turnChanged = prevPlayerIndex !== undefined && prevPlayerIndex !== currentPlayerIndex;
+                const gameJustStarted = newState.gameStatus === 'active' && prev?.gameStatus !== 'active';
 
-                if (newState.gameStatus === 'active' && newIsMyTurn) {
-                    releaseLock();
-                }
-
-                if (newState.gameStatus === 'active' && prev?.gameStatus !== 'active' && newIsMyTurn) {
-                    releaseLock();
-                }
-
-                if (newState.gameStatus === 'active' && newIsMyTurn && currentPlayerIndex !== prevPlayerIndex) {
-                    releaseLock();
-                }
-
-                if (newState.mode === 'cricket' && newIsMyTurn) {
-                    forceUnlock();
+                if (newIsMyTurn) {
+                    if (turnChanged || gameJustStarted) {
+                        releaseLock();
+                    } else {
+                        confirmScore();
+                    }
                 }
 
                 const desiredLayout = computeAutoVideoLayout({
@@ -217,7 +210,7 @@ export const GameProvider = ({ roomId, socket, children }) => {
                 whoStarts: newState.whoStarts || prev?.whoStarts
             };
         });
-    }, [socket, user?.id, localGameStarted, setLocalGameStarted, setTurnEndTime, setShowWinnerPopup, setShowLegWinnerPopup, setShowGameEndButtons, setIsStartingGame, startGameTimeoutRef, forceUnlock, setVideoLayout, setDoubleAttemptsQuery, setDoubleAttemptsResponsePending, setCheckoutPlayer, setShowCheckoutPopup, computeAutoVideoLayout]);
+    }, [socket, user?.id, localGameStarted, setLocalGameStarted, setTurnEndTime, setShowWinnerPopup, setShowLegWinnerPopup, setShowGameEndButtons, setIsStartingGame, startGameTimeoutRef, forceUnlock, confirmScore, setVideoLayout, setDoubleAttemptsQuery, setDoubleAttemptsResponsePending, setCheckoutPlayer, setShowCheckoutPopup, computeAutoVideoLayout]);
 
     useGameConnection({
         socket,

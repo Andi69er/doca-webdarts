@@ -58,7 +58,7 @@ const CricketView = ({
                     )}
                     {!isGameRunning && !isGameFinished && (
                         <div className="ready-box" style={{ backgroundColor: '#111' }}>
-                            {gameState.players.length < 2 ? (
+                            {gameState?.players?.length < 2 ? (
                                 <h3 style={{ color: '#888' }}>Warte auf Gegner...</h3>
                             ) : (
                                 isAuthorizedStarter ? (
@@ -67,7 +67,7 @@ const CricketView = ({
                                     <div className="waiting-message">Warte auf Starter...</div>
                                 )
                             )}
-                            {gameState.teamMode === 'doubles' && (
+                            {gameState?.teamMode === 'doubles' && (
                                 <TeamAssignmentPanel
                                     gameState={gameState}
                                     user={user}
@@ -84,6 +84,7 @@ const CricketView = ({
                                 onScoreInput={handleScoreInput}
                                 isActive={currentPlayer?.id === user.id && !numpadState.isLocked}
                                 isLocked={!(currentPlayer?.id === user.id) || numpadState.isLocked}
+                                isRemoteLocked={numpadState.lockedPlayerId === 'remote'}
                                 canUseUndo={numpadState.canUndo}
                                 onUndo={handleUndo}
                                 dartsThrownInTurn={dartsThrownInTurn || 0}
@@ -141,7 +142,7 @@ const CricketView = ({
                             )}
                         </div>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                            <GameChat socket={socket} roomId={roomId} user={user} messages={gameState.chatMessages || []} />
+                            <GameChat socket={socket} roomId={roomId} user={user} messages={gameState?.chatMessages || []} />
                         </div>
                     </div>
                 </div>

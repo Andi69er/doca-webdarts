@@ -5,6 +5,10 @@ const useMediaDevices = () => {
     const [selectedDeviceId, setSelectedDeviceId] = useState('');
 
     const refreshDevices = useCallback(async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            console.warn('MediaDevices API nicht verfügbar');
+            return;
+        }
         try {
             // Erst versuchen Geräte aufzulisten
             let list = await navigator.mediaDevices.enumerateDevices();
