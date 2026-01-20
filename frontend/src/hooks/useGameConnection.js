@@ -13,7 +13,8 @@ const useGameConnection = ({
     setShowLegWinnerPopup,
     pollRef,
     user,
-    setUser
+    setUser,
+    remoteLock
 }) => {
     const [isLoading, setIsLoading] = useState(true);
 
@@ -86,6 +87,13 @@ const useGameConnection = ({
             }
         };
 
+        const handleScoreLocked = (data) => {
+            if (data.userId !== socket.id) {
+                console.log('[WebDarts] Score locked by opponent for', data.duration, 'ms');
+                remoteLock(data.duration);
+            }
+        };
+
         socket.on('game-state-update', handleGameState);
         socket.on('game-started', handleGameState);
         socket.on('gameState', handleGameState);
@@ -94,6 +102,7 @@ const useGameConnection = ({
         socket.on('joinedAsSpectator', handleSpectator);
         socket.on('youHaveBeenKicked', handleKicked);
         socket.on('leg-won', handleLegWon);
+        socket.on('score-locked', handleScoreLocked);
 
         socket.emit('joinRoom', { roomId });
         socket.emit('getGameState', roomId);
@@ -115,8 +124,9 @@ const useGameConnection = ({
             socket.off('joinedAsSpectator', handleSpectator);
             socket.off('youHaveBeenKicked', handleKicked);
             socket.off('leg-won', handleLegWon);
+            socket.off('score-locked', handleScoreLocked);
         };
-    }, [socket, roomId, handleGameState, showCheckoutPopup, setIsStartingGame, startGameTimeoutRef, setIsSpectator, setPendingLegWinner, setLegWinnerData, setShowLegWinnerPopup, pollRef]);
+    }, [socket, roomId, handleGameState, showCheckoutPopup, setIsStartingGame, startGameTimeoutRef, setIsSpectator, setPendingLegWinner, setLegWinnerData, setShowLegWinnerPopup, pollRef, remoteLock]);
 
     return { isLoading };
 };

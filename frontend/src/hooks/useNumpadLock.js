@@ -55,11 +55,34 @@ const useNumpadLock = () => {
         }));
     }, [clearLockTimer]);
 
+    const remoteLock = useCallback((duration = 5000) => {
+        clearLockTimer();
+        setNumpadState(prev => ({
+            ...prev,
+            isLocked: true,
+            canUndo: false,
+            lockedPlayerId: 'remote',
+            lockTimer: null
+        }));
+        const timer = setTimeout(() => {
+            lockTimerRef.current = null;
+            setNumpadState(prev => ({
+                ...prev,
+                isLocked: false,
+                canUndo: false,
+                lockedPlayerId: null,
+                lockTimer: null
+            }));
+        }, duration);
+        lockTimerRef.current = timer;
+    }, [clearLockTimer]);
+
     return {
         numpadState,
         setNumpadState,
         lockForCricket,
         startUndoWindow,
+        remoteLock,
         forceUnlock,
         clearLockTimer
     };

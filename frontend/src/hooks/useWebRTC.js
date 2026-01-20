@@ -115,14 +115,18 @@ const useWebRTC = ({ socket, roomId, gameState, user, selectedDeviceId, refreshD
                 { urls: 'stun:stun.ekiga.net' },
                 { urls: 'stun:stun.ideasip.com' },
                 { urls: 'stun:stun.rixtelecom.se' },
-                { urls: 'stun:stun.schlund.de' }
+                { urls: 'stun:stun.schlund.de' },
+                { urls: 'stun:stun.voiparound.com' },
+                { urls: 'stun:stun.voipbuster.com' },
+                { urls: 'stun:stun.voipstunt.com' }
             ],
-            iceCandidatePoolSize: 10
+            iceCandidatePoolSize: 10,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
         };
 
         if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
-            rtcConfig.bundlePolicy = 'max-bundle';
-            rtcConfig.rtcpMuxPolicy = 'require';
+            rtcConfig.iceTransportPolicy = 'all';
         }
 
         if (navigator.userAgent.includes('Firefox')) {

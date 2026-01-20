@@ -142,6 +142,7 @@ function registerGameplayEvents({ io, socket, state, utils }) {
                 checkoutQuery: updateData.checkoutQuery ? 'set' : 'null'
             });
             io.to(roomId).emit('game-state-update', updateData);
+            io.to(roomId).emit('score-locked', { userId: userId, duration: 5000 });
 
             console.log('[DEBUG] LEG WON CONDITION CHECK:', {
                 hasLegWinner: !!result.legWinner,

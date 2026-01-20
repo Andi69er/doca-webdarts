@@ -232,7 +232,6 @@ function registerLobbyEvents({ io, socket, state }) {
         ensureTeamData(room);
         syncPlayerTeams(room);
 
-        const rejoiningPlayer = data.playerName ? room.players.find(p => p.name === data.playerName && p.disconnected) : null;
         const existingPlayerIndex = room.players.findIndex(p => p.id === socket.id);
 
         if (room.hostId !== socket.id) {
@@ -264,27 +263,40 @@ function registerLobbyEvents({ io, socket, state }) {
             }
         }
 
+        // Verbesserte Reconnection-Logik: Suche nach einem disconnected Player mit gleichem Namen
+        const rejoiningPlayer = room.players.find(p => p.disconnected && p.name === socket.handshake.query?.userName);
+        
         if (rejoiningPlayer) {
             const oldId = rejoiningPlayer.id;
             rejoiningPlayer.id = socket.id;
             rejoiningPlayer.disconnected = false;
+            delete rejoiningPlayer.disconnectedAt;
+            
             moveTeamAssignment(room, oldId, socket.id);
             socket.join(room.id);
 
             io.to(room.id).emit('receiveMessage', {
                 user: 'System',
-                text: `${rejoiningPlayer.name} hat die Verbindung wiederhergestellt.`
+                text: `${rejoiningPlayer.name} ist wieder da.`
             });
 
             if (room.gameState && room.gameState.players) {
-                const gamePlayerIndex = room.gameState.players.findIndex(p => p.id === oldId);
-                if (gamePlayerIndex !== -1) {
-                    room.gameState.players[gamePlayerIndex].id = socket.id;
+                const gamePlayer = room.gameState.players.find(p => p.id === oldId);
+                if (gamePlayer) {
+                    gamePlayer.id = socket.id;
+                    gamePlayer.disconnected = false;
                 }
             }
+            
+            if (room.hostId === oldId) {
+                room.hostId = socket.id;
+                if (room.gameState) room.gameState.hostId = socket.id;
+            }
+
             attachTeamMetadata(room.gameState, room);
             io.to(room.id).emit('game-state-update', room.gameState);
             socket.emit('gameState', room.gameState);
+            socket.emit('roomJoined', { roomId: room.id });
             return;
         }
 

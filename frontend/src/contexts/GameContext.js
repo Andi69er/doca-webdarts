@@ -35,7 +35,7 @@ export const GameProvider = ({ roomId, socket, children }) => {
     const expectedLocalScore = useRef(null);
     const pollRef = useRef(null);
 
-    const { numpadState, setNumpadState, lockForCricket, startUndoWindow, forceUnlock, clearLockTimer } = useNumpadLock();
+    const { numpadState, setNumpadState, lockForCricket, startUndoWindow, remoteLock, forceUnlock, clearLockTimer } = useNumpadLock();
     const {
         devices,
         selectedDeviceId,
@@ -232,7 +232,8 @@ export const GameProvider = ({ roomId, socket, children }) => {
         setShowLegWinnerPopup,
         pollRef,
         user,
-        setUser
+        setUser,
+        remoteLock
     });
 
     useEffect(() => {
