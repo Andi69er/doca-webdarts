@@ -1,25 +1,17 @@
-import { useMemo } from 'react';
-
 const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
-    if (!gameState || gameState.teamMode !== 'doubles') {
-        return null;
-    }
-
-    const isWaitingPhase = !gameState.gameStatus || gameState.gameStatus === 'waiting';
-    if (!isWaitingPhase) {
-        return null;
-    }
+    const isDoublesMode = !!(gameState && gameState.teamMode === 'doubles');
+    const isWaitingPhase = !gameState?.gameStatus || gameState?.gameStatus === 'waiting';
 
     const teamNames = {
-        teamA: gameState.teamNames?.teamA || 'Team A',
-        teamB: gameState.teamNames?.teamB || 'Team B'
+        teamA: gameState?.teamNames?.teamA || 'Team A',
+        teamB: gameState?.teamNames?.teamB || 'Team B'
     };
 
-    const teamAssignments = gameState.teamAssignments || {};
+    const teamAssignments = gameState?.teamAssignments || {};
+    const players = gameState?.players || [];
 
-    const teams = useMemo(() => {
+    const teams = (() => {
         const grouped = { teamA: [], teamB: [] };
-        const players = gameState.players || [];
         players.forEach((player) => {
             if (!player) {
                 return;
@@ -34,7 +26,11 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
             grouped[key].push(player);
         });
         return grouped;
-    }, [gameState.players, teamAssignments, teamNames.teamA, teamNames.teamB]);
+    })();
+
+    if (!isDoublesMode || !isWaitingPhase) {
+        return null;
+    }
 
     const perTeamLimit = 2;
     const myId = user?.id || socket?.id;
@@ -63,10 +59,10 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
     };
 
     const renderTeamColumn = (teamKey) => {
-        const players = teams[teamKey] || [];
+        const teamPlayers = teams[teamKey] || [];
         const label = teamNames[teamKey];
         const isMyTeam = myTeam === teamKey;
-        const slotsLeft = Math.max(0, perTeamLimit - players.length);
+        const slotsLeft = Math.max(0, perTeamLimit - teamPlayers.length);
         const buttonDisabled = !canSwitch(teamKey);
         const buttonLabel = isMyTeam ? 'Dein Team' : `Zu ${label}`;
 
@@ -74,10 +70,10 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
             <div className="team-column" key={teamKey}>
                 <div className="team-column-header">
                     <span>{label}</span>
-                    <span>{players.length}/{perTeamLimit}</span>
+                    <span>{teamPlayers.length}/{perTeamLimit}</span>
                 </div>
                 <div className="team-player-list">
-                    {players.map((player) => (
+                    {teamPlayers.map((player) => (
                         <div
                             key={player.id}
                             className={`team-player${player.id === myId ? ' me' : ''}`}
