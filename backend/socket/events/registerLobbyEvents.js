@@ -380,7 +380,7 @@ function registerLobbyEvents({ io, socket, state }) {
     });
 
     socket.on('switchTeam', (data) => {
-        const { roomId, teamKey } = data || {};
+        const { roomId, teamKey, playerId } = data || {};
         const room = state.rooms.find(r => r.id === roomId);
         if (!room) {
             socket.emit('gameError', { error: 'Raum nicht gefunden.' });
@@ -395,7 +395,11 @@ function registerLobbyEvents({ io, socket, state }) {
         }
 
         const normalizedTeam = teamKey === 'teamB' ? 'teamB' : 'teamA';
-        const player = room.players.find(p => p.id === socket.id);
+        
+        // Wenn playerId mitgegeben wurde, prüfen ob der ausführende User Host ist
+        const targetPlayerId = (playerId && room.hostId === socket.id) ? playerId : socket.id;
+        const player = room.players.find(p => p.id === targetPlayerId);
+
         if (!player) {
             socket.emit('gameError', { error: 'Spieler nicht im Raum.' });
             return;
@@ -440,6 +444,35 @@ function registerLobbyEvents({ io, socket, state }) {
         io.to(room.id).emit('receiveMessage', {
             user: 'System',
             text: `${player.name} spielt jetzt für ${room.teamNames?.[normalizedTeam] || normalizedTeam}.`
+        });
+
+        io.to(room.id).emit('game-state-update', room.gameState);
+        io.emit('updateRooms', state.rooms);
+    });
+
+    socket.on('renameTeam', (data) => {
+        const { roomId, teamKey, newName } = data || {};
+        const room = state.rooms.find(r => r.id === roomId);
+        if (!room || room.hostId !== socket.id) return;
+
+        ensureTeamData(room);
+        const normalizedKey = teamKey === 'teamB' ? 'teamB' : 'teamA';
+        room.teamNames[normalizedKey] = newName.trim();
+
+        // Alle Spieler in diesem Team aktualisieren
+        room.players.forEach(p => {
+            if (room.teamAssignments[p.id] === normalizedKey) {
+                applyTeamMeta(p, normalizedKey, room.teamNames);
+            }
+        });
+
+        if (room.gameState) {
+            attachTeamMetadata(room.gameState, room);
+        }
+
+        io.to(room.id).emit('receiveMessage', {
+            user: 'System',
+            text: `Team ${normalizedKey === 'teamA' ? 'A' : 'B'} wurde in "${newName}" umbenannt.`
         });
 
         io.to(room.id).emit('game-state-update', room.gameState);

@@ -40,7 +40,8 @@ const StandardView = ({
     socket,
     roomId,
     setManualVideoLayout,
-    resetVideoLayout
+    resetVideoLayout,
+    isHost
 }) => (
     <div className="game-layout">
         <div className="game-main-area">
@@ -71,6 +72,7 @@ const StandardView = ({
                             user={user}
                             socket={socket}
                             roomId={roomId}
+                            isHost={isHost}
                         />
                     )}
                 </div>
@@ -115,28 +117,30 @@ const StandardView = ({
                 </div>
             </div>
         </div>
-        <GameVideoPanel
-            devices={devices}
-            selectedDeviceId={selectedDeviceId}
-            onDeviceChange={onDeviceChange}
-            isCameraEnabled={isCameraEnabled}
-            startCamera={startCamera}
-            stopCamera={stopCamera}
-            autoConnectToOpponents={autoConnectToOpponents}
-            showConnectButton
-            showRecordingButton
-            isRecording={isRecording}
-            startRecording={startRecording}
-            stopRecording={stopRecording}
-            videoLayout={videoLayout}
-            localVideoRef={localVideoRef}
-            localStream={localStream}
-            user={user}
-            gameState={gameState}
-            remoteStreams={remoteStreams}
-            setManualVideoLayout={setManualVideoLayout}
-            resetVideoLayout={resetVideoLayout}
-        />
+        <div className="camera-column">
+            <GameVideoPanel
+                devices={devices}
+                selectedDeviceId={selectedDeviceId}
+                onDeviceChange={onDeviceChange}
+                isCameraEnabled={isCameraEnabled}
+                startCamera={startCamera}
+                stopCamera={stopCamera}
+                autoConnectToOpponents={autoConnectToOpponents}
+                showConnectButton
+                showRecordingButton
+                isRecording={isRecording}
+                startRecording={startRecording}
+                stopRecording={stopRecording}
+                videoLayout={videoLayout}
+                localVideoRef={localVideoRef}
+                localStream={localStream}
+                user={user}
+                gameState={gameState}
+                remoteStreams={remoteStreams}
+                setManualVideoLayout={setManualVideoLayout}
+                resetVideoLayout={resetVideoLayout}
+            />
+        </div>
     </div>
 );
 

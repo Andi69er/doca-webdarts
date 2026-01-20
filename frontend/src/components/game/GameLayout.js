@@ -144,6 +144,7 @@ const GameLayout = () => {
                 stopRecording={stopRecording}
                 setManualVideoLayout={setManualVideoLayout}
                 resetVideoLayout={resetVideoLayout}
+                isHost={isHost}
             />
         ) : (
             <StandardView
@@ -180,6 +181,7 @@ const GameLayout = () => {
                 roomId={roomId}
                 setManualVideoLayout={setManualVideoLayout}
                 resetVideoLayout={resetVideoLayout}
+                isHost={isHost}
             />
         );
 

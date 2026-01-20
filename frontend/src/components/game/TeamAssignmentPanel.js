@@ -1,4 +1,4 @@
-const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
+const TeamAssignmentPanel = ({ gameState, user, socket, roomId, isHost }) => {
     const isDoublesMode = !!(gameState && gameState.teamMode === 'doubles');
     const isWaitingPhase = !gameState?.gameStatus || gameState?.gameStatus === 'waiting';
 
@@ -38,11 +38,16 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
         || (teams.teamA.some((player) => player.id === myId) ? 'teamA'
             : (teams.teamB.some((player) => player.id === myId) ? 'teamB' : null));
 
-    const canSwitch = (targetKey) => {
-        if (!socket || !roomId || !myId) {
+    const canSwitch = (targetKey, playerId = myId) => {
+        if (!socket || !roomId || !playerId) {
             return false;
         }
-        if (targetKey === myTeam) {
+        
+        const currentTeam = teamAssignments[playerId] 
+            || (teams.teamA.some((p) => p.id === playerId) ? 'teamA' 
+               : (teams.teamB.some((p) => p.id === playerId) ? 'teamB' : null));
+
+        if (targetKey === currentTeam) {
             return false;
         }
         if ((teams[targetKey]?.length || 0) >= perTeamLimit) {
@@ -51,11 +56,19 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
         return true;
     };
 
-    const handleSwitch = (targetKey) => {
-        if (!canSwitch(targetKey)) {
+    const handleSwitch = (targetKey, playerId = myId) => {
+        if (!canSwitch(targetKey, playerId)) {
             return;
         }
-        socket.emit('switchTeam', { roomId, teamKey: targetKey });
+        socket.emit('switchTeam', { roomId, teamKey: targetKey, playerId });
+    };
+
+    const handleRenameTeam = (teamKey, currentName) => {
+        if (!isHost) return;
+        const newName = prompt('Teamname ändern:', currentName);
+        if (newName && newName.trim()) {
+            socket.emit('renameTeam', { roomId, teamKey, newName: newName.trim() });
+        }
     };
 
     const renderTeamColumn = (teamKey) => {
@@ -63,13 +76,18 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
         const label = teamNames[teamKey];
         const isMyTeam = myTeam === teamKey;
         const slotsLeft = Math.max(0, perTeamLimit - teamPlayers.length);
-        const buttonDisabled = !canSwitch(teamKey);
-        const buttonLabel = isMyTeam ? 'Dein Team' : `Zu ${label}`;
+        const canJoin = canSwitch(teamKey);
 
         return (
             <div className="team-column" key={teamKey}>
                 <div className="team-column-header">
-                    <span>{label}</span>
+                    <span 
+                        onClick={() => handleRenameTeam(teamKey, label)}
+                        style={{ cursor: isHost ? 'pointer' : 'default', textDecoration: isHost ? 'underline' : 'none' }}
+                        title={isHost ? 'Klicken zum Umbenennen' : ''}
+                    >
+                        {label} {isHost && '✏️'}
+                    </span>
                     <span>{teamPlayers.length}/{perTeamLimit}</span>
                 </div>
                 <div className="team-player-list">
@@ -77,8 +95,19 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
                         <div
                             key={player.id}
                             className={`team-player${player.id === myId ? ' me' : ''}`}
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                         >
-                            {player.name}
+                            <span>{player.name}</span>
+                            {isHost && (
+                                <button 
+                                    className="host-switch-btn"
+                                    onClick={() => handleSwitch(teamKey === 'teamA' ? 'teamB' : 'teamA', player.id)}
+                                    title="Spieler in das andere Team verschieben"
+                                    style={{ padding: '2px 5px', fontSize: '10px', marginLeft: '10px' }}
+                                >
+                                    ⇄
+                                </button>
+                            )}
                         </div>
                     ))}
                     {Array.from({ length: slotsLeft }).map((_, index) => (
@@ -87,14 +116,18 @@ const TeamAssignmentPanel = ({ gameState, user, socket, roomId }) => {
                         </div>
                     ))}
                 </div>
-                <button
-                    type="button"
-                    className="team-switch-btn"
-                    onClick={() => handleSwitch(teamKey)}
-                    disabled={buttonDisabled}
-                >
-                    {buttonLabel}
-                </button>
+                {!isMyTeam && canJoin && (
+                    <button
+                        type="button"
+                        className="team-switch-btn"
+                        onClick={() => handleSwitch(teamKey)}
+                    >
+                        Zu {label} wechseln
+                    </button>
+                )}
+                {isMyTeam && (
+                    <div className="team-assigned-badge">Dein Team</div>
+                )}
             </div>
         );
     };

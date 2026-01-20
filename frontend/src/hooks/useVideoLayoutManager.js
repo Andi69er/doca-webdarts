@@ -23,18 +23,21 @@ const useVideoLayoutManager = ({
         return 'local';
     }, [activePlayerId, userId, videoLayout?.currentPlayerId]);
 
-    const tileCount = participants.length;
     const isGameActive = gameState?.gameStatus === 'active';
+    const isGameFinished = gameState?.gameStatus === 'finished';
+    const tileCount = participants.length;
 
     const isGridMode = useMemo(() => {
-        if (!isGameActive) {
+        // Im Doppel-Modus am Anfang (waiting) und Ende (finished) immer Grid zeigen (4 Fenster)
+        if (!isGameActive || isGameFinished) {
             return true;
         }
         if (videoLayout?.manual) {
             return videoLayout.mode === 'splitscreen';
         }
+        // Standardmäßig im Spiel Fokus-Modus
         return videoLayout?.mode !== 'fullscreen';
-    }, [isGameActive, videoLayout?.manual, videoLayout?.mode]);
+    }, [isGameActive, isGameFinished, videoLayout?.manual, videoLayout?.mode]);
 
     const gridClass = useMemo(() => {
         if (!isGridMode) {

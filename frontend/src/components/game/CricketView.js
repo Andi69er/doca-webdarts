@@ -39,7 +39,8 @@ const CricketView = ({
     startRecording,
     stopRecording,
     setManualVideoLayout,
-    resetVideoLayout
+    resetVideoLayout,
+    isHost
 }) => {
     return (
         <div className="game-container">
@@ -64,6 +65,15 @@ const CricketView = ({
                                 ) : (
                                     <div className="waiting-message">Warte auf Starter...</div>
                                 )
+                            )}
+                            {gameState.teamMode === 'doubles' && (
+                                <TeamAssignmentPanel
+                                    gameState={gameState}
+                                    user={user}
+                                    socket={socket}
+                                    roomId={roomId}
+                                    isHost={isHost}
+                                />
                             )}
                         </div>
                     )}
@@ -134,28 +144,30 @@ const CricketView = ({
                         </div>
                     </div>
                 </div>
-                <GameVideoPanel
-                    devices={devices}
-                    selectedDeviceId={selectedDeviceId}
-                    onDeviceChange={onDeviceChange}
-                    isCameraEnabled={isCameraEnabled}
-                    startCamera={startCamera}
-                    stopCamera={stopCamera}
-                    autoConnectToOpponents={autoConnectToOpponents}
-                    videoLayout={videoLayout}
-                    localVideoRef={localVideoRef}
-                    localStream={localStream}
-                    user={user}
-                    gameState={gameState}
-                    remoteStreams={remoteStreams}
-                    showConnectButton={false}
-                    showRecordingButton={false}
-                    isRecording={isRecording}
-                    startRecording={startRecording}
-                    stopRecording={stopRecording}
-                    setManualVideoLayout={setManualVideoLayout}
-                    resetVideoLayout={resetVideoLayout}
-                />
+                <div className="camera-column">
+                    <GameVideoPanel
+                        devices={devices}
+                        selectedDeviceId={selectedDeviceId}
+                        onDeviceChange={onDeviceChange}
+                        isCameraEnabled={isCameraEnabled}
+                        startCamera={startCamera}
+                        stopCamera={stopCamera}
+                        autoConnectToOpponents={autoConnectToOpponents}
+                        videoLayout={videoLayout}
+                        localVideoRef={localVideoRef}
+                        localStream={localStream}
+                        user={user}
+                        gameState={gameState}
+                        remoteStreams={remoteStreams}
+                        showConnectButton={false}
+                        showRecordingButton={false}
+                        isRecording={isRecording}
+                        startRecording={startRecording}
+                        stopRecording={stopRecording}
+                        setManualVideoLayout={setManualVideoLayout}
+                        resetVideoLayout={resetVideoLayout}
+                    />
+                </div>
             </div>
         </div>
     );
