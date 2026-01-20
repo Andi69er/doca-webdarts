@@ -5,6 +5,7 @@ import CricketInputPanel from '../CricketInputPanel';
 import GameChat from '../GameChat';
 import GameInfoBar from './GameInfoBar';
 import GameVideoPanel from './GameVideoPanel';
+import TeamAssignmentPanel from './TeamAssignmentPanel';
 
 const CricketView = ({
     gameState,
