@@ -401,6 +401,59 @@
     color: #fff;
 }
 
+.room-teams-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.team-preview-box {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.team-preview-box strong {
+    color: var(--primary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.team-players-mini {
+    font-size: 0.8rem;
+    color: #fff;
+    font-style: italic;
+}
+
+.join-actions-doubles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.join-btn.team-a-btn {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.join-btn.team-a-btn:hover:not(:disabled) {
+    background: #3b82f6;
+    color: white;
+}
+
+.join-btn.team-b-btn {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.join-btn.team-b-btn:hover:not(:disabled) {
+    background: #f59e0b;
+    color: white;
+}
+
 /* Sidebar Right (History) */
 .lobby-sidebar-right {
     display: flex;

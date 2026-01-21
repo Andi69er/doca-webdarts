@@ -188,9 +188,9 @@ const Lobby = memo(() => {
         }
     };
 
-    const handleJoinRoom = useCallback((roomId) => {
+    const handleJoinRoom = useCallback((roomId, teamKey = null) => {
         if (socket) {
-            socket.emit('joinRoom', { roomId });
+            socket.emit('joinRoom', { roomId, teamKey });
             navigate(`/game/${roomId}`);
         }
     }, [socket, navigate]);
@@ -463,18 +463,48 @@ const Lobby = memo(() => {
                                                         <div className="room-mode">{teamLabel}</div>
                                                         <div>{formatRoomInfo(room)}</div>
                                                         {room.teamMode === 'doubles' && (
-                                                            <div className="room-team-line">
-                                                                {(room.teamNames?.teamA || 'Team A')} vs {(room.teamNames?.teamB || 'Team B')}
+                                                            <div className="room-teams-preview">
+                                                                <div className="team-preview-box">
+                                                                    <strong>{room.teamNames?.teamA || 'Team A'}:</strong>
+                                                                    <div className="team-players-mini">
+                                                                        {room.players?.filter(p => room.teamAssignments?.[p.id] === 'teamA').map(p => p.name).join(', ') || 'Leer'}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="team-preview-box">
+                                                                    <strong>{room.teamNames?.teamB || 'Team B'}:</strong>
+                                                                    <div className="team-players-mini">
+                                                                        {room.players?.filter(p => room.teamAssignments?.[p.id] === 'teamB').map(p => p.name).join(', ') || 'Leer'}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <button 
-                                                        onClick={() => handleJoinRoom(room.id)} 
-                                                        className="join-btn"
-                                                        disabled={!socketConnected || isFull}
-                                                    >
-                                                        {isFull ? 'Voll' : 'Beitreten'}
-                                                    </button>
+                                                    {room.teamMode === 'doubles' ? (
+                                                        <div className="join-actions-doubles">
+                                                            <button 
+                                                                onClick={() => handleJoinRoom(room.id, 'teamA')} 
+                                                                className="join-btn team-a-btn"
+                                                                disabled={!socketConnected || isFull || (room.players?.filter(p => room.teamAssignments?.[p.id] === 'teamA').length >= 2)}
+                                                            >
+                                                                {room.teamNames?.teamA || 'Team A'} beitreten
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleJoinRoom(room.id, 'teamB')} 
+                                                                className="join-btn team-b-btn"
+                                                                disabled={!socketConnected || isFull || (room.players?.filter(p => room.teamAssignments?.[p.id] === 'teamB').length >= 2)}
+                                                            >
+                                                                {room.teamNames?.teamB || 'Team B'} beitreten
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => handleJoinRoom(room.id)} 
+                                                            className="join-btn"
+                                                            disabled={!socketConnected || isFull}
+                                                        >
+                                                            {isFull ? 'Voll' : 'Beitreten'}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             );
                                         })}

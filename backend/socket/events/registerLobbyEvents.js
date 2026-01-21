@@ -334,7 +334,7 @@ function registerLobbyEvents({ io, socket, state }) {
                 score: startScore
             };
             room.players.push(newPlayer);
-            assignPlayerToTeam(room, newPlayer);
+            assignPlayerToTeam(room, newPlayer, data.teamKey);
             socket.join(room.id);
 
             io.to(room.id).emit('receiveMessage', {
