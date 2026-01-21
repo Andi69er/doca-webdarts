@@ -22,12 +22,20 @@ class X01Game {
       this.checkoutDarts = null;
     }
   
+    getTeamId(playerId) {
+        if (this.gameOptions.teamMode === 'doubles' && this.gameOptions.teamAssignments) {
+            return this.gameOptions.teamAssignments[playerId] || playerId;
+        }
+        return playerId;
+    }
+
     initializePlayers(playerIds, startPlayerIndex = 0) {
         this.players = playerIds; // Store player IDs
         this.players.forEach(playerId => {
-            this.scores[playerId] = this.startingScore;
-            this.legsWon[playerId] = 0;
-            this.setsWon[playerId] = 0;
+            const teamId = this.getTeamId(playerId);
+            this.scores[teamId] = this.startingScore;
+            this.legsWon[teamId] = 0;
+            this.setsWon[teamId] = 0;
         });
         this.currentPlayerIndex = startPlayerIndex; // Start with the specified player
     }
@@ -44,10 +52,11 @@ class X01Game {
             return { valid: false, reason: 'Not your turn' };
         }
     
-        const currentScore = this.scores[playerId];
+        const teamId = this.getTeamId(playerId);
+        const currentScore = this.scores[teamId];
         const scoreValue = parseInt(score, 10);
         
-        console.log(`[X01Game] processThrow - Player: ${playerId}, Score eingegeben: ${scoreValue}, Aktueller Score: ${currentScore}`);
+        console.log(`[X01Game] processThrow - Player: ${playerId} (Team: ${teamId}), Score eingegeben: ${scoreValue}, Aktueller Score: ${currentScore}`);
         console.log(`[X01Game] Out Mode:`, this.outMode);
         
         // Bust-Logik
@@ -77,12 +86,13 @@ class X01Game {
 
         // Aktualisiere Score wenn kein Bust
         if (!isBust) {
-            this.scores[playerId] = newScoreAfterThrow;
+            this.scores[teamId] = newScoreAfterThrow;
         }
         
         // FIX: Wurf zur Historie hinzufügen
         this.history.push({
             playerId: playerId,
+            teamId: teamId,
             score: scoreValue,
             remainingScore: isBust ? currentScore : newScoreAfterThrow,
             isBust: isBust,
@@ -92,27 +102,27 @@ class X01Game {
         // Prüfe auf Gewinner
         if (newScoreAfterThrow === 0) {
             this.legWinner = playerId;
-            this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
-            console.log(`[X01Game] LEG GEWONNEN: ${playerId}!`);
+            this.legsWon[teamId] = (this.legsWon[teamId] || 0) + 1;
+            console.log(`[X01Game] LEG GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
             // Prüfen, ob das ganze Spiel gewonnen wurde (mit "Best Of" / "First To" Logik)
             let gameHasBeenWon = false;
             if (this.distance === 'legs') {
-                if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+                if (this.length.type === 'firstTo' && this.legsWon[teamId] >= this.length.value) {
                     gameHasBeenWon = true;
-                } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+                } else if (this.length.type === 'bestOf' && this.legsWon[teamId] > Math.floor(this.length.value / 2)) {
                     gameHasBeenWon = true;
                 }
             } else if (this.distance === 'sets') {
                 // Set-Logik: Prüfen, ob ein Set gewonnen wurde
-                if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
-                    this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
-                    console.log(`[X01Game] SET GEWONNEN: ${playerId}!`);
+                if (this.legsWon[teamId] >= (this.gameOptions?.legsPerSet || 3)) {
+                    this.setsWon[teamId] = (this.setsWon[teamId] || 0) + 1;
+                    console.log(`[X01Game] SET GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
                     // Prüfen, ob das ganze Spiel durch den Set-Gewinn gewonnen wurde
-                    if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                    if (this.length.type === 'firstTo' && this.setsWon[teamId] >= this.length.value) {
                         gameHasBeenWon = true;
-                    } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                    } else if (this.length.type === 'bestOf' && this.setsWon[teamId] > Math.floor(this.length.value / 2)) {
                         gameHasBeenWon = true;
                     }
 
@@ -126,8 +136,8 @@ class X01Game {
             if (gameHasBeenWon) {
                 this.gameWinner = playerId;
                 this.winner = playerId; // Setze den finalen Gewinner
-                console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
-                return { valid: true, bust: false, winner: this.gameWinner, legWinner: playerId, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
+                console.log(`[X01Game] SPIEL GEWONNEN: ${playerId} (Team: ${teamId})!`);
+                return { valid: true, bust: false, winner: this.gameWinner, legWinner: playerId, dartsThrownInTurn: this.dartsThrownInTurn + 1, scoreValue };
             }
             
             // Speichere legWinner BEVOR wir startNextLeg() aufrufen
@@ -137,7 +147,7 @@ class X01Game {
             if (!this.winner) {
                 this.startNextLeg();
             }
-            return { valid: true, bust: false, winner: null, legWinner: winnerOfThisLeg, dartsThrownInTurn: this.dartsThrownInTurn + 1 };
+            return { valid: true, bust: false, winner: null, legWinner: winnerOfThisLeg, dartsThrownInTurn: this.dartsThrownInTurn + 1, scoreValue };
         }
     
         // Nach jeder Eingabe (Turn) zum nächsten Spieler wechseln
@@ -145,20 +155,23 @@ class X01Game {
         this.nextTurn();
         console.log(`[X01Game] Zug beendet, nächster Spieler Index: ${this.currentPlayerIndex}`);
     
-        return { valid: true, bust: false, winner: null, dartsThrownInTurn: dartsThrown };
+        return { valid: true, bust: false, winner: null, dartsThrownInTurn: dartsThrown, scoreValue };
     }
 
     startNextLeg() {
         console.log("[X01Game] Starte nächstes Leg...");
-        // Scores für alle Spieler zurücksetzen
-        this.players.forEach(playerId => {
-            this.scores[playerId] = this.startingScore;
+        // Scores für alle Teams zurücksetzen
+        Object.keys(this.scores).forEach(teamId => {
+            this.scores[teamId] = this.startingScore;
         });
 
         // Den Startspieler für das nächste Leg wechseln (Verlierer beginnt)
-        const legLoserIndex = this.players.findIndex(p => p !== this.legWinner);
-        if (legLoserIndex !== -1) {
-            this.currentPlayerIndex = legLoserIndex;
+        // Bei Teams: Welches Team hat verloren?
+        const losingTeamId = Object.keys(this.legsWon).find(tid => tid !== this.getTeamId(this.legWinner));
+        const nextStarterIndex = this.players.findIndex(pid => this.getTeamId(pid) === losingTeamId);
+        
+        if (nextStarterIndex !== -1) {
+            this.currentPlayerIndex = nextStarterIndex;
         }
 
         this.legWinner = null;
@@ -167,9 +180,9 @@ class X01Game {
 
     startNextSet() {
         console.log("[X01Game] Starte nächstes Set...");
-        // Setze Leg-Zähler für alle Spieler zurück
-        this.players.forEach(playerId => {
-            this.legsWon[playerId] = 0;
+        // Setze Leg-Zähler für alle Teams zurück
+        Object.keys(this.legsWon).forEach(teamId => {
+            this.legsWon[teamId] = 0;
         });
         this.startNextLeg(); // Ein neues Set startet auch mit einem neuen Leg
     }
@@ -191,10 +204,11 @@ class X01Game {
         }
 
         const lastThrow = this.history[lastThrowIndex];
-        const { playerId, score, bust, remainingScore } = lastThrow;
+        const { playerId, teamId, score, bust, remainingScore } = lastThrow;
+        const targetId = teamId || playerId;
 
-        // Setze den Score des Spielers auf den Stand vor dem Wurf zurück
-        this.scores[playerId] = bust ? remainingScore : remainingScore + score;
+        // Setze den Score des Teams auf den Stand vor dem Wurf zurück
+        this.scores[targetId] = bust ? remainingScore : remainingScore + score;
 
         // Setze den aktiven Spieler auf den Spieler zurück, der den Wurf gemacht hat
         this.currentPlayerIndex = this.players.findIndex(p => p === playerId);
@@ -206,13 +220,24 @@ class X01Game {
     }
 
     getGameState() {
+        const scores = {};
+        const legsWon = {};
+        const setsWon = {};
+        
+        this.players.forEach(pid => {
+            const tid = this.getTeamId(pid);
+            scores[pid] = this.scores[tid];
+            legsWon[pid] = this.legsWon[tid];
+            setsWon[pid] = this.setsWon[tid];
+        });
+
         const gameState = {
-            scores: this.scores,
+            scores,
+            legsWon,
+            setsWon,
             currentPlayerIndex: this.currentPlayerIndex,
             winner: this.winner,
             legWinner: this.legWinner,
-            legsWon: this.legsWon,
-            setsWon: this.setsWon,
             history: this.history,
             turns: this.history, // FIX: Frontend erwartet 'turns', wir mappen history darauf
             checkoutDarts: this.checkoutDarts,
@@ -235,29 +260,40 @@ class X01Game {
     }
 
     checkWinCondition(playerId) {
-        if (this.scores[playerId] !== 0) {
+        const teamId = this.getTeamId(playerId);
+        // If leg was already won and scores reset, we might be calling this after checkout confirmed
+        // or if processThrow already handled it.
+        // We check if the score IS 0 OR if the legWinner was just set.
+        
+        // Since processThrow already increments legsWon, we should be careful.
+        // If this.legWinner is already set to this playerId, it means processThrow already handled it.
+        if (this.legWinner === playerId) {
+            return !!this.winner;
+        }
+
+        if (this.scores[teamId] !== 0) {
             return false;
         }
 
         this.legWinner = playerId;
-        this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
-        console.log(`[X01Game] LEG GEWONNEN: ${playerId}!`);
+        this.legsWon[teamId] = (this.legsWon[teamId] || 0) + 1;
+        console.log(`[X01Game] LEG GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
         let gameHasBeenWon = false;
         if (this.distance === 'legs') {
-            if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+            if (this.length.type === 'firstTo' && this.legsWon[teamId] >= this.length.value) {
                 gameHasBeenWon = true;
-            } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+            } else if (this.length.type === 'bestOf' && this.legsWon[teamId] > Math.floor(this.length.value / 2)) {
                 gameHasBeenWon = true;
             }
         } else if (this.distance === 'sets') {
-            if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
-                this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
-                console.log(`[X01Game] SET GEWONNEN: ${playerId}!`);
+            if (this.legsWon[teamId] >= (this.gameOptions?.legsPerSet || 3)) {
+                this.setsWon[teamId] = (this.setsWon[teamId] || 0) + 1;
+                console.log(`[X01Game] SET GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
-                if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                if (this.length.type === 'firstTo' && this.setsWon[teamId] >= this.length.value) {
                     gameHasBeenWon = true;
-                } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                } else if (this.length.type === 'bestOf' && this.setsWon[teamId] > Math.floor(this.length.value / 2)) {
                     gameHasBeenWon = true;
                 }
 
@@ -270,7 +306,7 @@ class X01Game {
         if (gameHasBeenWon) {
             this.gameWinner = playerId;
             this.winner = playerId;
-            console.log(`[X01Game] SPIEL GEWONNEN: ${playerId}!`);
+            console.log(`[X01Game] SPIEL GEWONNEN: ${playerId} (Team: ${teamId})!`);
             return true;
         }
 
@@ -300,13 +336,21 @@ class CricketGame {
         this.maxDartsPerTurn = 3; // Cricket allows 3 darts per turn
     }
 
+    getTeamId(playerId) {
+        if (this.gameOptions.teamMode === 'doubles' && this.gameOptions.teamAssignments) {
+            return this.gameOptions.teamAssignments[playerId] || playerId;
+        }
+        return playerId;
+    }
+
     initializePlayers(playerIds, startPlayerIndex = 0) {
         this.players = playerIds;
         this.players.forEach(playerId => {
-            this.scores[playerId] = 0;
-            this.legsWon[playerId] = 0;
-            this.setsWon[playerId] = 0;
-            this.marks[playerId] = {
+            const teamId = this.getTeamId(playerId);
+            this.scores[teamId] = 0;
+            this.legsWon[teamId] = 0;
+            this.setsWon[teamId] = 0;
+            this.marks[teamId] = {
                 15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0
             };
         });
@@ -321,6 +365,8 @@ class CricketGame {
             return { valid: false, reason: 'Not your turn' };
         }
 
+        const teamId = this.getTeamId(playerId);
+
         // Cricket scoring logic - score ist ein Objekt { number, multiplier }
         let number, multiplier;
 
@@ -329,22 +375,6 @@ class CricketGame {
             multiplier = score.multiplier;
         } else {
             return { valid: false, reason: 'Invalid score format for Cricket' };
-            /*
-            // Fallback, falls doch eine Zahl kommt
-            const scoreNum = parseInt(score);
-            if (scoreNum <= 20 || scoreNum === 25) {
-                number = scoreNum;
-                multiplier = 1;
-            } else if (scoreNum <= 40) {
-                number = scoreNum / 2;
-                multiplier = 2;
-            } else if (scoreNum <= 60) {
-                number = scoreNum / 3;
-                multiplier = 3;
-            } else {
-                return { valid: false, reason: 'Invalid score for Cricket' };
-            }
-            */
         }
 
         // Nur relevante Zahlen zählen
@@ -358,32 +388,36 @@ class CricketGame {
             return { valid: true, winner: null, dartsThrownInTurn: this.dartsThrownInTurn };
         }
 
-        const marksBefore = this.marks[playerId][number];
+        const marksBefore = this.marks[teamId][number];
         let pointsAdded = 0;
 
-        const currentMarks = this.marks[playerId][number];
+        const currentMarks = this.marks[teamId][number];
         
         if (currentMarks < 3) {
             const marksToAdd = Math.min(3 - currentMarks, multiplier);
-            this.marks[playerId][number] += marksToAdd;
+            this.marks[teamId][number] += marksToAdd;
 
             const overflow = multiplier - marksToAdd;
             if (overflow > 0) {
                 // Punkte für den Spieler selbst, wenn er mehr als 3 Treffer hat
                 pointsAdded = number * overflow;
-                this.scores[playerId] += pointsAdded;
+                this.scores[teamId] += pointsAdded;
             }
         } else {
             // Spieler hat das Feld schon zu, also Punkte für ihn, wenn der Gegner es noch nicht zu hat.
-            const allOpponentsClosed = this.players.every(p => p === playerId || this.marks[p][number] >= 3);
+            const allOpponentsClosed = this.players.every(p => {
+                const otherTeamId = this.getTeamId(p);
+                return otherTeamId === teamId || this.marks[otherTeamId][number] >= 3;
+            });
             if (!allOpponentsClosed) {
                 pointsAdded = number * multiplier;
-                this.scores[playerId] += pointsAdded;
+                this.scores[teamId] += pointsAdded;
             }
         }
 
         this.history.push({
             playerId,
+            teamId,
             number,
             multiplier,
             marksBefore: marksBefore,
@@ -395,31 +429,31 @@ class CricketGame {
 
         // Check for winner - all numbers closed and higher or equal points
         const allNumbers = [15, 16, 17, 18, 19, 20, 25];
-        const playerHasClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
+        const playerHasClosedAll = allNumbers.every(num => this.marks[teamId][num] >= 3);
 
         if (playerHasClosedAll) {
-            const highestScore = Math.max(...this.players.map(p => this.scores[p]));
-            if (this.scores[playerId] >= highestScore) {
+            const highestScore = Math.max(...Object.values(this.scores));
+            if (this.scores[teamId] >= highestScore) {
                 // Leg gewonnen
                 this.legWinner = playerId;
-                this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
-                console.log(`[CricketGame] LEG GEWONNEN: ${playerId}!`);
+                this.legsWon[teamId] = (this.legsWon[teamId] || 0) + 1;
+                console.log(`[CricketGame] LEG GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
                 let gameHasBeenWon = false;
                 if (this.distance === 'legs') {
-                     if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+                     if (this.length.type === 'firstTo' && this.legsWon[teamId] >= this.length.value) {
                         gameHasBeenWon = true;
-                    } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+                    } else if (this.length.type === 'bestOf' && this.legsWon[teamId] > Math.floor(this.length.value / 2)) {
                         gameHasBeenWon = true;
                     }
                 } else if (this.distance === 'sets') {
-                    if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
-                        this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
-                        console.log(`[CricketGame] SET GEWONNEN: ${playerId}!`);
+                    if (this.legsWon[teamId] >= (this.gameOptions?.legsPerSet || 3)) {
+                        this.setsWon[teamId] = (this.setsWon[teamId] || 0) + 1;
+                        console.log(`[CricketGame] SET GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
-                        if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                        if (this.length.type === 'firstTo' && this.setsWon[teamId] >= this.length.value) {
                             gameHasBeenWon = true;
-                        } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                        } else if (this.length.type === 'bestOf' && this.setsWon[teamId] > Math.floor(this.length.value / 2)) {
                             gameHasBeenWon = true;
                         }
 
@@ -432,13 +466,13 @@ class CricketGame {
                 const winnerOfThisLeg = playerId;
                 if (gameHasBeenWon) {
                     this.winner = playerId;
-                    console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId}!`);
+                    console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId} (Team: ${teamId})!`);
                 } else if (!this.winner) {
                     // Nächstes Leg vorbereiten
                     this.startNextLeg();
                 }
                 
-                return { valid: true, winner: this.winner, legWinner: winnerOfThisLeg, dartsThrownInTurn: this.dartsThrownInTurn };
+                return { valid: true, winner: this.winner, legWinner: winnerOfThisLeg, dartsThrownInTurn: this.dartsThrownInTurn, pointsAdded };
             }
         }
 
@@ -447,23 +481,25 @@ class CricketGame {
             this.nextTurn();
         }
 
-        return { valid: true, winner: this.winner, legWinner: null, dartsThrownInTurn: this.dartsThrownInTurn };
+        return { valid: true, winner: this.winner, legWinner: null, dartsThrownInTurn: this.dartsThrownInTurn, pointsAdded };
     }
 
     startNextLeg() {
         console.log("[CricketGame] Starte nächstes Leg...");
-        // Scores und Marks für alle Spieler zurücksetzen
-        this.players.forEach(playerId => {
-            this.scores[playerId] = 0;
-            this.marks[playerId] = {
+        // Scores und Marks für alle Teams zurücksetzen
+        Object.keys(this.scores).forEach(teamId => {
+            this.scores[teamId] = 0;
+            this.marks[teamId] = {
                 15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0
             };
         });
 
         // Den Startspieler für das nächste Leg wechseln (Verlierer beginnt)
-        const legLoserIndex = this.players.findIndex(p => p !== this.legWinner);
-        if (legLoserIndex !== -1) {
-            this.currentPlayerIndex = legLoserIndex;
+        const losingTeamId = Object.keys(this.legsWon).find(tid => tid !== this.getTeamId(this.legWinner));
+        const nextStarterIndex = this.players.findIndex(pid => this.getTeamId(pid) === losingTeamId);
+        
+        if (nextStarterIndex !== -1) {
+            this.currentPlayerIndex = nextStarterIndex;
         }
 
         this.legWinner = null;
@@ -472,9 +508,9 @@ class CricketGame {
 
     startNextSet() {
         console.log("[CricketGame] Starte nächstes Set...");
-        // Setze Leg-Zähler für alle Spieler zurück
-        this.players.forEach(playerId => {
-            this.legsWon[playerId] = 0;
+        // Setze Leg-Zähler für alle Teams zurück
+        Object.keys(this.legsWon).forEach(teamId => {
+            this.legsWon[teamId] = 0;
         });
         this.startNextLeg(); // Ein neues Set startet auch mit einem neuen Leg
     }
@@ -494,13 +530,14 @@ class CricketGame {
             return { success: false, reason: "Letzter Zug ungültig." };
         }
 
-        const { playerId, number, pointsAdded, marksBefore } = lastThrow;
+        const { playerId, teamId, number, pointsAdded, marksBefore } = lastThrow;
+        const targetId = teamId || playerId;
 
         // 1. Punkte zurücksetzen
-        this.scores[playerId] -= pointsAdded;
+        this.scores[targetId] -= pointsAdded;
 
         // 2. Marks zurücksetzen
-        this.marks[playerId][number] = marksBefore;
+        this.marks[targetId][number] = marksBefore;
 
         // 3. Aktiven Spieler und Dart-Zähler zurücksetzen
         this.currentPlayerIndex = this.players.findIndex(p => p === playerId);
@@ -511,12 +548,25 @@ class CricketGame {
     }
 
     getGameState() {
+        const scores = {};
+        const marks = {};
+        const legsWon = {};
+        const setsWon = {};
+        
+        this.players.forEach(pid => {
+            const tid = this.getTeamId(pid);
+            scores[pid] = this.scores[tid];
+            marks[pid] = this.marks[tid];
+            legsWon[pid] = this.legsWon[tid];
+            setsWon[pid] = this.setsWon[tid];
+        });
+
         return {
-            scores: this.scores,
-            marks: this.marks,
+            scores,
+            marks,
             currentPlayerIndex: this.currentPlayerIndex, // This was already correct, ensuring consistency
-            legsWon: this.legsWon,
-            setsWon: this.setsWon,
+            legsWon,
+            setsWon,
             winner: this.winner,
             legWinner: this.legWinner,
             history: this.history,
@@ -526,37 +576,43 @@ class CricketGame {
     }
 
     checkWinCondition(playerId) {
+        const teamId = this.getTeamId(playerId);
+        
+        if (this.legWinner === playerId) {
+            return !!this.winner;
+        }
+
         const allNumbers = [15, 16, 17, 18, 19, 20, 25];
-        const playerHasClosedAll = allNumbers.every(num => this.marks[playerId][num] >= 3);
+        const playerHasClosedAll = allNumbers.every(num => this.marks[teamId][num] >= 3);
 
         if (!playerHasClosedAll) {
             return false;
         }
 
-        const highestScore = Math.max(...this.players.map(p => this.scores[p]));
-        if (this.scores[playerId] < highestScore) {
+        const highestScore = Math.max(...Object.values(this.scores));
+        if (this.scores[teamId] < highestScore) {
             return false;
         }
 
         this.legWinner = playerId;
-        this.legsWon[playerId] = (this.legsWon[playerId] || 0) + 1;
-        console.log(`[CricketGame] LEG GEWONNEN: ${playerId}!`);
+        this.legsWon[teamId] = (this.legsWon[teamId] || 0) + 1;
+        console.log(`[CricketGame] LEG GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
         let gameHasBeenWon = false;
         if (this.distance === 'legs') {
-            if (this.length.type === 'firstTo' && this.legsWon[playerId] >= this.length.value) {
+            if (this.length.type === 'firstTo' && this.legsWon[teamId] >= this.length.value) {
                 gameHasBeenWon = true;
-            } else if (this.length.type === 'bestOf' && this.legsWon[playerId] > Math.floor(this.length.value / 2)) {
+            } else if (this.length.type === 'bestOf' && this.legsWon[teamId] > Math.floor(this.length.value / 2)) {
                 gameHasBeenWon = true;
             }
         } else if (this.distance === 'sets') {
-            if (this.legsWon[playerId] >= (this.gameOptions?.legsPerSet || 3)) {
-                this.setsWon[playerId] = (this.setsWon[playerId] || 0) + 1;
-                console.log(`[CricketGame] SET GEWONNEN: ${playerId}!`);
+            if (this.legsWon[teamId] >= (this.gameOptions?.legsPerSet || 3)) {
+                this.setsWon[teamId] = (this.setsWon[teamId] || 0) + 1;
+                console.log(`[CricketGame] SET GEWONNEN: ${playerId} (Team: ${teamId})!`);
 
-                if (this.length.type === 'firstTo' && this.setsWon[playerId] >= this.length.value) {
+                if (this.length.type === 'firstTo' && this.setsWon[teamId] >= this.length.value) {
                     gameHasBeenWon = true;
-                } else if (this.length.type === 'bestOf' && this.setsWon[playerId] > Math.floor(this.length.value / 2)) {
+                } else if (this.length.type === 'bestOf' && this.setsWon[teamId] > Math.floor(this.length.value / 2)) {
                     gameHasBeenWon = true;
                 }
 
@@ -568,7 +624,7 @@ class CricketGame {
 
         if (gameHasBeenWon) {
             this.winner = playerId;
-            console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId}!`);
+            console.log(`[CricketGame] SPIEL GEWONNEN: ${playerId} (Team: ${teamId})!`);
             return true;
         }
 

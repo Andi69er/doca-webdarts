@@ -50,11 +50,29 @@ function registerGameLifecycleEvents({ io, socket, state, games }) {
             return;
         }
 
-        const gameOptions = room.gameOptions || {};
+        const gameOptions = { 
+            ...room.gameOptions,
+            teamMode: room.teamMode,
+            teamAssignments: room.teamAssignments 
+        };
         const startScore = parseInt(gameOptions.startingScore, 10) || 501;
 
         console.log('4. Loaded gameOptions:', JSON.stringify(gameOptions, null, 2));
         console.log('5. startScore:', startScore);
+
+        // Reorder players for doubles mode: A1, B1, A2, B2
+        if (room.teamMode === 'doubles') {
+            const teamAPlayers = room.players.filter(p => room.teamAssignments[p.id] === 'teamA');
+            const teamBPlayers = room.players.filter(p => room.teamAssignments[p.id] === 'teamB');
+            const reordered = [];
+            const maxLen = Math.max(teamAPlayers.length, teamBPlayers.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (teamAPlayers[i]) reordered.push(teamAPlayers[i]);
+                if (teamBPlayers[i]) reordered.push(teamBPlayers[i]);
+            }
+            room.players = reordered;
+            console.log('5b. Players reordered for doubles:', room.players.map(p => `${p.name} (${room.teamAssignments[p.id]})`));
+        }
 
         if (room.gameMode === 'CricketGame') {
             room.game = new CricketGame(gameOptions);
@@ -102,6 +120,8 @@ function registerGameLifecycleEvents({ io, socket, state, games }) {
 
         room.game.initializePlayers(room.players.map(p => p.id), currentPlayerIndex);
         room.gameStarted = true;
+        
+        const initialInternalState = room.game.getGameState();
 
         const commonGameState = {
             gameStatus: 'active',
@@ -109,8 +129,10 @@ function registerGameLifecycleEvents({ io, socket, state, games }) {
             hostId: room.hostId,
             whoStarts: room.whoStarts,
             gameOptions: room.gameOptions,
-            legsWon: room.game.legsWon,
-            setsWon: room.game.setsWon,
+            teamMode: room.teamMode,
+            teamAssignments: room.teamAssignments,
+            legsWon: initialInternalState.legsWon,
+            setsWon: initialInternalState.setsWon,
             currentPlayerIndex,
             turns: []
         };
@@ -121,11 +143,11 @@ function registerGameLifecycleEvents({ io, socket, state, games }) {
                 mode: 'cricket',
                 players: room.players.map((p, index) => ({
                     ...p,
-                    points: 0,
-                    marks: { 15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 25: 0 },
+                    points: initialInternalState.scores[p.id],
+                    marks: initialInternalState.marks[p.id],
                     dartsThrown: 0,
                     isActive: index === currentPlayerIndex,
-                    legs: 0,
+                    legs: initialInternalState.legsWon[p.id],
                     doublesHit: p.doublesHit,
                     doublesThrown: p.doublesThrown,
                     highestFinish: p.highestFinish,
@@ -142,12 +164,12 @@ function registerGameLifecycleEvents({ io, socket, state, games }) {
                 history: [],
                 players: room.players.map((p, index) => ({
                     ...p,
-                    score: startScore,
+                    score: initialInternalState.scores[p.id],
                     dartsThrown: 0,
                     dartsThrownBeforeLeg: 0,
                     avg: '0.00',
                     isActive: index === currentPlayerIndex,
-                    legs: 0,
+                    legs: initialInternalState.legsWon[p.id],
                     scores: [],
                     doublesHit: p.doublesHit,
                     doublesThrown: p.doublesThrown,

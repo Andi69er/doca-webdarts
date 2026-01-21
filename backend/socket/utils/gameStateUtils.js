@@ -28,16 +28,19 @@ function createFullGameStateUpdate(room) {
         winner,
         gameStatus: internalState.winner ? 'finished' : 'active',
         turns: internalState.turns || [],
-        legsWon: room.game.legsWon,
-        setsWon: room.game.setsWon,
-        gameOptions: room.gameOptions
+        legsWon: internalState.legsWon,
+        setsWon: internalState.setsWon,
+        gameOptions: room.gameOptions,
+        teamMode: room.teamMode,
+        teamAssignments: room.teamAssignments
     };
 }
 
 function updateBestLegAfterLegEnd(room, previousLegsWon) {
     if (!room || !room.game) return;
 
-    const currentLegsWon = room.game.legsWon || {};
+    const internalState = room.game.getGameState();
+    const currentLegsWon = internalState.legsWon || {};
 
     room.players.forEach(player => {
         const prevLegs = previousLegsWon?.[player.id] || 0;

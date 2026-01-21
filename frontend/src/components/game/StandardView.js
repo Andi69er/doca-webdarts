@@ -5,7 +5,6 @@ import LiveStatistics from '../LiveStatistics';
 import GameChat from '../GameChat';
 import GameInfoBar from './GameInfoBar';
 import GameVideoPanel from './GameVideoPanel';
-import TeamAssignmentPanel from './TeamAssignmentPanel';
 
 const StandardView = ({
     gameState,
@@ -65,15 +64,6 @@ const StandardView = ({
                         ) : (
                             <div className="waiting-message">Warte auf Starter...</div>
                         )
-                    )}
-                    {gameState.teamMode === 'doubles' && (
-                        <TeamAssignmentPanel
-                            gameState={gameState}
-                            user={user}
-                            socket={socket}
-                            roomId={roomId}
-                            isHost={isHost}
-                        />
                     )}
                 </div>
             )}

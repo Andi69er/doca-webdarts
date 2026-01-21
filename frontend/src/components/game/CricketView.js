@@ -5,7 +5,6 @@ import CricketInputPanel from '../CricketInputPanel';
 import GameChat from '../GameChat';
 import GameInfoBar from './GameInfoBar';
 import GameVideoPanel from './GameVideoPanel';
-import TeamAssignmentPanel from './TeamAssignmentPanel';
 
 const CricketView = ({
     gameState,
@@ -66,15 +65,6 @@ const CricketView = ({
                                 ) : (
                                     <div className="waiting-message">Warte auf Starter...</div>
                                 )
-                            )}
-                            {gameState?.teamMode === 'doubles' && (
-                                <TeamAssignmentPanel
-                                    gameState={gameState}
-                                    user={user}
-                                    socket={socket}
-                                    roomId={roomId}
-                                    isHost={isHost}
-                                />
                             )}
                         </div>
                     )}

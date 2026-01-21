@@ -54,9 +54,12 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
 
     if (!gameState || !gameState.players) return null;
 
+    const isDoubles = gameState.teamMode === 'doubles';
     const players = gameState.players;
-    const player1 = players[0];
-    const player2 = players[1];
+    
+    // Gruppierung für Doubles
+    const teamAPlayers = isDoubles ? players.filter(p => gameState.teamAssignments?.[p.id] === 'teamA') : [players[0]];
+    const teamBPlayers = isDoubles ? players.filter(p => gameState.teamAssignments?.[p.id] === 'teamB') : [players[1]];
 
     const handleNameChange = (playerId) => {
         if (editingName.trim().length >= 3 && editingName.trim().length <= 15) {
@@ -79,8 +82,9 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
         }
     };
 
-    const renderPlayerCard = (player, label, isRightSide = false) => {
-        if (!player) {
+    const renderPlayerCard = (teamPlayers, label, isRightSide = false) => {
+        const primaryPlayer = teamPlayers[0];
+        if (!primaryPlayer) {
             return (
                 <div className="player-card empty">
                     <h3>{label}</h3>
@@ -89,16 +93,19 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
             );
         }
 
-        const isActive = gameState && 
+        // Ein Team ist aktiv, wenn einer seiner Spieler an der Reihe ist
+        const activePlayerInTeam = teamPlayers.find(p => 
+            gameState && 
             gameState.gameStatus === 'active' &&
-            gameState.players[gameState.currentPlayerIndex]?.id === player.id;
+            gameState.players[gameState.currentPlayerIndex]?.id === p.id
+        );
+        const isActive = !!activePlayerInTeam;
 
-        const isStartingPlayer = !gameState.gameStatus && startingPlayerId === player.id;
-        const isMyPlayer = user && user.id === player.id;
+        const isStartingTeam = teamPlayers.some(p => !gameState.gameStatus && startingPlayerId === p.id);
+        const myPlayerInTeam = teamPlayers.find(p => user && user.id === p.id);
         const isHost = gameState.hostId === user?.id;
-        const checkoutText = getCheckoutText(player.score);
+        const checkoutText = getCheckoutText(primaryPlayer.score);
         
-        // FIX: Prüft nun, ob Sets im gameState.gameOptions größer als 0 sind
         const isSetMode = (gameState?.gameOptions?.sets > 0);
 
         // --- STYLES ---
@@ -159,16 +166,16 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                     <>
                         <div style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
                             <span style={{fontSize:'0.7rem', opacity:0.7}}>SETS</span>
-                            <span style={{fontSize:'1.8rem', fontWeight:'bold'}}>{gameState?.setsWon?.[player.id] ?? 0}</span>
+                            <span style={{fontSize:'1.8rem', fontWeight:'bold'}}>{gameState?.setsWon?.[primaryPlayer.id] ?? 0}</span>
                             <div style={{height:'1px', width:'30px', background:'#555', margin:'2px 0'}}></div>
                             <span style={{fontSize:'0.7rem', opacity:0.7}}>LEGS</span>
-                            <span style={{fontSize:'1.4rem', fontWeight:'bold'}}>{gameState?.legsWon?.[player.id] ?? 0}</span>
+                            <span style={{fontSize:'1.4rem', fontWeight:'bold'}}>{gameState?.legsWon?.[primaryPlayer.id] ?? 0}</span>
                         </div>
                     </>
                 ) : (
                     <>
                         <span style={styles.legsLabel}>Legs</span>
-                        <span style={styles.legsCount}>{gameState?.legsWon?.[player.id] ?? 0}</span>
+                        <span style={styles.legsCount}>{gameState?.legsWon?.[primaryPlayer.id] ?? 0}</span>
                     </>
                 )}
             </div>
@@ -177,7 +184,7 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
         const LastScoreBlock = (
             <div style={styles.statBox}>
                 <span style={styles.iconTarget}>🎯</span>
-                <span style={styles.statValue}>{player.lastScore || 0}</span>
+                <span style={styles.statValue}>{activePlayerInTeam?.lastScore || 0}</span>
             </div>
         );
 
@@ -189,7 +196,7 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                     <path d="M12.8 2.2L2.2 12.8L4 16L11.5 14L10 12.5L20 2.5L21.5 4L19.4 19.4L13.4 13.4L6 14.5L12.8 2.2Z" fill="#cbd5e1"/>
                     <path d="M2.2 12.8L2 16L4 16L12.8 2.2L2.2 12.8Z" fill="#64748b"/>
                 </svg>
-                <span style={styles.statValue}>{player.dartsThrown || 0}</span>
+                <span style={styles.statValue}>{activePlayerInTeam?.dartsThrown || 0}</span>
             </div>
         );
 
@@ -202,48 +209,79 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
 
         return (
             <div className={`player-card ${isActive ? 'active-player' : ''}`} style={{ 
-                border: isActive ? '2px solid yellow' : isStartingPlayer ? '2px solid #4CAF50' : '1px solid #333'
+                border: isActive ? '2px solid yellow' : isStartingTeam ? '2px solid #4CAF50' : '1px solid #333',
+                minHeight: isDoubles ? '180px' : 'auto'
             }}>
                 {isActive && <div className="active-dot"></div>}
-                {isHost && !isMyPlayer && (
-                    <button
-                        onClick={() => {
-                            if (window.confirm(`Möchtest du ${player.name} wirklich aus dem Raum entfernen?`)) {
-                                socket.emit('kickPlayer', { roomId: gameState.id, playerIdToKick: player.id });
-                            }
-                        }}
-                        className="kick-player-button"
-                    >
-                        ✖
-                    </button>
-                )}
-                {isMyPlayer && editingPlayerId === player.id ? (
-                    <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onBlur={() => handleNameChange(player.id)}
-                        onKeyDown={(e) => handleNameKeyDown(e, player.id)}
-                        autoFocus
-                        className="player-name-input"
-                    />
-                ) : (
-                    <h3 
-                        className="player-name-title"
-                        onClick={() => {
-                            if (isMyPlayer) {
-                                setEditingPlayerId(player.id);
-                                setEditingName(player.name);
-                            }
-                        }}
-                        style={{ cursor: isMyPlayer ? 'pointer' : 'default' }}
-                    >{player.name} {isMyPlayer ? '(Du)' : ''}</h3>
-                )}
+                
+                <div className="team-header" style={{ marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#888', textTransform: 'uppercase' }}>
+                        {isDoubles ? (gameState.teamNames?.[isRightSide ? 'teamB' : 'teamA'] || (isRightSide ? 'Team B' : 'Team A')) : 'Einzel'}
+                    </span>
+                </div>
+
+                <div className="players-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
+                    {teamPlayers.map(player => {
+                        const isCurrent = activePlayerInTeam?.id === player.id;
+                        const isMe = user && user.id === player.id;
+                        
+                        return (
+                            <div key={player.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                {isCurrent && <span style={{ color: 'yellow', fontSize: '1.2rem' }}>🎯</span>}
+                                {isMe && editingPlayerId === player.id ? (
+                                    <input
+                                        type="text"
+                                        value={editingName}
+                                        onChange={(e) => setEditingName(e.target.value)}
+                                        onBlur={() => handleNameChange(player.id)}
+                                        onKeyDown={(e) => handleNameKeyDown(e, player.id)}
+                                        autoFocus
+                                        className="player-name-input"
+                                        style={{ width: '120px' }}
+                                    />
+                                ) : (
+                                    <h3 
+                                        className="player-name-title"
+                                        onClick={() => {
+                                            if (isMe) {
+                                                setEditingPlayerId(player.id);
+                                                setEditingName(player.name);
+                                            }
+                                        }}
+                                        style={{ 
+                                            cursor: isMe ? 'pointer' : 'default',
+                                            margin: 0,
+                                            fontSize: isDoubles ? '1.1rem' : '1.3rem',
+                                            color: isCurrent ? 'yellow' : (isMe ? '#4ade80' : 'white'),
+                                            textDecoration: isMe ? 'underline' : 'none'
+                                        }}
+                                    >
+                                        {player.name}
+                                    </h3>
+                                )}
+                                {isHost && !isMe && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm(`Möchtest du ${player.name} wirklich aus dem Raum entfernen?`)) {
+                                                socket.emit('kickPlayer', { roomId: gameState.id, playerIdToKick: player.id });
+                                            }
+                                        }}
+                                        className="kick-player-button-mini"
+                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 5px' }}
+                                    >
+                                        ✖
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
 
                 <div className="score-details-bild1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px' }}>
                     {isRightSide ? StatsContainer : LegsBlock}
                     <div className="main-score-wrapper-bild1">
-                        <div className="main-score-bild1">{player.score}</div>
+                        <div className="main-score-bild1">{primaryPlayer.score}</div>
                     </div>
                     {isRightSide ? LegsBlock : StatsContainer}
                 </div>
@@ -256,7 +294,7 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
     return (
         <div className="player-scores-container">
             <div className="player-score-section">
-                {renderPlayerCard(player1, "Player 1", false)}
+                {renderPlayerCard(teamAPlayers, "Team A", false)}
             </div>
             <div className="player-history-section">
                 <div className="history-wrapper">
@@ -264,7 +302,7 @@ const PlayerScores = ({ gameState, user, startingPlayerId }) => {
                 </div>
             </div>
             <div className="player-score-section">
-                {renderPlayerCard(player2, "Player 2", true)}
+                {renderPlayerCard(teamBPlayers, "Team B", true)}
             </div>
         </div>
     );

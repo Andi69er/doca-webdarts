@@ -30,6 +30,9 @@ function registerGameplayEvents({ io, socket, state, utils }) {
                 return;
             }
 
+            // Get points to add to match stats
+            const pointsToTrack = room.gameMode === 'CricketGame' ? (result.pointsAdded || 0) : (result.scoreValue || 0);
+
             const newGameStateFromGame = room.game.getGameState();
             updateBestLegAfterLegEnd(room, previousLegsWon);
 
@@ -42,14 +45,13 @@ function registerGameplayEvents({ io, socket, state, utils }) {
                 playerToUpdate.lastScore = score;
                 playerToUpdate.lastThrownScore = score;
 
-                if (room.gameMode !== 'CricketGame' && playerToUpdate.dartsThrown > 0) {
-                    const pointsScored = startScore - (newGameStateFromGame.scores[playerToUpdate.id] || startScore);
-                    const turnsPlayed = playerToUpdate.dartsThrown / 3;
-                    playerToUpdate.avg = turnsPlayed > 0 ? (pointsScored / turnsPlayed).toFixed(2) : '0.00';
-                }
-
                 playerToUpdate.matchDartsThrown = (playerToUpdate.matchDartsThrown || 0) + (room.gameMode === 'CricketGame' ? 1 : 3);
-                playerToUpdate.matchPointsScored = (playerToUpdate.matchPointsScored || 0) + score;
+                playerToUpdate.matchPointsScored = (playerToUpdate.matchPointsScored || 0) + pointsToTrack;
+
+                if (room.gameMode !== 'CricketGame' && playerToUpdate.dartsThrown > 0) {
+                    const turnsPlayed = playerToUpdate.dartsThrown / 3;
+                    playerToUpdate.avg = turnsPlayed > 0 ? (playerToUpdate.matchPointsScored / turnsPlayed).toFixed(2) : '0.00';
+                }
 
                 if (score === 180) {
                     playerToUpdate.scores180 = (playerToUpdate.scores180 || 0) + 1;
@@ -153,7 +155,8 @@ function registerGameplayEvents({ io, socket, state, utils }) {
             if (result.legWinner && updateData.gameStatus !== 'finished') {
                 console.log('[DEBUG] LEG WON EVENT EMITTING:', result.legWinner);
                 const legWinnerPlayer = updateData.players?.find(p => p.id === result.legWinner);
-                const nextPlayerIndex = (updateData.currentPlayerIndex + 1) % updateData.players.length;
+                // currentPlayerIndex ist bereits der Starter des nächsten Legs (durch startNextLeg() im Game-Objekt)
+                const nextPlayerIndex = updateData.currentPlayerIndex;
                 const nextPlayer = updateData.players?.[nextPlayerIndex];
                 console.log('[DEBUG] legWinnerPlayer:', legWinnerPlayer?.name, 'nextPlayer:', nextPlayer?.name);
                 io.to(roomId).emit('leg-won', {
@@ -195,18 +198,19 @@ function registerGameplayEvents({ io, socket, state, utils }) {
                 if (room.gameMode === 'CricketGame') {
                     affectedPlayer.dartsThrown = Math.max(0, (affectedPlayer.dartsThrown || 0) - 1);
                     affectedPlayer.matchDartsThrown = Math.max(0, (affectedPlayer.matchDartsThrown || 0) - 1);
+                    affectedPlayer.matchPointsScored = Math.max(0, (affectedPlayer.matchPointsScored || 0) - (lastThrow.pointsAdded || 0));
                 } else {
                     affectedPlayer.dartsThrown = Math.max(0, (affectedPlayer.dartsThrown || 0) - 3);
                     affectedPlayer.matchDartsThrown = Math.max(0, (affectedPlayer.matchDartsThrown || 0) - 3);
+                    affectedPlayer.matchPointsScored = Math.max(0, (affectedPlayer.matchPointsScored || 0) - (lastThrow.score || 0));
                     
                     // Schnitt neu berechnen
-                    const startScore = parseInt(room.gameOptions.startingScore, 10) || 501;
-                    const pointsScored = startScore - (room.game.scores[affectedPlayerId] || startScore);
                     const turnsPlayed = affectedPlayer.dartsThrown / 3;
-                    affectedPlayer.avg = turnsPlayed > 0 ? (pointsScored / turnsPlayed).toFixed(2) : '0.00';
+                    affectedPlayer.avg = turnsPlayed > 0 ? (affectedPlayer.matchPointsScored / turnsPlayed).toFixed(2) : '0.00';
                 }
                 
-                affectedPlayer.score = room.game.scores[affectedPlayerId];
+                const teamId = room.game.getTeamId(affectedPlayerId);
+                affectedPlayer.score = room.game.scores[teamId];
             }
 
             const updateData = createFullGameStateUpdate(room);
