@@ -1,0 +1,27 @@
+# Render-Konfiguration für den Webdarts-Spielserver.
+# (Der bestehende Service "doca-webdarts" nutzt diese Werte – Build- und
+#  Start-Command sind im Dashboard entsprechend zu setzen.)
+services:
+  - type: web
+    name: doca-webdarts
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        value: https://www.doca.at
+      - key: WEBDARTS_SECRET
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      # PORT wird von Render automatisch gesetzt.

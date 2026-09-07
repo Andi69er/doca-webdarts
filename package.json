@@ -1,0 +1,31 @@
+{
+  "name": "doca-webdarts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DOCA Webdarts – eigenständige Online-Darts-Website mit Fokus auf Doppelspiele (2v2), 4 Cams + Mic, gemeinsamer Scorer, Ausbullen",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm -w @webdarts/server run dev",
+    "dev:web": "npm -w @webdarts/web run dev",
+    "build": "npm -w @webdarts/engine run build && npm -w @webdarts/web run build && npm -w @webdarts/server run build",
+    "start": "tsx apps/server/src/index.ts",
+    "test": "vitest run",
+    "typecheck": "npm -w @webdarts/engine run build && npm -w @webdarts/server run typecheck && npm -w @webdarts/web run typecheck"
+  },
+  "dependencies": {
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.7"
+  }
+}

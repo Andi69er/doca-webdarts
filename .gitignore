@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.env
+.env.local
+coverage/
+
+# TS build info
+*.tsbuildinfo
+
+# Match-Historie (Laufzeitdaten)
+data/
+apps/server/data/
+
+# Editor / lokal
+.claude/
+smoke-*.mjs
+st.mjs

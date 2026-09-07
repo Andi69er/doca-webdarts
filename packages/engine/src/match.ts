@@ -1,0 +1,554 @@
+/**
+ * Match-Orchestrierung: verbindet Ausbullen, Teilspiele (X01/Cricket),
+ * Wurfreihenfolge im Doppel und den Leg-/Satz-Fortschritt.
+ *
+ * `reduceMatch(state, action)` ist rein und deterministisch. Für Undo/History
+ * gibt es die Klasse `MatchController`, die Snapshots stapelt.
+ */
+
+import { addBullOffThrow, createBullOff } from "./bulloff";
+import { findCheckout } from "./checkout";
+import { applyCricketVisit, createCricketLeg } from "./cricket";
+import { applyX01Visit, createX01Leg } from "./x01";
+import type {
+  Dart,
+  GameMode,
+  LegState,
+  MatchAction,
+  MatchConfig,
+  MatchState,
+  Player,
+  Team,
+  ThrowerInfo,
+  X01LegState,
+} from "./types";
+
+// ---------------------------------------------------------------------------
+// Aufbau
+// ---------------------------------------------------------------------------
+
+export function createMatch(config: MatchConfig, players: Player[], teams: Team[]): MatchState {
+  if (teams.length !== 2) throw new Error("Es müssen genau zwei Teams sein.");
+  return {
+    config,
+    players,
+    teams,
+    phase: config.bullOff ? "bulloff" : "playing",
+    bullOff: config.bullOff ? createBullOff() : null,
+    leg: createLeg(config, teams.length),
+    legIndexInSet: 0,
+    setIndex: 0,
+    globalLegNumber: 0,
+    legsWonInSet: [0, 0],
+    setsWon: [0, 0],
+    legStarterTeamIndex: 0,
+    visitCounter: 0,
+    history: [],
+    matchWinnerTeamIndex: null,
+  };
+}
+
+function createLeg(config: MatchConfig, teamCount: number): LegState {
+  if (config.mode === "x01") {
+    if (!config.x01) throw new Error("x01-Optionen fehlen.");
+    return createX01Leg(config.x01, teamCount);
+  }
+  if (!config.cricket) throw new Error("cricket-Optionen fehlen.");
+  return createCricketLeg(config.cricket, teamCount);
+}
+
+// ---------------------------------------------------------------------------
+// Wurfreihenfolge
+// ---------------------------------------------------------------------------
+
+export function throwOrder(state: MatchState): { teamIndex: number; playerId: string }[] {
+  const starter = state.legStarterTeamIndex;
+  const other = 1 - starter;
+  const order: { teamIndex: number; playerId: string }[] = [];
+
+  const teamSize = Math.max(
+    state.teams[0]!.playerIds.length,
+    state.teams[1]!.playerIds.length,
+  );
+  const firstPlayerOffset = state.legIndexInSet % 2;
+
+  for (let slot = 0; slot < teamSize; slot++) {
+    for (const ti of [starter, other]) {
+      const ids = state.teams[ti]!.playerIds;
+      const idx = (slot + firstPlayerOffset) % ids.length;
+      order.push({ teamIndex: ti, playerId: ids[idx]! });
+    }
+  }
+  return order;
+}
+
+/** Wer ist gerade am Wurf? */
+export function currentThrower(state: MatchState): ThrowerInfo | null {
+  if (state.phase !== "playing") return null;
+  const order = throwOrder(state);
+  const slot = order[state.visitCounter % order.length]!;
+  const player = state.players.find((p) => p.id === slot.playerId);
+  return {
+    teamIndex: slot.teamIndex,
+    playerId: slot.playerId,
+    playerName: player?.name ?? slot.playerId,
+    teamName: state.teams[slot.teamIndex]!.name,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reducer
+// ---------------------------------------------------------------------------
+
+export function reduceMatch(state: MatchState, action: MatchAction): MatchState {
+  switch (action.type) {
+    case "START_BULLOFF":
+      return { ...state, phase: "bulloff", bullOff: createBullOff() };
+
+    case "BULLOFF_THROW": {
+      if (state.phase !== "bulloff" || !state.bullOff) return state;
+      const bull = addBullOffThrow(state.bullOff, {
+        teamIndex: action.teamIndex,
+        playerId: action.playerId,
+        darts: action.darts,
+      });
+      let next: MatchState = { ...state, bullOff: bull };
+      if (bull.done && bull.winnerTeamIndex !== null) {
+        next = { ...next, phase: "playing", legStarterTeamIndex: bull.winnerTeamIndex };
+      }
+      return next;
+    }
+
+    case "BEGIN_PLAY":
+      return state.phase === "bulloff" ? { ...state, phase: "playing" } : state;
+
+    case "RECORD_SCORE": {
+      const darts: Dart[] = scoreToDarts(action.score, action.finishedOnDouble ?? false);
+      return recordVisit(state, darts, action.darts ?? 3, action.doubleDarts ?? 0);
+    }
+
+    case "RECORD_VISIT": {
+      const doubles = action.darts.filter((d) => d.multiplier === 2 && d.value > 0).length;
+      return recordVisit(state, action.darts, action.darts.length, doubles);
+    }
+
+    default:
+      return state;
+  }
+}
+
+function recordVisit(
+  state: MatchState,
+  darts: Dart[],
+  dartsUsed: number,
+  doubleAttempts: number,
+): MatchState {
+  if (state.phase !== "playing") return state;
+  const thrower = currentThrower(state);
+  if (!thrower) return state;
+
+  let legWon = false;
+  let newLeg: LegState;
+
+  if (state.leg.mode === "x01") {
+    const res = applyX01Visit(
+      state.leg,
+      state.config.x01!,
+      thrower.teamIndex,
+      thrower.playerId,
+      darts,
+      dartsUsed,
+      doubleAttempts,
+    );
+    newLeg = res.state;
+    legWon = res.legWon;
+  } else {
+    const res = applyCricketVisit(
+      state.leg,
+      state.config.cricket!,
+      thrower.teamIndex,
+      thrower.playerId,
+      darts,
+    );
+    newLeg = res.state;
+    legWon = res.legWon;
+  }
+
+  let next: MatchState = { ...state, leg: newLeg, visitCounter: state.visitCounter + 1 };
+  if (legWon) next = advanceAfterLeg(next, thrower.teamIndex);
+  return next;
+}
+
+/** Nach einem gewonnenen Leg: ins Archiv legen, Legs/Sätze zählen, ggf. Match beenden. */
+function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState {
+  const history = [
+    ...state.history,
+    {
+      leg: state.leg,
+      setIndex: state.setIndex,
+      legIndexInSet: state.legIndexInSet,
+      winnerTeamIndex,
+    },
+  ];
+
+  const legsWonInSet = state.legsWonInSet.slice();
+  legsWonInSet[winnerTeamIndex] = legsWonInSet[winnerTeamIndex]! + 1;
+
+  const setsWon = state.setsWon.slice();
+  let setIndex = state.setIndex;
+  let legIndexInSet = state.legIndexInSet + 1;
+  let resetLegs = false;
+
+  const usesSets = state.config.setsToWin > 1;
+
+  if (legsWonInSet[winnerTeamIndex]! >= state.config.legsToWinSet) {
+    if (usesSets) {
+      setsWon[winnerTeamIndex] = setsWon[winnerTeamIndex]! + 1;
+      setIndex += 1;
+      legIndexInSet = 0;
+      resetLegs = true;
+    }
+    const target = usesSets ? state.config.setsToWin : state.config.legsToWinSet;
+    const achieved = usesSets ? setsWon[winnerTeamIndex]! : legsWonInSet[winnerTeamIndex]!;
+    if (achieved >= target) {
+      return {
+        ...state,
+        history,
+        legsWonInSet: resetLegs ? [0, 0] : legsWonInSet,
+        setsWon,
+        setIndex,
+        legIndexInSet,
+        phase: "finished",
+        matchWinnerTeamIndex: winnerTeamIndex,
+      };
+    }
+  }
+
+  const nextStarter = 1 - state.legStarterTeamIndex;
+  return {
+    ...state,
+    history,
+    leg: createLeg(state.config, state.teams.length),
+    legsWonInSet: resetLegs ? [0, 0] : legsWonInSet,
+    setsWon,
+    setIndex,
+    legIndexInSet,
+    globalLegNumber: state.globalLegNumber + 1,
+    legStarterTeamIndex: nextStarter,
+    visitCounter: 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hilfen
+// ---------------------------------------------------------------------------
+
+function scoreToDarts(score: number, finishedOnDouble: boolean): Dart[] {
+  if (score === 0) return [{ value: 0, multiplier: 1 }];
+  if (finishedOnDouble) {
+    const doubleVal = Math.min(50, score);
+    const rest = score - doubleVal;
+    const darts: Dart[] = [];
+    if (rest > 0) darts.push({ value: rest, multiplier: 1 });
+    darts.push(
+      doubleVal === 50
+        ? { value: 25, multiplier: 2 }
+        : { value: Math.floor(doubleVal / 2), multiplier: 2 },
+    );
+    return darts;
+  }
+  return [{ value: score, multiplier: 1 }];
+}
+
+// ---------------------------------------------------------------------------
+// Selektor: Scoreboard
+// ---------------------------------------------------------------------------
+
+export interface ScoreboardTeam {
+  name: string;
+  players: string[];
+  legsWonInSet: number;
+  setsWon: number;
+  /** X01: Restpunkte. Cricket: Punkte. */
+  score: number;
+  /** X01: Startpunkte (fürs Panel). */
+  startScore: number;
+  /** 3-Dart-Average im aktuellen Leg. */
+  legAverage: number;
+  /** Darts, die dieses Team im aktuellen Leg geworfen hat. */
+  dartsThisLeg: number;
+  /** X01: Checkout-Vorschlag oder null (nur fürs Team am Wurf). */
+  checkout: string | null;
+}
+
+export interface Scoreboard {
+  phase: MatchState["phase"];
+  mode: GameMode;
+  teams: ScoreboardTeam[];
+  thrower: ThrowerInfo | null;
+  matchWinnerTeamIndex: number | null;
+}
+
+export function scoreboard(state: MatchState): Scoreboard {
+  const thrower = currentThrower(state);
+  const x01 = state.leg.mode === "x01" ? (state.leg as X01LegState) : null;
+
+  return {
+    phase: state.phase,
+    mode: state.config.mode,
+    matchWinnerTeamIndex: state.matchWinnerTeamIndex,
+    thrower,
+    teams: state.teams.map((team, ti) => {
+      const players = team.playerIds.map(
+        (id) => state.players.find((p) => p.id === id)?.name ?? id,
+      );
+      let score = 0;
+      let checkout: string | null = null;
+      let legAverage = 0;
+      let dartsThisLeg = 0;
+
+      if (x01) {
+        score = x01.remaining[ti]!;
+        const tv = x01.visits.filter((v) => v.teamIndex === ti);
+        dartsThisLeg = tv.reduce((n, v) => n + v.dartsUsed, 0);
+        const pts = tv.reduce((n, v) => n + v.scored, 0);
+        legAverage = dartsThisLeg ? (pts / dartsThisLeg) * 3 : 0;
+        if (thrower?.teamIndex === ti) {
+          checkout = findCheckout(score, 3, state.config.x01!.out)?.label ?? null;
+        }
+      } else if (state.leg.mode === "cricket") {
+        score = state.leg.points[ti]!;
+        dartsThisLeg = state.leg.visits
+          .filter((v) => v.teamIndex === ti)
+          .reduce((n, v) => n + v.dartsUsed, 0);
+      }
+
+      return {
+        name: team.name,
+        players,
+        legsWonInSet: state.legsWonInSet[ti]!,
+        setsWon: state.setsWon[ti]!,
+        score,
+        startScore: state.config.x01?.startScore ?? 0,
+        legAverage,
+        dartsThisLeg,
+        checkout,
+      };
+    }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Selektor: Match-Statistik (im Stil von darts-live)
+// ---------------------------------------------------------------------------
+
+export interface TeamStats {
+  dartsThrown: number;
+  pointsScored: number;
+  /** 3-Dart-Average über das ganze Match. */
+  average: number;
+  /** 3-Dart-Average im aktuellen Leg. */
+  legAverage: number;
+  /** 3-Dart-Average der ersten 9 Darts pro Leg. */
+  first9Average: number;
+  /** Höchste Einzelaufnahme. */
+  bestVisit: number;
+  /** Aufnahme-Buckets (nach Punktzahl, im Stil von 2K). */
+  b19minus: number; // 0–18
+  b19: number; // 19–37
+  b38: number; // 38–56
+  b57: number; // 57–75
+  b76: number; // 76–94
+  b95: number; // 95–132
+  b133: number; // 133–170
+  b171: number; // 171–179
+  b180: number; // 180
+  legsWon: number;
+  /** Erfolgreiche Checkouts (= gewonnene Legs im Double-Out). */
+  checkoutHits: number;
+  /** Darts, die insgesamt auf ein Doppel geworfen wurden. */
+  doubleDarts: number;
+  /** Checkout-Quote = checkoutHits / doubleDarts. */
+  checkoutPct: number;
+  highestFinish: number;
+  /** Checkouts mit 100 oder mehr Punkten. */
+  tonPlusFinishes: number;
+  shortestLegDarts: number | null;
+}
+
+export interface MatchStats {
+  mode: GameMode;
+  teams: [TeamStats, TeamStats];
+}
+
+function emptyTeamStats(): TeamStats {
+  return {
+    dartsThrown: 0,
+    pointsScored: 0,
+    average: 0,
+    legAverage: 0,
+    first9Average: 0,
+    bestVisit: 0,
+    b19minus: 0,
+    b19: 0,
+    b38: 0,
+    b57: 0,
+    b76: 0,
+    b95: 0,
+    b133: 0,
+    b171: 0,
+    b180: 0,
+    legsWon: 0,
+    checkoutHits: 0,
+    doubleDarts: 0,
+    checkoutPct: 0,
+    highestFinish: 0,
+    tonPlusFinishes: 0,
+    shortestLegDarts: null,
+  };
+}
+
+type BucketKey = "b19minus" | "b19" | "b38" | "b57" | "b76" | "b95" | "b133" | "b171" | "b180";
+
+/** Ordnet eine Aufnahme-Punktzahl einem Bucket-Feld von TeamStats zu. */
+function scoreBucket(score: number): BucketKey {
+  if (score <= 18) return "b19minus";
+  if (score <= 37) return "b19";
+  if (score <= 56) return "b38";
+  if (score <= 75) return "b57";
+  if (score <= 94) return "b76";
+  if (score <= 132) return "b95";
+  if (score <= 170) return "b133";
+  if (score <= 179) return "b171";
+  return "b180";
+}
+
+export function matchStats(state: MatchState): MatchStats {
+  const teams: [TeamStats, TeamStats] = [emptyTeamStats(), emptyTeamStats()];
+  // Bei "finished" steckt das letzte Leg schon im Archiv – nicht doppelt zählen.
+  const includeCurrent = state.phase !== "finished";
+
+  if (state.config.mode !== "x01") {
+    // Cricket: nur Grundwerte (Darts + Punkte + MPR-artiger Wert als "average").
+    const legs = [
+      ...state.history.filter((r) => r.leg.mode === "cricket").map((r) => r.leg),
+      includeCurrent && state.leg.mode === "cricket" ? state.leg : null,
+    ].filter(Boolean) as { visits: { teamIndex: number; dartsUsed: number }[]; points: number[] }[];
+    for (let t = 0; t < 2; t++) {
+      const s = teams[t]!;
+      for (const leg of legs) {
+        s.dartsThrown += leg.visits
+          .filter((v) => v.teamIndex === t)
+          .reduce((n, v) => n + v.dartsUsed, 0);
+        s.pointsScored += leg.points[t] ?? 0;
+      }
+      s.average = s.dartsThrown ? (s.pointsScored / (s.dartsThrown / 3)) : 0;
+    }
+    return { mode: "cricket", teams };
+  }
+
+  const start = state.config.x01!.startScore;
+
+  const legs: { leg: X01LegState }[] = [
+    ...state.history
+      .filter((r) => r.leg.mode === "x01")
+      .map((r) => ({ leg: r.leg as X01LegState })),
+    ...(includeCurrent ? [{ leg: state.leg as X01LegState }] : []),
+  ];
+
+  for (let t = 0; t < 2; t++) {
+    const s = teams[t]!;
+    let f9pts = 0;
+    let f9darts = 0;
+
+    for (const { leg } of legs) {
+      const tv = leg.visits.filter((v) => v.teamIndex === t);
+      let rem = start;
+      let legDarts = 0;
+
+      tv.forEach((v, i) => {
+        const before = rem;
+        s.dartsThrown += v.dartsUsed;
+        legDarts += v.dartsUsed;
+        s.doubleDarts += v.doubleAttempts;
+        s[scoreBucket(v.bust ? 0 : v.scored)] += 1;
+
+        if (!v.bust) {
+          s.pointsScored += v.scored;
+          rem = before - v.scored;
+          s.bestVisit = Math.max(s.bestVisit, v.scored);
+          if (rem === 0) {
+            s.checkoutHits++;
+            s.highestFinish = Math.max(s.highestFinish, v.scored);
+            if (v.scored >= 100) s.tonPlusFinishes++;
+          }
+        }
+
+        if (i < 3) {
+          f9pts += v.bust ? 0 : v.scored;
+          f9darts += v.dartsUsed;
+        }
+      });
+
+      if (leg.winnerTeamIndex === t) {
+        s.legsWon++;
+        s.shortestLegDarts =
+          s.shortestLegDarts === null ? legDarts : Math.min(s.shortestLegDarts, legDarts);
+      }
+    }
+
+    s.average = s.dartsThrown ? (s.pointsScored / s.dartsThrown) * 3 : 0;
+    s.first9Average = f9darts ? (f9pts / f9darts) * 3 : 0;
+    s.checkoutPct = s.doubleDarts ? (s.checkoutHits / s.doubleDarts) * 100 : 0;
+
+    const cur = state.leg as X01LegState;
+    const cv = cur.visits.filter((v) => v.teamIndex === t);
+    const cd = cv.reduce((n, v) => n + v.dartsUsed, 0);
+    const cp = cv.reduce((n, v) => n + (v.bust ? 0 : v.scored), 0);
+    s.legAverage = cd ? (cp / cd) * 3 : 0;
+  }
+
+  return { mode: "x01", teams };
+}
+
+// ---------------------------------------------------------------------------
+// Controller mit Undo/History
+// ---------------------------------------------------------------------------
+
+export class MatchController {
+  private history: MatchState[];
+
+  constructor(initial: MatchState) {
+    this.history = [initial];
+  }
+
+  get state(): MatchState {
+    return this.history[this.history.length - 1]!;
+  }
+
+  get canUndo(): boolean {
+    return this.history.length > 1;
+  }
+
+  dispatch(action: MatchAction): MatchState {
+    const next = reduceMatch(this.state, action);
+    if (next !== this.state) this.history.push(next);
+    return next;
+  }
+
+  undo(): MatchState {
+    if (this.canUndo) this.history.pop();
+    return this.state;
+  }
+
+  serialize(): string {
+    return JSON.stringify(this.history);
+  }
+
+  static deserialize(json: string): MatchController {
+    const hist = JSON.parse(json) as MatchState[];
+    const c = new MatchController(hist[0]!);
+    c.history = hist;
+    return c;
+  }
+}
