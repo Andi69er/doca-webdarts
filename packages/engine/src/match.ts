@@ -267,6 +267,8 @@ function scoreToDarts(score: number, finishedOnDouble: boolean): Dart[] {
 export interface ScoreboardTeam {
   name: string;
   players: string[];
+  /** Profilbild-URLs je Spieler (gleiche Reihenfolge wie `players`). */
+  playerImages: (string | null)[];
   legsWonInSet: number;
   setsWon: number;
   /** X01: Restpunkte. Cricket: Punkte. */
@@ -302,6 +304,9 @@ export function scoreboard(state: MatchState): Scoreboard {
       const players = team.playerIds.map(
         (id) => state.players.find((p) => p.id === id)?.name ?? id,
       );
+      const playerImages = team.playerIds.map(
+        (id) => state.players.find((p) => p.id === id)?.image ?? null,
+      );
       let score = 0;
       let checkout: string | null = null;
       let legAverage = 0;
@@ -326,6 +331,7 @@ export function scoreboard(state: MatchState): Scoreboard {
       return {
         name: team.name,
         players,
+        playerImages,
         legsWonInSet: state.legsWonInSet[ti]!,
         setsWon: state.setsWon[ti]!,
         score,

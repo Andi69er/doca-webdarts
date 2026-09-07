@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MatchConfig } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { TeamNameModal } from "./TeamNameModal";
+import { Avatar } from "./Avatar";
 
 export function RoomLobby({ app }: { app: AppApi }) {
   const state = app.room!;
@@ -81,9 +82,19 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 const isBotHere = state.bot?.seatKey === s.key;
                 return (
                   <div key={s.key} className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""}`}>
-                    <span>
-                      {isBotSeat && "🤖 "}
-                      {s.playerName ?? <span className="hint">frei</span>}
+                    <span className="seat-name">
+                      {s.occupantId ? (
+                        <>
+                          <Avatar
+                            src={s.playerImage}
+                            name={isBotSeat ? "🤖" : (s.playerName ?? "?")}
+                            size={26}
+                          />
+                          {s.playerName}
+                        </>
+                      ) : (
+                        <span className="hint">frei</span>
+                      )}
                     </span>
                     {s.occupantId ? (
                       isBotHere && isHost ? (

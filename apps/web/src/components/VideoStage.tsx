@@ -9,6 +9,7 @@ import {
 import { Track } from "livekit-client";
 import { scoreboard, type MatchState, type RoomState } from "@webdarts/engine";
 import { emitAck } from "../net";
+import { Avatar } from "./Avatar";
 
 export function VideoStage({ room }: { room: RoomState }) {
   const [state, setState] = useState<
@@ -79,9 +80,14 @@ function Stage({ room }: { room: RoomState }) {
       ? scoreboard(room.match as MatchState).thrower?.playerId ?? null
       : null;
 
-  // Bekannte Namen aus den Sitzplätzen (LiveKit-Identity = occupantId).
+  // Bekannte Namen + Bilder aus den Sitzplätzen (LiveKit-Identity = occupantId).
   const nameById = new Map<string, string>();
-  for (const s of room.seats) if (s.occupantId) nameById.set(s.occupantId, s.playerName ?? "Spieler");
+  const imgById = new Map<string, string | null>();
+  for (const s of room.seats) {
+    if (!s.occupantId) continue;
+    nameById.set(s.occupantId, s.playerName ?? "Spieler");
+    imgById.set(s.occupantId, s.playerImage);
+  }
 
   const sorted = [...tracks].sort((a, b) => {
     const aActive = a.participant.identity === activeId ? -1 : 0;
@@ -114,6 +120,7 @@ function Stage({ room }: { room: RoomState }) {
               </div>
             )}
             <span className={`tag ${isThrower ? "thrower" : ""}`}>
+              <Avatar src={imgById.get(id) ?? null} name={label} size={18} />
               {isThrower ? "▸ " : ""}
               {label}
             </span>

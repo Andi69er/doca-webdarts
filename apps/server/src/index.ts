@@ -61,6 +61,7 @@ interface HubMember {
   /** Stabile Client-ID (überlebt Reload / Reconnect). */
   cid: string;
   name: string;
+  image: string | null;
   roomId: string | null;
   /** Aktuell verbundener Socket (wechselt bei Reconnect). */
   socketId: string | null;
@@ -110,7 +111,7 @@ function pushChat(msg: Omit<ChatMessage, "id" | "ts">) {
 function hubState(): HubState {
   return {
     users: [...hub.values()]
-      .map((m) => ({ id: m.cid, name: m.name, roomId: m.roomId }))
+      .map((m) => ({ id: m.cid, name: m.name, image: m.image, roomId: m.roomId }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     rooms: manager.list().map((r) => r.summary()),
     chat: [...chat],
@@ -146,6 +147,7 @@ io.on("connection", (socket) => {
     // SSO: Ist ein Secret hinterlegt, ist ein gültiges doca.at-Ticket Pflicht.
     let id: string;
     let clean: string;
+    let image: string | null = null;
     if (authRequired) {
       const user = verifyTicket(token);
       if (!user) {
@@ -153,6 +155,7 @@ io.on("connection", (socket) => {
       }
       id = "u:" + user.uid;
       clean = cleanText(user.name, MAX_NAME) || "Mitglied";
+      image = user.image;
     } else {
       id = cleanCid(cid) || genId();
       clean = cleanText(n, MAX_NAME) || "Gast";
@@ -163,6 +166,7 @@ io.on("connection", (socket) => {
     if (existing) {
       // Reconnect: Namen aktualisieren, Socket neu verknüpfen, Raum wieder betreten
       existing.name = clean;
+      existing.image = image;
       existing.socketId = socket.id;
       socket.join("hub");
       if (existing.roomId) {
@@ -177,7 +181,7 @@ io.on("connection", (socket) => {
         }
       }
     } else {
-      hub.set(id, { cid: id, name: clean, roomId: null, socketId: socket.id });
+      hub.set(id, { cid: id, name: clean, image, roomId: null, socketId: socket.id });
       socket.join("hub");
       pushChat({ name: "", text: `${clean} ist online`, kind: "system" });
     }
@@ -207,7 +211,11 @@ io.on("connection", (socket) => {
     ];
     const safeBot =
       bot && Number.isFinite(Number(bot.average))
-        ? { average: Number(bot.average), name: String(bot.name ?? "Bot"), image: bot.image ?? null }
+        ? {
+            average: Number(bot.average),
+            name: String(bot.name ?? "Bot"),
+            image: bot.image && /^https:\/\//.test(String(bot.image)) ? String(bot.image) : null,
+          }
         : null;
     const room = manager.create(
       member.cid,
@@ -216,6 +224,7 @@ io.on("connection", (socket) => {
       safeNames,
       cleanText(roomName, MAX_ROOM_NAME),
       safeBot,
+      member.image,
     );
     member.roomId = room.roomId;
     socket.join(room.roomId);
@@ -234,7 +243,7 @@ io.on("connection", (socket) => {
     if (!room.hasMember(member.cid) && room.memberCount >= MAX_MEMBERS_PER_ROOM) {
       return ack({ ok: false, error: "Raum ist voll." });
     }
-    room.addMember(member.cid, member.name);
+    room.addMember(member.cid, member.name, member.image);
     member.roomId = roomId;
     socket.join(roomId);
     ack({ ok: true, data: { roomId } });

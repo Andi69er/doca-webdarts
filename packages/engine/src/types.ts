@@ -46,6 +46,8 @@ export type Visit = Dart[];
 export interface Player {
   id: string;
   name: string;
+  /** Profilbild-URL (Mitglied, PDC-Star oder Bot); leer = keins. */
+  image?: string | null;
 }
 
 /**

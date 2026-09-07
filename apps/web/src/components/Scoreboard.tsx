@@ -1,4 +1,5 @@
 import { scoreboard, type MatchState } from "@webdarts/engine";
+import { Avatar } from "./Avatar";
 
 export function Scoreboard({ match }: { match: MatchState }) {
   const sb = scoreboard(match);
@@ -22,7 +23,14 @@ export function Scoreboard({ match }: { match: MatchState }) {
                 <span className="sb2-name">{t.name}</span>
                 {onThrow && <span className="sb2-arrow">◀</span>}
               </div>
-              <div className="sb2-players">{t.players.join(" & ")}</div>
+              <div className="sb2-players">
+                {t.players.map((p, i) => (
+                  <span key={i} className="sb2-player">
+                    <Avatar src={t.playerImages[i]} name={p} size={18} />
+                    {p}
+                  </span>
+                ))}
+              </div>
 
               <div className="sb2-body">
                 <div className="sb2-legs">

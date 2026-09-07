@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultConfig, type BotConfig, type GameMode, type HubRoomSummary } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { embed } from "../embed";
+import { Avatar } from "./Avatar";
 
 const BOT_PRESETS: { key: string; label: string; average: number }[] = [
   { key: "preset:40", label: "Amateur (Ø 40)", average: 40 },
@@ -41,15 +42,17 @@ export function Hub({ app }: { app: AppApi }) {
     await app.sendChat(t);
   };
 
+  const botImg = embed ? `${embed.baseUrl}/js/dart-bot.png` : null;
+
   const resolveBot = (): BotConfig | null => {
     if (botChoice === "none") return null;
     if (botChoice === "custom") {
       const a = Math.max(20, Math.min(110, Math.round(botCustom)));
-      return { average: a, name: `Bot (Ø ${a})`, image: null };
+      return { average: a, name: `Bot (Ø ${a})`, image: botImg };
     }
     if (botChoice.startsWith("preset:")) {
       const p = BOT_PRESETS.find((x) => x.key === botChoice);
-      return p ? { average: p.average, name: p.label.split(" (")[0]!, image: null } : null;
+      return p ? { average: p.average, name: p.label.split(" (")[0]!, image: botImg } : null;
     }
     if (botChoice.startsWith("pdc:")) {
       const name = botChoice.slice(4);
@@ -84,14 +87,22 @@ export function Hub({ app }: { app: AppApi }) {
   };
 
   return (
-    <div className="hub-grid">
+    <>
+      {embed && (
+        <div className="row" style={{ marginBottom: 12 }}>
+          <a className="wd-back-link" href={`${embed.baseUrl}/dart-tools.php`}>
+            ← Zurück zum DOCA-Trainer
+          </a>
+        </div>
+      )}
+      <div className="hub-grid">
       {/* Online */}
       <div className="card stack">
         <h3 className="section-title">Online ({hub.users.length})</h3>
         <div className="user-list">
           {hub.users.map((u) => (
             <div key={u.id} className={`user-row ${u.id === app.myId ? "me" : ""}`}>
-              <span className="dot on" />
+              <Avatar src={u.image} name={u.name} size={24} />
               <span className="uname">{u.name}</span>
               <span className="ustatus">{statusOf(u.roomId)}</span>
             </div>
@@ -230,6 +241,7 @@ export function Hub({ app }: { app: AppApi }) {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

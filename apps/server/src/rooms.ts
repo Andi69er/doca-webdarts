@@ -36,6 +36,7 @@ const genRoomId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
 interface Member {
   id: string;
   name: string;
+  image: string | null;
   connected: boolean;
 }
 
@@ -67,6 +68,7 @@ export class Room {
     teamNames: [string, string],
     name = "",
     bot: BotConfig | null = null,
+    hostImage: string | null = null,
   ) {
     this.name = name.trim().slice(0, 40);
     this.hostId = hostId;
@@ -76,10 +78,10 @@ export class Room {
       ? {
           average: Math.max(10, Math.min(120, Math.round(bot.average))),
           name: String(bot.name ?? "Bot").trim().slice(0, 24) || "Bot",
-          image: bot.image ? String(bot.image).slice(0, 200) : null,
+          image: bot.image ? String(bot.image).slice(0, 300) : null,
         }
       : null;
-    this.members.set(hostId, { id: hostId, name: hostName, connected: true });
+    this.members.set(hostId, { id: hostId, name: hostName, image: hostImage, connected: true });
   }
 
   private get seatCount(): number {
@@ -88,13 +90,14 @@ export class Room {
 
   // --- Mitglieder ---------------------------------------------------------
 
-  addMember(id: string, name: string) {
+  addMember(id: string, name: string, image: string | null = null) {
     const existing = this.members.get(id);
     if (existing) {
       existing.connected = true;
       if (name) existing.name = name;
+      if (image !== null) existing.image = image;
     } else {
-      this.members.set(id, { id, name, connected: true });
+      this.members.set(id, { id, name, image, connected: true });
     }
   }
 
@@ -194,6 +197,7 @@ export class Room {
           indexInTeam: p,
           occupantId: mid,
           playerName: isBot ? (this.bot?.name ?? "Bot") : (member?.name ?? null),
+          playerImage: isBot ? (this.bot?.image ?? null) : (member?.image ?? null),
           connected: isBot ? true : (member?.connected ?? false),
         });
       }
@@ -270,6 +274,7 @@ export class Room {
     const players: Player[] = seats.map((s) => ({
       id: s.occupantId!,
       name: s.playerName ?? "Spieler",
+      image: s.playerImage,
     }));
     const teams: Team[] = [0, 1].map((t) => ({
       id: `T${t}`,
@@ -528,8 +533,9 @@ export class RoomManager {
     teamNames: [string, string],
     name = "",
     bot: BotConfig | null = null,
+    hostImage: string | null = null,
   ): Room {
-    const room = new Room(hostId, hostName, config, teamNames, name, bot);
+    const room = new Room(hostId, hostName, config, teamNames, name, bot, hostImage);
     this.rooms.set(room.roomId, room);
     return room;
   }

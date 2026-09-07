@@ -143,6 +143,11 @@ body:not(.webdarts-embedded) #webdarts-root {
   box-shadow: 0 0 40px rgba(242, 178, 28, 0.08), inset 0 0 60px rgba(242, 178, 28, 0.03);
 }
 #webdarts-root .section-title { margin: 0 0 4px; font-size: 15px; color: var(--gold); font-weight: 600; }
+#webdarts-root .wd-back-link {
+  color: var(--gold); text-decoration: none; font-family: "Oswald", sans-serif;
+  text-transform: uppercase; letter-spacing: 0.05em; font-size: 14px;
+}
+#webdarts-root .wd-back-link:hover { text-decoration: underline; }
 #webdarts-root .room-title { margin: 0; font-size: 20px; color: var(--gold); font-weight: 600; }
 
 .stack { display: flex; flex-direction: column; gap: 14px; }
@@ -448,3 +453,29 @@ body:not(.webdarts-embedded) #webdarts-root {
 .cricket-table tr.pts td { font-size: 20px; font-weight: 700; color: #fff; }
 .cricket-table tr.pts th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
 .cricket-table tbody tr:not(.pts):nth-child(even) { background: rgba(255,255,255,0.03); }
+
+/* ---------- Profilbilder ---------- */
+#webdarts-root .wd-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  vertical-align: middle;
+}
+#webdarts-root .wd-avatar-fallback {
+  font-family: "Oswald", "Segoe UI", sans-serif;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+#webdarts-root .user-row { grid-template-columns: auto 1fr auto; }
+#webdarts-root .seat-name { display: inline-flex; align-items: center; gap: 8px; }
+#webdarts-root .sb2-players { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; }
+#webdarts-root .sb2-player { display: inline-flex; align-items: center; gap: 6px; }
+#webdarts-root .vtile .tag { display: inline-flex; align-items: center; gap: 6px; }

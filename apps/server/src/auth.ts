@@ -18,6 +18,7 @@ export const authRequired = SECRET.length > 0;
 export interface VerifiedUser {
   uid: string;
   name: string;
+  image: string | null;
 }
 
 function b64urlToBuf(s: string): Buffer {
@@ -40,7 +41,7 @@ export function verifyTicket(ticket: unknown): VerifiedUser | null {
   }
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
 
-  let data: { uid?: unknown; name?: unknown; exp?: unknown };
+  let data: { uid?: unknown; name?: unknown; img?: unknown; exp?: unknown };
   try {
     data = JSON.parse(b64urlToBuf(payloadPart).toString("utf8"));
   } catch {
@@ -53,5 +54,8 @@ export function verifyTicket(ticket: unknown): VerifiedUser | null {
   const name = String(data.name ?? "").slice(0, 40);
   if (!uid || !name) return null;
 
-  return { uid, name };
+  const rawImg = String(data.img ?? "").slice(0, 300);
+  const image = /^https:\/\//.test(rawImg) ? rawImg : null;
+
+  return { uid, name, image };
 }

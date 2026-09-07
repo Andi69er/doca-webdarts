@@ -18,6 +18,8 @@ import type { GameMode, MatchAction, MatchConfig, MatchState } from "./types";
 export interface HubUser {
   id: string;
   name: string;
+  /** Profilbild-URL des Mitglieds; leer = keins. */
+  image: string | null;
   /** In welchem Raum steckt der User gerade? null = in der Lobby. */
   roomId: string | null;
 }
@@ -61,6 +63,8 @@ export interface Seat {
   indexInTeam: number;
   occupantId: string | null;
   playerName: string | null;
+  /** Profilbild-URL (Mitglied / PDC-Star / Bot); leer = keins. */
+  playerImage: string | null;
   connected: boolean;
 }
 
