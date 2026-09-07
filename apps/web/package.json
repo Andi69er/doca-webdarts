@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:embed": "cross-env WD_BASE=/webspiele/webdarts/app/ WD_OUTDIR=embed-dist vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
@@ -22,6 +23,7 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^5.2.0",
+    "cross-env": "^7.0.3",
     "vite": "^7.3.6"
   }
 }

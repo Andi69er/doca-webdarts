@@ -46,6 +46,13 @@ export function RoomLobby({ app }: { app: AppApi }) {
 
       {state.name && <h2 className="room-title">{state.name}</h2>}
 
+      {state.bot && (
+        <div className="hint">
+          🤖 Bot <strong>{state.bot.name}</strong> (Ø {state.bot.average}) –{" "}
+          {state.bot.seatKey ? "sitzt am Tisch" : "vom Host auf einen freien Platz setzen"}.
+        </div>
+      )}
+
       <div className="card stack">
         <h3 className="section-title">Aufstellung</h3>
         <div className="seat-grid">
@@ -70,11 +77,20 @@ export function RoomLobby({ app }: { app: AppApi }) {
               )}
               {seats.map((s) => {
                 const mine = s.occupantId === app.myId;
+                const isBotSeat = s.occupantId === state.bot?.seatKey || s.playerName === state.bot?.name;
+                const isBotHere = state.bot?.seatKey === s.key;
                 return (
                   <div key={s.key} className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""}`}>
-                    <span>{s.playerName ?? <span className="hint">frei</span>}</span>
+                    <span>
+                      {isBotSeat && "🤖 "}
+                      {s.playerName ?? <span className="hint">frei</span>}
+                    </span>
                     {s.occupantId ? (
-                      mine ? (
+                      isBotHere && isHost ? (
+                        <button className="ghost" onClick={() => app.placeBot(null)}>
+                          Bot entfernen
+                        </button>
+                      ) : mine ? (
                         <button className="ghost" onClick={() => app.takeSeat(null)}>
                           Platz verlassen
                         </button>
@@ -82,7 +98,14 @@ export function RoomLobby({ app }: { app: AppApi }) {
                         <span className="hint">belegt</span>
                       )
                     ) : (
-                      <button onClick={() => app.takeSeat(s.key)}>Hier setzen</button>
+                      <div className="row" style={{ gap: 6 }}>
+                        <button onClick={() => app.takeSeat(s.key)}>Hier setzen</button>
+                        {state.bot && isHost && (
+                          <button className="ghost" onClick={() => app.placeBot(s.key)}>
+                            🤖 Bot
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );

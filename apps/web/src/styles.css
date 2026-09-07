@@ -1,6 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap");
+/* =========================================================================
+   Webdarts-Styles – alles unter #webdarts-root gescoped, damit die Datei
+   gefahrlos in eine bestehende Seite (doca.at) geladen werden kann.
+   Fonts: Oswald + Lato liegen auf doca.at lokal vor; Standalone fällt auf
+   Systemschriften zurück (kein externer Font-Import → DSGVO-konform).
+   ========================================================================= */
 
-:root {
+#webdarts-root {
   --bg: #05070c;
   --bg-2: #0a0c12;
   --panel: #0d1017;
@@ -9,28 +14,32 @@
   --line-soft: #1b2029;
   --text: #e9eef7;
   --muted: #8593ab;
-  --gold: #f2b21c;
-  --gold-soft: rgba(242, 178, 28, 0.15);
+  --gold: #ffbf00;
+  --gold-soft: rgba(255, 191, 0, 0.15);
   --accent: #35c26b;
   --accent-hi: #46d67d;
   --danger: #e5484d;
   --team-a: #3aa0ff;
   --team-b: #ff7a4a;
-  color-scheme: dark;
+
+  color: var(--text);
+  font: 15px/1.55 "Lato", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  min-height: 100%;
 }
 
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
+#webdarts-root * { box-sizing: border-box; }
 
-body {
+/* Standalone (kein doca.at): eigener Vollbild-Hintergrund. In der Einbettung
+   trägt <body class="webdarts-embedded"> und die Seite liefert Hintergrund. */
+body:not(.webdarts-embedded) { margin: 0; min-height: 100vh; }
+body:not(.webdarts-embedded) #webdarts-root {
+  min-height: 100vh;
   background:
     radial-gradient(1200px 700px at 15% -10%, rgba(58, 90, 170, 0.18), transparent 60%),
     radial-gradient(1000px 600px at 100% 110%, rgba(120, 70, 190, 0.14), transparent 60%),
     var(--bg);
-  color: var(--text);
-  font: 15px/1.55 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
-/* Animierter Partikel-Hintergrund (Canvas), liegt hinter allen Seiten. */
+
 .particles-bg {
   position: fixed;
   inset: 0;
@@ -41,14 +50,14 @@ body {
   display: block;
 }
 
-h1, h2, h3, .display, .section-title, .brand {
+#webdarts-root :is(h1, h2, h3, .display, .section-title, .brand) {
   font-family: "Oswald", "Segoe UI", sans-serif;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 /* ---------- Buttons ---------- */
-button {
+#webdarts-root button {
   font: inherit;
   font-family: "Oswald", "Segoe UI", sans-serif;
   letter-spacing: 0.04em;
@@ -61,21 +70,21 @@ button {
   padding: 9px 16px;
   transition: background 0.12s, border-color 0.12s, transform 0.05s;
 }
-button:hover:not(:disabled) { background: #1b2540; border-color: #33456b; }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:disabled { opacity: 0.4; cursor: not-allowed; }
-button.primary {
+#webdarts-root button:hover:not(:disabled) { background: #1b2540; border-color: #33456b; }
+#webdarts-root button:active:not(:disabled) { transform: translateY(1px); }
+#webdarts-root button:disabled { opacity: 0.4; cursor: not-allowed; }
+#webdarts-root button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #04240f;
   font-weight: 700;
 }
-button.primary:hover:not(:disabled) { background: var(--accent-hi); border-color: var(--accent-hi); }
-button.big { padding: 13px 20px; font-size: 16px; width: 100%; }
-button.ghost { background: transparent; }
-button.danger { border-color: var(--danger); color: #ffb3b5; }
+#webdarts-root button.primary:hover:not(:disabled) { background: var(--accent-hi); border-color: var(--accent-hi); }
+#webdarts-root button.big { padding: 13px 20px; font-size: 16px; width: 100%; }
+#webdarts-root button.ghost { background: transparent; }
+#webdarts-root button.danger { border-color: var(--danger); color: #ffb3b5; }
 
-input, select {
+#webdarts-root input, #webdarts-root select {
   font: inherit;
   background: var(--bg-2);
   color: var(--text);
@@ -83,8 +92,8 @@ input, select {
   border-radius: 8px;
   padding: 9px 11px;
 }
-input:focus, select:focus { outline: 2px solid var(--gold-soft); border-color: var(--gold); }
-label { display: block; }
+#webdarts-root input:focus, #webdarts-root select:focus { outline: 2px solid var(--gold-soft); border-color: var(--gold); }
+#webdarts-root label { display: block; }
 .lbl {
   color: var(--muted);
   font-size: 12px;
@@ -93,14 +102,14 @@ label { display: block; }
 }
 
 /* Sichtbarer Tastatur-Fokus überall */
-:focus-visible {
+#webdarts-root :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  #webdarts-root *, #webdarts-root *::before, #webdarts-root *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
@@ -133,8 +142,8 @@ label { display: block; }
   border-color: rgba(242, 178, 28, 0.4);
   box-shadow: 0 0 40px rgba(242, 178, 28, 0.08), inset 0 0 60px rgba(242, 178, 28, 0.03);
 }
-.section-title { margin: 0 0 4px; font-size: 15px; color: var(--gold); font-weight: 600; }
-.room-title { margin: 0; font-size: 20px; color: var(--gold); font-weight: 600; }
+#webdarts-root .section-title { margin: 0 0 4px; font-size: 15px; color: var(--gold); font-weight: 600; }
+#webdarts-root .room-title { margin: 0; font-size: 20px; color: var(--gold); font-weight: 600; }
 
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }

@@ -4,8 +4,10 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
 } from "@webdarts/engine";
+import { embed } from "./embed";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:8787";
+const SERVER_URL =
+  embed?.wsUrl ?? import.meta.env.VITE_SERVER_URL ?? "http://localhost:8787";
 
 export type WdSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 

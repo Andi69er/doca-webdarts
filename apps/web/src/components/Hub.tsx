@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { defaultConfig, type GameMode, type HubRoomSummary } from "@webdarts/engine";
+import { defaultConfig, type BotConfig, type GameMode, type HubRoomSummary } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
+import { embed } from "../embed";
+
+const BOT_PRESETS: { key: string; label: string; average: number }[] = [
+  { key: "preset:40", label: "Amateur (Ø 40)", average: 40 },
+  { key: "preset:55", label: "Fortgeschritten (Ø 55)", average: 55 },
+  { key: "preset:70", label: "Halbprofi (Ø 70)", average: 70 },
+  { key: "preset:85", label: "Profi (Ø 85)", average: 85 },
+];
 
 export function Hub({ app }: { app: AppApi }) {
   const hub = app.hub;
@@ -10,6 +18,9 @@ export function Hub({ app }: { app: AppApi }) {
   const [mode, setMode] = useState<GameMode>("x01");
   const [teamSize, setTeamSize] = useState<1 | 2>(2);
   const [roomName, setRoomName] = useState("");
+  const [botChoice, setBotChoice] = useState("none");
+  const [botCustom, setBotCustom] = useState(60);
+  const pdcStars = embed?.pdcStars ?? [];
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ block: "end" });
@@ -30,10 +41,39 @@ export function Hub({ app }: { app: AppApi }) {
     await app.sendChat(t);
   };
 
+  const resolveBot = (): BotConfig | null => {
+    if (botChoice === "none") return null;
+    if (botChoice === "custom") {
+      const a = Math.max(20, Math.min(110, Math.round(botCustom)));
+      return { average: a, name: `Bot (Ø ${a})`, image: null };
+    }
+    if (botChoice.startsWith("preset:")) {
+      const p = BOT_PRESETS.find((x) => x.key === botChoice);
+      return p ? { average: p.average, name: p.label.split(" (")[0]!, image: null } : null;
+    }
+    if (botChoice.startsWith("pdc:")) {
+      const name = botChoice.slice(4);
+      const star = pdcStars.find((s) => s.player === name);
+      if (!star) return null;
+      return {
+        average: Math.round(star.average),
+        name: star.player,
+        image: star.image ? `${embed?.baseUrl ?? ""}/${star.image}` : null,
+      };
+    }
+    return null;
+  };
+
   const createRoom = () => {
     const cfg = { ...defaultConfig(), mode, teamSize };
-    app.createRoom({ name: roomName.trim(), config: cfg, teamNames: ["Team A", "Team B"] });
+    app.createRoom({
+      name: roomName.trim(),
+      config: cfg,
+      teamNames: ["Team A", "Team B"],
+      bot: resolveBot(),
+    });
     setRoomName("");
+    setBotChoice("none");
   };
 
   const statusOf = (roomId: string | null) => {
@@ -126,6 +166,42 @@ export function Hub({ app }: { app: AppApi }) {
               <option value={1}>Einzel</option>
             </select>
           </div>
+
+          <select
+            value={botChoice}
+            aria-label="Bot-Gegner"
+            onChange={(e) => setBotChoice(e.target.value)}
+          >
+            <option value="none">Ohne Bot</option>
+            <optgroup label="Stufe">
+              {BOT_PRESETS.map((p) => (
+                <option key={p.key} value={p.key}>
+                  🤖 {p.label}
+                </option>
+              ))}
+            </optgroup>
+            {pdcStars.length > 0 && (
+              <optgroup label="Gegen PDC-Star">
+                {pdcStars.slice(0, 40).map((s) => (
+                  <option key={s.player} value={`pdc:${s.player}`}>
+                    🎯 {s.player} (Ø {s.average.toFixed(1)})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value="custom">Eigener Average…</option>
+          </select>
+          {botChoice === "custom" && (
+            <input
+              type="number"
+              min={20}
+              max={110}
+              value={botCustom}
+              aria-label="Bot-Average"
+              onChange={(e) => setBotCustom(Number(e.target.value))}
+            />
+          )}
+
           <button className="primary" style={{ width: "100%" }} onClick={createRoom}>
             Raum erstellen
           </button>

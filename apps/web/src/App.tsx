@@ -1,4 +1,5 @@
 import { useApp } from "./useApp";
+import { isEmbedded } from "./embed";
 import { ParticlesBackground } from "./components/ParticlesBackground";
 import { NameGate } from "./components/NameGate";
 import { Hub } from "./components/Hub";
@@ -13,6 +14,26 @@ export function App() {
   else if (!app.room) view = <Hub app={app} />;
   else if (app.room.phase === "lobby") view = <RoomLobby app={app} />;
   else view = <MatchView app={app} />;
+
+  const content = (
+    <>
+      {app.error && (
+        <div className="error-bar" role="alert">
+          <span>{app.error}</span>
+          <button className="ghost" aria-label="Meldung schließen" onClick={app.clearError}>
+            ✕
+          </button>
+        </div>
+      )}
+      {view}
+    </>
+  );
+
+  // In doca.at eingebettet: kein eigener Header / Partikel-Hintergrund –
+  // die Seite liefert das. Nur der Inhalt.
+  if (isEmbedded) {
+    return <div className="webdarts-embed">{content}</div>;
+  }
 
   return (
     <>
@@ -34,21 +55,7 @@ export function App() {
             </span>
           </div>
         </header>
-
-        {app.error && (
-          <div className="error-bar" role="alert">
-            <span>{app.error}</span>
-            <button
-              className="ghost"
-              aria-label="Meldung schließen"
-              onClick={app.clearError}
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        <main>{view}</main>
+        <main>{content}</main>
       </div>
     </>
   );

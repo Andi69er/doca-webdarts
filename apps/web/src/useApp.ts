@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { HubState, MatchAction, MatchConfig, RoomState } from "@webdarts/engine";
+import type { BotConfig, HubState, MatchAction, MatchConfig, RoomState } from "@webdarts/engine";
 import { emitAck, getSocket } from "./net";
+import { embed } from "./embed";
 
 export interface AppApi {
   connected: boolean;
@@ -14,11 +15,17 @@ export interface AppApi {
   setName: (name: string) => Promise<void>;
   sendChat: (text: string) => Promise<void>;
 
-  createRoom: (p: { name?: string; config: MatchConfig; teamNames: [string, string] }) => Promise<void>;
+  createRoom: (p: {
+    name?: string;
+    config: MatchConfig;
+    teamNames: [string, string];
+    bot?: BotConfig | null;
+  }) => Promise<void>;
   enterRoom: (roomId: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
 
   takeSeat: (seatKey: string | null) => Promise<void>;
+  placeBot: (seatKey: string | null) => Promise<void>;
   updateConfig: (config: MatchConfig, teamNames: [string, string]) => Promise<void>;
   setTeamName: (teamIndex: number, name: string) => Promise<void>;
   startMatch: () => Promise<void>;
@@ -36,6 +43,7 @@ const CID_KEY = "wd:cid";
 
 /** Stabile Client-ID – bleibt über Reloads/Reconnects gleich, damit man Sitz & Raum behält. */
 function clientId(): string {
+  if (embed) return "u:" + embed.user.id; // = Server-Identität bei SSO
   try {
     let id = localStorage.getItem(CID_KEY);
     if (!id) {
@@ -53,7 +61,9 @@ function clientId(): string {
 export function useApp(): AppApi {
   const [connected, setConnected] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
-  const [name, setNameState] = useState<string | null>(() => localStorage.getItem(NAME_KEY));
+  const [name, setNameState] = useState<string | null>(
+    () => embed?.user.name ?? localStorage.getItem(NAME_KEY),
+  );
   const [hub, setHub] = useState<HubState | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +75,14 @@ export function useApp(): AppApi {
     const rejoin = () => {
       setConnected(true);
       setMyId(clientId());
+      if (embed) {
+        emitAck("hub:join", {
+          name: embed.user.name,
+          cid: clientId(),
+          token: embed.token,
+        }).catch(() => {});
+        return;
+      }
       const stored = localStorage.getItem(NAME_KEY);
       if (stored) emitAck("hub:join", { name: stored, cid: clientId() }).catch(() => {});
     };
@@ -149,6 +167,7 @@ export function useApp(): AppApi {
       ),
 
     takeSeat: (seatKey) => guard(emitAck("room:takeSeat", { roomId: rid(), seatKey }).then(() => undefined)),
+    placeBot: (seatKey) => guard(emitAck("room:placeBot", { roomId: rid(), seatKey }).then(() => undefined)),
     updateConfig: (config, teamNames) =>
       guard(emitAck("room:updateConfig", { roomId: rid(), config, teamNames }).then(() => undefined)),
     setTeamName: (teamIndex, name) =>
