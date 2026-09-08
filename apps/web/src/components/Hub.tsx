@@ -54,7 +54,16 @@ export function Hub({ app }: { app: AppApi }) {
     return m;
   }, [hub?.rooms]);
 
-  if (!hub) return <div className="card">Lobby wird geladen…</div>;
+  if (!hub)
+    return (
+      <div className="card">
+        Lobby wird verbunden…
+        <div className="hint" style={{ marginTop: 6 }}>
+          Dauert es länger? Dann wird der Spielserver gerade aufgeweckt – das kann ca. 30 Sekunden
+          brauchen.
+        </div>
+      </div>
+    );
 
   const send = async () => {
     const t = text.trim();

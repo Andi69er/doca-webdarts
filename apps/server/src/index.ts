@@ -46,6 +46,11 @@ app.use((_req, res, next) => {
 app.use(cors({ origin: CLIENT_ORIGINS }));
 app.get("/health", (_req, res) => res.json({ ok: true, videoEnabled, authRequired }));
 app.get("/results", async (req, res) => {
+  // Match-Historie enthält Namen/Averages – nur mit Schlüssel (Admin-Auswertung).
+  const key = process.env.WEBDARTS_SECRET ?? "";
+  if (!key || req.get("x-webdarts-key") !== key) {
+    return res.status(403).json({ error: "auth" });
+  }
   const limit = Number(req.query.limit ?? 50);
   res.json(await recentResults(Number.isFinite(limit) ? limit : 50));
 });

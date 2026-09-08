@@ -29,6 +29,7 @@ function PartnerEditor({
     <div className="row" style={{ gap: 6, flex: 1 }}>
       <input
         list="wd-members"
+        aria-label="Partner: Name oder DOCA-Mitglied"
         placeholder="Partner: Name oder DOCA-Mitglied"
         value={txt}
         disabled={disabled}
