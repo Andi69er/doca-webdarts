@@ -3,6 +3,7 @@ import { defaultConfig, type BotConfig, type GameMode, type HubRoomSummary } fro
 import type { AppApi } from "../useApp";
 import { embed } from "../embed";
 import { Avatar } from "./Avatar";
+import { BotPicker } from "./BotPicker";
 
 const BOT_PRESETS: { key: string; label: string; average: number }[] = [
   { key: "preset:40", label: "Amateur (Ø 40)", average: 40 },
@@ -178,30 +179,14 @@ export function Hub({ app }: { app: AppApi }) {
             </select>
           </div>
 
-          <select
+          <BotPicker
             value={botChoice}
-            aria-label="Bot-Gegner"
-            onChange={(e) => setBotChoice(e.target.value)}
-          >
-            <option value="none">Ohne Bot</option>
-            <optgroup label="Stufe">
-              {BOT_PRESETS.map((p) => (
-                <option key={p.key} value={p.key}>
-                  🤖 {p.label}
-                </option>
-              ))}
-            </optgroup>
-            {pdcStars.length > 0 && (
-              <optgroup label="Gegen PDC-Star">
-                {pdcStars.slice(0, 40).map((s) => (
-                  <option key={s.player} value={`pdc:${s.player}`}>
-                    🎯 {s.player} (Ø {s.average.toFixed(1)})
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <option value="custom">Eigener Average…</option>
-          </select>
+            onChange={setBotChoice}
+            presets={BOT_PRESETS}
+            pdcStars={pdcStars}
+            botImage={botImg}
+            baseUrl={embed?.baseUrl ?? ""}
+          />
           {botChoice === "custom" && (
             <input
               type="number"
