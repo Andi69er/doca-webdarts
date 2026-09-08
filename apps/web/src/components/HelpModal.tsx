@@ -48,7 +48,22 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         </section>
 
         <section>
-          <h4>4. Kamera &amp; Mikro</h4>
+          <h4>4. Doppel: Beide an einem Board (1 Kamera)</h4>
+          <p>
+            Stehen zwei Partner zusammen an einem Board mit nur einem Gerät, in der
+            Aufstellung beim Team <strong>„Beide an einem Board (1 Kamera)"</strong>
+            anhaken. Dann setzt sich nur <strong>Spieler 1</strong> auf Platz 1
+            (mit Kamera &amp; Mikro) und trägt auf <strong>Platz 2</strong> den
+            <strong> Partner</strong> ein – DOCA-Mitglied aus der Liste (dann zählt
+            auch dessen Statistik mit) oder einfach ein Name. Spieler 1 wertet für
+            beide; wer dran ist, zeigt der Scorer. Im Video bleiben es
+            <strong> vier Kacheln</strong> – die Partner-Kachel (📍) zeigt dasselbe
+            Bild wie Platz 1, das große Bild wechselt normal weiter.
+          </p>
+        </section>
+
+        <section>
+          <h4>5. Kamera &amp; Mikro</h4>
           <p>
             Beim ersten Betreten fragt der Browser nach Kamera- und
             Mikrofonfreigabe – <strong>erlauben</strong>. Jede Kamera kann nur von
@@ -59,7 +74,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         </section>
 
         <section>
-          <h4>5. Ausbullen</h4>
+          <h4>6. Ausbullen</h4>
           <p>
             Vor dem ersten Leg wird ausgebullt: jedes Team wirft
             <strong> 3 Darts</strong>. Es zählt die Reihenfolge (Bulls-Eye vor
@@ -68,7 +83,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         </section>
 
         <section>
-          <h4>6. Werten</h4>
+          <h4>7. Werten</h4>
           <p>
             Eingeben darf nur der Spieler, der gerade am Wurf ist – für alle
             anderen ist das Feld gesperrt. Das Aufnahme-Ergebnis wird per Tastatur
@@ -78,7 +93,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         </section>
 
         <section>
-          <h4>7. Pause &amp; Revanche</h4>
+          <h4>8. Pause &amp; Revanche</h4>
           <p>
             Muss jemand kurz weg (WC, Telefon), drückt ein Spieler am Tisch
             <em> Pause</em>; fortsetzen kann danach jeder am Tisch. Fällt jemand
