@@ -649,3 +649,45 @@ body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
 #webdarts-root .wd-help p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text); }
 #webdarts-root .wd-help strong { color: #fff; font-weight: 600; }
 #webdarts-root .wd-help em { font-style: normal; color: var(--gold); }
+
+/* ---------- Sponsoren- / Partner-Leiste ---------- */
+#webdarts-root .wd-sponsors {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+#webdarts-root .wd-sponsors-label {
+  font-family: "Oswald", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 11px;
+  color: var(--muted);
+}
+#webdarts-root .wd-sponsors-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px 34px;
+}
+#webdarts-root .wd-sponsor-logo {
+  height: 34px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  opacity: 0.5;
+  filter: grayscale(1);
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+#webdarts-root .wd-sponsors a:hover .wd-sponsor-logo,
+#webdarts-root .wd-sponsor-logo:hover {
+  opacity: 1;
+  filter: grayscale(0);
+}
+@media (max-width: 640px) {
+  #webdarts-root .wd-sponsor-logo { height: 26px; }
+}

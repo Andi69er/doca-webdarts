@@ -5,6 +5,7 @@ import { NameGate } from "./components/NameGate";
 import { Hub } from "./components/Hub";
 import { RoomLobby } from "./components/RoomLobby";
 import { MatchView } from "./components/MatchView";
+import { SponsorStrip } from "./components/SponsorStrip";
 
 export function App() {
   const app = useApp();
@@ -26,6 +27,7 @@ export function App() {
         </div>
       )}
       {view}
+      <SponsorStrip />
     </>
   );
 

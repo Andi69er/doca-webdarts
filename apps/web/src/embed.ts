@@ -18,6 +18,14 @@ export interface EmbedMember {
   image: string | null;
 }
 
+/** Sponsor bzw. Partner (aus admin/sponsors.json). */
+export interface EmbedSponsor {
+  name: string;
+  url: string;
+  logo: string;
+  type: "sponsor" | "partner" | string;
+}
+
 export interface WebdartsEmbed {
   /** WebSocket-URL des Spiel-Servers, z.B. wss://doca-webdarts.onrender.com */
   wsUrl: string;
@@ -31,6 +39,8 @@ export interface WebdartsEmbed {
   pdcStars: PdcStar[];
   /** Alle DOCA-Mitglieder (für die Partner-Auswahl); optional. */
   members?: EmbedMember[];
+  /** Sponsoren & Partner für die Logo-Leiste; optional. */
+  sponsors?: EmbedSponsor[];
 }
 
 export const embed: WebdartsEmbed | null =
