@@ -14,6 +14,7 @@ import { RoomManager } from "./rooms.js";
 import { createLivekitToken, livekitUrl, videoEnabled } from "./livekit.js";
 import { RateLimiter, sanitizeConfig, validateAction } from "./validate.js";
 import { appendResult, recentResults } from "./results.js";
+import { careerFor, loadCareer, recordCareer } from "./stats.js";
 import { authRequired, verifyTicket } from "./auth.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -111,7 +112,13 @@ function pushChat(msg: Omit<ChatMessage, "id" | "ts">) {
 function hubState(): HubState {
   return {
     users: [...hub.values()]
-      .map((m) => ({ id: m.cid, name: m.name, image: m.image, roomId: m.roomId }))
+      .map((m) => ({
+        id: m.cid,
+        name: m.name,
+        image: m.image,
+        roomId: m.roomId,
+        stats: careerFor(m.cid),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     rooms: manager.list().map((r) => r.summary()),
     chat: [...chat],
@@ -126,8 +133,12 @@ async function broadcastRoom(roomId: string) {
   const room = manager.get(roomId);
   if (!room) return;
   io.to(roomId).emit("room:state", room.snapshot());
-  const result = room.takeFinishedResult();
-  if (result) await appendResult(result);
+  const finished = room.takeFinishedResult();
+  if (finished) {
+    await appendResult(finished.record);
+    recordCareer(finished.players);
+    broadcastHub(); // frische Karriere-Werte in die Online-Liste
+  }
   scheduleBot(roomId);
 }
 
@@ -461,6 +472,8 @@ io.on("connection", (socket) => {
     }, grace);
   });
 });
+
+void loadCareer();
 
 httpServer.listen(PORT, () => {
   console.log(`[webdarts] Server läuft auf http://localhost:${PORT}`);

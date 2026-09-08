@@ -500,12 +500,54 @@ body.webdarts-embedded #webdarts-root .hub-grid {
 }
 body.webdarts-embedded #webdarts-root .card { padding: 24px; }
 body.webdarts-embedded #webdarts-root .section-title { font-size: 17px; }
-body.webdarts-embedded #webdarts-root .user-list { max-height: none; flex: 1; }
+body.webdarts-embedded #webdarts-root .user-list { max-height: none; flex: 1; overflow: visible; }
 body.webdarts-embedded #webdarts-root .chat-card { min-height: 0; }
 body.webdarts-embedded #webdarts-root .chat-scroll { min-height: 320px; max-height: none; flex: 1; }
 body.webdarts-embedded #webdarts-root .uname { font-size: 15px; }
 body.webdarts-embedded #webdarts-root .chat-msg .cm-text { font-size: 15px; }
 body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
+
+/* ---------- Online-Liste: Statistik-Blase beim Überfahren ---------- */
+#webdarts-root .user-list { overflow: visible; }
+#webdarts-root .user-row { position: relative; outline: none; }
+#webdarts-root .user-row:hover,
+#webdarts-root .user-row:focus-visible { background: var(--gold-soft); }
+#webdarts-root .user-pop {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 8px;
+  right: 8px;
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  background: #0e1320;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+}
+#webdarts-root .user-row:hover .user-pop,
+#webdarts-root .user-row:focus-within .user-pop { display: flex; }
+#webdarts-root .user-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 13px;
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+}
+#webdarts-root .user-pop-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 13px;
+}
+#webdarts-root .user-pop-row span { color: var(--muted); }
+#webdarts-root .user-pop-row b { color: var(--gold); font-variant-numeric: tabular-nums; }
+#webdarts-root .user-pop-empty { font-size: 12.5px; color: var(--muted); }
 
 @media (max-width: 1100px) {
   body.webdarts-embedded #webdarts-root .hub-grid {

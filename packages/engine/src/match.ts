@@ -518,6 +518,101 @@ export function matchStats(state: MatchState): MatchStats {
 }
 
 // ---------------------------------------------------------------------------
+// Selektor: Einzelspieler-Statistik (für Karriere-/Hover-Werte)
+// ---------------------------------------------------------------------------
+
+/** Beitrag eines einzelnen Spielers über alle X01-Legs eines Matches. */
+export interface PlayerStatLine {
+  playerId: string;
+  darts: number;
+  points: number;
+  /** 3-Dart-Average. */
+  average: number;
+  /** Darts auf ein Doppel. */
+  doubleAttempts: number;
+  /** Erfolgreiche Checkouts (der Spieler hat den letzten Dart geworfen). */
+  checkoutHits: number;
+  /** Doppelquote in Prozent (checkoutHits / doubleAttempts). */
+  checkoutPct: number;
+  /** Höchstes eigenes Finish. */
+  highestFinish: number;
+  /** Wenigste Darts (Team) in einem Leg, das dieser Spieler mitgewonnen hat. */
+  shortestLegDarts: number | null;
+  /** Legs, die dieser Spieler mitgewonnen hat. */
+  legsWon: number;
+}
+
+/**
+ * Zerlegt die Match-Statistik auf einzelne Spieler herunter (nur X01).
+ * Grundlage für Karriere-Werte: Average, Doppelquote, kürzestes Leg, höchstes Finish.
+ */
+export function playerStats(state: MatchState): PlayerStatLine[] {
+  const acc = new Map<string, PlayerStatLine>();
+  const ensure = (id: string): PlayerStatLine => {
+    let s = acc.get(id);
+    if (!s) {
+      s = {
+        playerId: id,
+        darts: 0,
+        points: 0,
+        average: 0,
+        doubleAttempts: 0,
+        checkoutHits: 0,
+        checkoutPct: 0,
+        highestFinish: 0,
+        shortestLegDarts: null,
+        legsWon: 0,
+      };
+      acc.set(id, s);
+    }
+    return s;
+  };
+  for (const p of state.players) ensure(p.id);
+
+  const includeCurrent = state.phase !== "finished";
+  const legs: X01LegState[] = [
+    ...state.history.filter((r) => r.leg.mode === "x01").map((r) => r.leg as X01LegState),
+    ...(includeCurrent && state.leg.mode === "x01" ? [state.leg as X01LegState] : []),
+  ];
+
+  for (const leg of legs) {
+    const teamDarts = [0, 0];
+    const teamPlayers: [Set<string>, Set<string>] = [new Set(), new Set()];
+
+    for (const v of leg.visits) {
+      teamDarts[v.teamIndex] = teamDarts[v.teamIndex]! + v.dartsUsed;
+      teamPlayers[v.teamIndex]!.add(v.playerId);
+      const s = ensure(v.playerId);
+      s.darts += v.dartsUsed;
+      s.doubleAttempts += v.doubleAttempts;
+      if (!v.bust) s.points += v.scored;
+    }
+
+    if (leg.winnerTeamIndex !== null) {
+      const wt = leg.winnerTeamIndex;
+      const finisher = [...leg.visits].reverse().find((v) => v.teamIndex === wt && !v.bust);
+      if (finisher) {
+        const s = ensure(finisher.playerId);
+        s.checkoutHits += 1;
+        s.highestFinish = Math.max(s.highestFinish, finisher.scored);
+      }
+      for (const pid of teamPlayers[wt]!) {
+        const s = ensure(pid);
+        s.legsWon += 1;
+        s.shortestLegDarts =
+          s.shortestLegDarts === null ? teamDarts[wt]! : Math.min(s.shortestLegDarts, teamDarts[wt]!);
+      }
+    }
+  }
+
+  for (const s of acc.values()) {
+    s.average = s.darts ? (s.points / s.darts) * 3 : 0;
+    s.checkoutPct = s.doubleAttempts ? (s.checkoutHits / s.doubleAttempts) * 100 : 0;
+  }
+  return [...acc.values()];
+}
+
+// ---------------------------------------------------------------------------
 // Controller mit Undo/History
 // ---------------------------------------------------------------------------
 

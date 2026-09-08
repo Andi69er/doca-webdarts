@@ -102,10 +102,38 @@ export function Hub({ app }: { app: AppApi }) {
         <h3 className="section-title">Online ({hub.users.length})</h3>
         <div className="user-list">
           {hub.users.map((u) => (
-            <div key={u.id} className={`user-row ${u.id === app.myId ? "me" : ""}`}>
+            <div key={u.id} className={`user-row ${u.id === app.myId ? "me" : ""}`} tabIndex={0}>
               <Avatar src={u.image} name={u.name} size={24} />
               <span className="uname">{u.name}</span>
               <span className="ustatus">{statusOf(u.roomId)}</span>
+              <div className="user-pop" role="tooltip">
+                <div className="user-pop-head">
+                  <Avatar src={u.image} name={u.name} size={20} />
+                  {u.name}
+                </div>
+                {u.stats ? (
+                  <>
+                    <div className="user-pop-row">
+                      <span>Average</span>
+                      <b>{u.stats.average.toFixed(2)}</b>
+                    </div>
+                    <div className="user-pop-row">
+                      <span>Doppelquote</span>
+                      <b>{u.stats.checkoutPct.toFixed(1)} %</b>
+                    </div>
+                    <div className="user-pop-row">
+                      <span>Kürzestes Leg</span>
+                      <b>{u.stats.shortestLegDarts != null ? `${u.stats.shortestLegDarts} Darts` : "–"}</b>
+                    </div>
+                    <div className="user-pop-row">
+                      <span>Höchstes Finish</span>
+                      <b>{u.stats.highestFinish || "–"}</b>
+                    </div>
+                  </>
+                ) : (
+                  <div className="user-pop-empty">Noch keine gewerteten Spiele</div>
+                )}
+              </div>
             </div>
           ))}
         </div>

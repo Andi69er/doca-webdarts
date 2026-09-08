@@ -11,6 +11,7 @@ import {
   createMatch,
   currentThrower,
   matchStats,
+  playerStats,
   nextBullOffTeam,
   seatKey,
   type BotConfig,
@@ -32,6 +33,20 @@ import { videoEnabled } from "./livekit.js";
 const BOT_ID = "bot:1";
 
 const genRoomId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
+
+/** Beitrag eines menschlichen Spielers aus einem beendeten Match (für die Karriere-Statistik). */
+export interface FinishedPlayer {
+  id: string;
+  name: string;
+  image: string | null;
+  darts: number;
+  points: number;
+  doubleAttempts: number;
+  checkoutHits: number;
+  highestFinish: number;
+  shortestLegDarts: number | null;
+  legsWon: number;
+}
 
 interface Member {
   id: string;
@@ -476,13 +491,33 @@ export class Room {
    * Liefert einmalig das Endergebnis, sobald das Match beendet ist – zum
    * Archivieren. Danach `null`, bis ein neues Match läuft.
    */
-  takeFinishedResult(): Record<string, unknown> | null {
+  takeFinishedResult(): { record: Record<string, unknown>; players: FinishedPlayer[] } | null {
     const st = this.controller?.state;
     if (!st || st.phase !== "finished" || this.resultWritten) return null;
     this.resultWritten = true;
     const stats = matchStats(st);
+    const pstats = playerStats(st);
     const seats = this.buildSeats();
-    return {
+
+    const players: FinishedPlayer[] = seats
+      .filter((s) => s.occupantId && s.occupantId !== BOT_ID)
+      .map((s) => {
+        const l = pstats.find((p) => p.playerId === s.occupantId) ?? null;
+        return {
+          id: s.occupantId!,
+          name: s.playerName ?? "?",
+          image: s.playerImage,
+          darts: l?.darts ?? 0,
+          points: l?.points ?? 0,
+          doubleAttempts: l?.doubleAttempts ?? 0,
+          checkoutHits: l?.checkoutHits ?? 0,
+          highestFinish: l?.highestFinish ?? 0,
+          shortestLegDarts: l?.shortestLegDarts ?? null,
+          legsWon: l?.legsWon ?? 0,
+        };
+      });
+
+    const record: Record<string, unknown> = {
       ts: new Date().toISOString(),
       roomId: this.roomId,
       roomName: this.name,
@@ -497,7 +532,19 @@ export class Room {
         average: Number(stats.teams[t as 0 | 1].average.toFixed(2)),
         checkoutPct: Number(stats.teams[t as 0 | 1].checkoutPct.toFixed(1)),
       })),
+      players: players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        average: Number((p.darts ? (p.points / p.darts) * 3 : 0).toFixed(2)),
+        checkoutPct: Number(
+          (p.doubleAttempts ? (p.checkoutHits / p.doubleAttempts) * 100 : 0).toFixed(1),
+        ),
+        highestFinish: p.highestFinish,
+        shortestLegDarts: p.shortestLegDarts,
+        legsWon: p.legsWon,
+      })),
     };
+    return { record, players };
   }
 
   summary(): HubRoomSummary {

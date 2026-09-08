@@ -15,6 +15,22 @@ import type { GameMode, MatchAction, MatchConfig, MatchState } from "./types";
 // Hub (globale Lobby)
 // ---------------------------------------------------------------------------
 
+/** Karriere-Grundwerte eines Spielers (für die Hover-Blase in der Online-Liste). */
+export interface PlayerCareer {
+  /** Gewertete Matches. */
+  matches: number;
+  /** Insgesamt mitgewonnene Legs. */
+  legsWon: number;
+  /** 3-Dart-Average über alle gewerteten X01-Legs. */
+  average: number;
+  /** Doppelquote in Prozent. */
+  checkoutPct: number;
+  /** Höchstes Finish. */
+  highestFinish: number;
+  /** Wenigste Darts in einem gewonnenen Leg (oder null). */
+  shortestLegDarts: number | null;
+}
+
 export interface HubUser {
   id: string;
   name: string;
@@ -22,6 +38,8 @@ export interface HubUser {
   image: string | null;
   /** In welchem Raum steckt der User gerade? null = in der Lobby. */
   roomId: string | null;
+  /** Karriere-Grundwerte, sobald mindestens ein Match gewertet wurde. */
+  stats: PlayerCareer | null;
 }
 
 export interface HubRoomSummary {
