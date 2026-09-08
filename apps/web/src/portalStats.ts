@@ -14,12 +14,12 @@ export interface PortalStats {
 
 /** Holt die Portal-Werte für mehrere DOCA-User-IDs auf einmal. */
 export async function fetchPortalStats(uids: string[]): Promise<Record<string, PortalStats>> {
-  if (!embed || uids.length === 0) return {};
+  if (!embed || uids.length === 0 || typeof window === "undefined") return {};
   try {
-    const res = await fetch(
-      `${embed.baseUrl}/webspiele/webdarts/stats.php?ids=${encodeURIComponent(uids.join(","))}`,
-      { credentials: "same-origin" },
-    );
+    // Origin-relativ zur aktuellen Seite (unabhängig von www / non-www in BASE_URL).
+    const url = new URL("stats.php", window.location.href);
+    url.searchParams.set("ids", uids.join(","));
+    const res = await fetch(url.toString(), { credentials: "same-origin" });
     if (!res.ok) return {};
     const json = (await res.json()) as { stats?: Record<string, PortalStats> };
     return json.stats ?? {};
