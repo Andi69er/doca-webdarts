@@ -5,6 +5,7 @@ import { embed } from "../embed";
 import { Avatar } from "./Avatar";
 import { BotPicker } from "./BotPicker";
 import { HelpModal } from "./HelpModal";
+import { fetchPortalStats, type PortalStats } from "../portalStats";
 
 const BOT_PRESETS: { key: string; label: string; average: number }[] = [
   { key: "preset:40", label: "Amateur (Ø 40)", average: 40 },
@@ -26,9 +27,26 @@ export function Hub({ app }: { app: AppApi }) {
   const [botCustom, setBotCustom] = useState(60);
   const pdcStars = embed?.pdcStars ?? [];
 
+  // Portal-Karrierewerte der online sichtbaren Mitglieder (für die Hover-Blase)
+  const [portal, setPortal] = useState<Record<string, PortalStats>>({});
+  const portalAsked = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ block: "end" });
   }, [hub?.chat.length]);
+
+  useEffect(() => {
+    if (!embed || !hub) return;
+    const missing = hub.users
+      .filter((u) => u.id.startsWith("u:"))
+      .map((u) => u.id.slice(2))
+      .filter((uid) => uid && !portalAsked.current.has(uid));
+    if (missing.length === 0) return;
+    missing.forEach((uid) => portalAsked.current.add(uid));
+    void fetchPortalStats(missing).then((got) => {
+      if (Object.keys(got).length > 0) setPortal((p) => ({ ...p, ...got }));
+    });
+  }, [hub]);
 
   const roomsById = useMemo(() => {
     const m = new Map<string, HubRoomSummary>();
@@ -118,41 +136,60 @@ export function Hub({ app }: { app: AppApi }) {
       <div className="card stack">
         <h3 className="section-title">Online ({hub.users.length})</h3>
         <div className="user-list">
-          {hub.users.map((u) => (
-            <div key={u.id} className={`user-row ${u.id === app.myId ? "me" : ""}`} tabIndex={0}>
-              <Avatar src={u.image} name={u.name} size={24} />
-              <span className="uname">{u.name}</span>
-              <span className="ustatus">{statusOf(u.roomId)}</span>
-              <div className="user-pop" role="tooltip">
-                <div className="user-pop-head">
-                  <Avatar src={u.image} name={u.name} size={20} />
-                  {u.name}
+          {hub.users.map((u) => {
+            const uid = u.id.startsWith("u:") ? u.id.slice(2) : "";
+            const ps = uid ? portal[uid] : undefined;
+            const view = ps
+              ? {
+                  average: ps.average,
+                  checkoutPct: ps.checkoutPct,
+                  shortestLeg: ps.shortestLeg,
+                  highestFinish: ps.highestFinish,
+                }
+              : u.stats
+                ? {
+                    average: u.stats.average,
+                    checkoutPct: u.stats.checkoutPct,
+                    shortestLeg: u.stats.shortestLegDarts,
+                    highestFinish: u.stats.highestFinish,
+                  }
+                : null;
+            return (
+              <div key={u.id} className={`user-row ${u.id === app.myId ? "me" : ""}`} tabIndex={0}>
+                <Avatar src={u.image} name={u.name} size={24} />
+                <span className="uname">{u.name}</span>
+                <span className="ustatus">{statusOf(u.roomId)}</span>
+                <div className="user-pop" role="tooltip">
+                  <div className="user-pop-head">
+                    <Avatar src={u.image} name={u.name} size={20} />
+                    {u.name}
+                  </div>
+                  {view ? (
+                    <>
+                      <div className="user-pop-row">
+                        <span>Average</span>
+                        <b>{view.average.toFixed(2)}</b>
+                      </div>
+                      <div className="user-pop-row">
+                        <span>Doppelquote</span>
+                        <b>{view.checkoutPct.toFixed(1)} %</b>
+                      </div>
+                      <div className="user-pop-row">
+                        <span>Kürzestes Leg</span>
+                        <b>{view.shortestLeg != null ? `${view.shortestLeg} Darts` : "–"}</b>
+                      </div>
+                      <div className="user-pop-row">
+                        <span>Höchstes Finish</span>
+                        <b>{view.highestFinish || "–"}</b>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="user-pop-empty">Noch keine Statistik vorhanden</div>
+                  )}
                 </div>
-                {u.stats ? (
-                  <>
-                    <div className="user-pop-row">
-                      <span>Average</span>
-                      <b>{u.stats.average.toFixed(2)}</b>
-                    </div>
-                    <div className="user-pop-row">
-                      <span>Doppelquote</span>
-                      <b>{u.stats.checkoutPct.toFixed(1)} %</b>
-                    </div>
-                    <div className="user-pop-row">
-                      <span>Kürzestes Leg</span>
-                      <b>{u.stats.shortestLegDarts != null ? `${u.stats.shortestLegDarts} Darts` : "–"}</b>
-                    </div>
-                    <div className="user-pop-row">
-                      <span>Höchstes Finish</span>
-                      <b>{u.stats.highestFinish || "–"}</b>
-                    </div>
-                  </>
-                ) : (
-                  <div className="user-pop-empty">Noch keine gewerteten Spiele</div>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
