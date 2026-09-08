@@ -304,6 +304,30 @@ io.on("connection", (socket) => {
     broadcastHub();
   });
 
+  socket.on("room:setLocalTeam", ({ roomId, teamIndex, local }, ack) => {
+    if (tooMany(ack, "seat", 60)) return;
+    const room = manager.get(roomId);
+    if (!room || !room.hasMember(me())) return ack({ ok: false, error: "Nicht im Raum." });
+    const res = room.setLocalTeam(me(), Number(teamIndex), Boolean(local));
+    if (!res.ok) return ack(res);
+    ack({ ok: true, data: null });
+    void broadcastRoom(roomId);
+    broadcastHub();
+  });
+
+  socket.on("room:setPartner", ({ roomId, teamIndex, name, memberId, image }, ack) => {
+    if (tooMany(ack, "seat", 60)) return;
+    const room = manager.get(roomId);
+    if (!room || !room.hasMember(me())) return ack({ ok: false, error: "Nicht im Raum." });
+    const ref = typeof memberId === "string" ? memberId.slice(0, 40) : null;
+    const img = typeof image === "string" ? image.slice(0, 300) : null;
+    const res = room.setPartner(me(), Number(teamIndex), cleanText(name, MAX_NAME), ref, img);
+    if (!res.ok) return ack(res);
+    ack({ ok: true, data: null });
+    void broadcastRoom(roomId);
+    broadcastHub();
+  });
+
   socket.on("room:setTeamName", ({ roomId, teamIndex, name: teamName }, ack) => {
     if (tooMany(ack, "teamname", 40)) return;
     const room = manager.get(roomId);

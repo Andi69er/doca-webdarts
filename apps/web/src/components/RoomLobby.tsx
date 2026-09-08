@@ -3,6 +3,49 @@ import type { MatchConfig } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { TeamNameModal } from "./TeamNameModal";
 import { Avatar } from "./Avatar";
+import { embed, type EmbedMember } from "../embed";
+
+/** Partner-Eingabe für "Beide an einem Board": Freitext oder Mitglied aus der Liste. */
+function PartnerEditor({
+  value,
+  members,
+  disabled,
+  onCommit,
+}: {
+  value: string;
+  members: EmbedMember[];
+  disabled?: boolean;
+  onCommit: (name: string, member: EmbedMember | null) => void;
+}) {
+  const [txt, setTxt] = useState(value);
+  useEffect(() => setTxt(value), [value]);
+  const commit = () => {
+    const v = txt.trim();
+    if (v === value.trim()) return;
+    const m = members.find((x) => x.name.toLowerCase() === v.toLowerCase()) ?? null;
+    onCommit(v, m);
+  };
+  return (
+    <div className="row" style={{ gap: 6, flex: 1 }}>
+      <input
+        list="wd-members"
+        placeholder="Partner: Name oder DOCA-Mitglied"
+        value={txt}
+        disabled={disabled}
+        maxLength={24}
+        onChange={(e) => setTxt(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && commit()}
+        style={{ minWidth: 0, flex: 1 }}
+      />
+      {value.trim() && !disabled && (
+        <button className="ghost" title="Partner entfernen" onClick={() => onCommit("", null)}>
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function RoomLobby({ app }: { app: AppApi }) {
   const state = app.room!;
@@ -33,9 +76,18 @@ export function RoomLobby({ app }: { app: AppApi }) {
     [state.seats],
   );
   const modalTeam = nameModal;
+  const members = embed?.members ?? [];
+  const isDoubles = state.config.teamSize === 2;
 
   return (
     <div className="stack">
+      {members.length > 0 && (
+        <datalist id="wd-members">
+          {members.map((m) => (
+            <option key={m.id} value={m.name} />
+          ))}
+        </datalist>
+      )}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <button className="ghost" onClick={app.leaveRoom}>
           ← Zurück zur Lobby
@@ -76,10 +128,52 @@ export function RoomLobby({ app }: { app: AppApi }) {
                   ✎ Teamname
                 </button>
               )}
+              {isDoubles && (
+                <label className="row" style={{ gap: 8, margin: "8px 0 2px", fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={state.localTeams[ti as 0 | 1]}
+                    onChange={(e) => app.setLocalTeam(ti, e.target.checked)}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span>Beide an einem Board (1 Kamera)</span>
+                </label>
+              )}
               {seats.map((s) => {
                 const mine = s.occupantId === app.myId;
                 const isBotSeat = s.occupantId === state.bot?.seatKey || s.playerName === state.bot?.name;
                 const isBotHere = state.bot?.seatKey === s.key;
+
+                if (s.isLocalPartner) {
+                  const operatorId =
+                    state.seats.find((x) => x.teamIndex === ti && x.indexInTeam === 0)?.occupantId ??
+                    null;
+                  const iAmOperator = operatorId != null && operatorId === app.myId;
+                  return (
+                    <div key={s.key} className={`seat ${s.playerName ? "filled" : ""}`}>
+                      <span className="seat-name">
+                        <Avatar src={s.playerImage} name={s.playerName ?? "P"} size={26} />
+                        {s.playerName ?? <span className="hint">Partner offen</span>}
+                        <span className="hint" style={{ marginLeft: 6 }}>· lokal</span>
+                      </span>
+                      {iAmOperator ? (
+                        <PartnerEditor
+                          value={s.playerName ?? ""}
+                          members={members}
+                          disabled={operatorId == null}
+                          onCommit={(name, m) =>
+                            app.setPartner(ti, name, m?.id ?? null, m?.image ?? null)
+                          }
+                        />
+                      ) : (
+                        <span className="hint">
+                          {operatorId ? "vom Spieler an Platz 1 geführt" : "wartet auf Platz 1"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={s.key} className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""}`}>
                     <span className="seat-name">

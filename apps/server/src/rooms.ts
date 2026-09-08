@@ -75,6 +75,13 @@ export class Room {
   private resultWritten = false;
   /** Bot-Gegner (bei nur 3 Spielern), beim Raum-Erstellen gewählt. */
   private bot: BotConfig | null = null;
+  /** Pro Team: "Beide an einem Board" (nur Doppel). */
+  private localTeams: [boolean, boolean] = [false, false];
+  /** Partner auf Platz 2 eines lokalen Teams, key = seatKey des Partner-Platzes. */
+  private partners = new Map<
+    string,
+    { name: string; image: string | null; memberId: string | null }
+  >();
 
   constructor(
     hostId: string,
@@ -201,8 +208,36 @@ export class Room {
     const seats: Seat[] = [];
     const perTeam = this.seatCount / 2;
     for (let t = 0; t < 2; t++) {
+      const local = perTeam === 2 && this.localTeams[t];
       for (let p = 0; p < perTeam; p++) {
         const key = seatKey(t, p);
+
+        // Lokaler Partner (Platz 2 eines "am Board zusammen"-Teams): kein eigenes Gerät,
+        // gesteuert vom Betreiber auf Platz 1, eigene Spieler-Identität für die Statistik.
+        if (local && p === 1) {
+          const pinfo = this.partners.get(key) ?? null;
+          const operatorId = this.seatAssignments.get(seatKey(t, 0)) ?? null;
+          const operator =
+            operatorId && operatorId !== BOT_ID ? this.members.get(operatorId) : null;
+          const filled = pinfo !== null && pinfo.name.trim() !== "" && operatorId !== null;
+          seats.push({
+            key,
+            teamIndex: t,
+            indexInTeam: p,
+            occupantId: filled ? operatorId : null,
+            playerId: filled
+              ? pinfo!.memberId && /^u:/.test(pinfo!.memberId)
+                ? pinfo!.memberId
+                : "partner:" + key
+              : null,
+            playerName: pinfo?.name ?? null,
+            playerImage: pinfo?.image ?? null,
+            connected: filled ? (operator?.connected ?? false) : false,
+            isLocalPartner: true,
+          });
+          continue;
+        }
+
         const mid = this.seatAssignments.get(key) ?? null;
         const isBot = mid === BOT_ID;
         const member = mid && !isBot ? this.members.get(mid) : null;
@@ -211,13 +246,20 @@ export class Room {
           teamIndex: t,
           indexInTeam: p,
           occupantId: mid,
+          playerId: mid,
           playerName: isBot ? (this.bot?.name ?? "Bot") : (member?.name ?? null),
           playerImage: isBot ? (this.bot?.image ?? null) : (member?.image ?? null),
           connected: isBot ? true : (member?.connected ?? false),
+          isLocalPartner: false,
         });
       }
     }
     return seats;
+  }
+
+  private static parseSeatKey(key: string): { t: number; p: number } | null {
+    const m = /^t(\d+)p(\d+)$/.exec(key);
+    return m ? { t: Number(m[1]), p: Number(m[2]) } : null;
   }
 
   private botSeatKey(): string | null {
@@ -234,9 +276,9 @@ export class Room {
       if (mid === BOT_ID) this.seatAssignments.delete(sk);
     }
     if (targetKey === null) return { ok: true };
-    if (!this.buildSeats().some((s) => s.key === targetKey)) {
-      return { ok: false, error: "Ungültiger Platz." };
-    }
+    const target = this.buildSeats().find((s) => s.key === targetKey);
+    if (!target) return { ok: false, error: "Ungültiger Platz." };
+    if (target.isLocalPartner) return { ok: false, error: "Auf den lokalen Partner-Platz kann kein Bot." };
     if (this.seatAssignments.has(targetKey)) return { ok: false, error: "Platz ist belegt." };
     this.seatAssignments.set(targetKey, BOT_ID);
     return { ok: true };
@@ -250,8 +292,65 @@ export class Room {
     if (targetKey === null) return { ok: true };
     const valid = this.buildSeats().some((s) => s.key === targetKey);
     if (!valid) return { ok: false, error: "Ungültiger Platz." };
+    const tk = Room.parseSeatKey(targetKey);
+    if (tk && this.localTeams[tk.t] && tk.p === 1) {
+      return { ok: false, error: "Platz 2 wird lokal vom Partner geführt." };
+    }
     if (this.seatAssignments.has(targetKey)) return { ok: false, error: "Platz ist belegt." };
     this.seatAssignments.set(targetKey, memberId);
+    return { ok: true };
+  }
+
+  /** "Beide an einem Board" für ein Team ein-/ausschalten (nur Lobby, jeder im Raum). */
+  setLocalTeam(
+    memberId: string,
+    teamIndex: number,
+    local: boolean,
+  ): { ok: true } | { ok: false; error: string } {
+    if (this.phase === "match") return { ok: false, error: "Spiel läuft bereits." };
+    if (!this.hasMember(memberId)) return { ok: false, error: "Nicht im Raum." };
+    if (this.config.teamSize !== 2) return { ok: false, error: "Nur im Doppel möglich." };
+    if (teamIndex !== 0 && teamIndex !== 1) return { ok: false, error: "Ungültiges Team." };
+    this.localTeams[teamIndex] = local;
+    const pKey = seatKey(teamIndex, 1);
+    this.partners.delete(pKey);
+    this.seatAssignments.delete(pKey);
+    this.rematch = null;
+    return { ok: true };
+  }
+
+  /** Partner auf Platz 2 eines lokalen Teams eintragen/ändern (leerer Name = entfernen). */
+  setPartner(
+    memberId: string,
+    teamIndex: number,
+    rawName: string,
+    memberRef: string | null,
+    image: string | null,
+  ): { ok: true } | { ok: false; error: string } {
+    if (this.phase === "match") return { ok: false, error: "Spiel läuft bereits." };
+    if (teamIndex !== 0 && teamIndex !== 1) return { ok: false, error: "Ungültiges Team." };
+    if (!this.localTeams[teamIndex]) return { ok: false, error: "Team spielt nicht an einem Board." };
+    if (this.seatAssignments.get(seatKey(teamIndex, 0)) !== memberId) {
+      return { ok: false, error: "Nur der Spieler an Platz 1 trägt den Partner ein." };
+    }
+    const pKey = seatKey(teamIndex, 1);
+    const name = rawName.trim().slice(0, 24);
+    if (!name) {
+      this.partners.delete(pKey);
+      this.seatAssignments.delete(pKey);
+      this.rematch = null;
+      return { ok: true };
+    }
+    const ref =
+      memberRef &&
+      /^u:[A-Za-z0-9_-]{1,32}$/.test(memberRef) &&
+      ![...this.seatAssignments.values()].includes(memberRef)
+        ? memberRef
+        : null;
+    const img = image && /^https?:\/\//.test(image) ? image.slice(0, 300) : null;
+    this.partners.set(pKey, { name, image: img, memberId: ref });
+    this.seatAssignments.set(pKey, memberId);
+    this.rematch = null;
     return { ok: true };
   }
 
@@ -262,6 +361,10 @@ export class Room {
     if (this.phase === "match") return { ok: false as const, error: "Spiel läuft bereits." };
     this.config = config;
     this.teamNames = teamNames;
+    if (config.teamSize !== 2) {
+      this.localTeams = [false, false];
+      this.partners.clear();
+    }
     const valid = new Set(this.buildSeats().map((s) => s.key));
     for (const sk of [...this.seatAssignments.keys()]) {
       if (!valid.has(sk)) this.seatAssignments.delete(sk);
@@ -287,14 +390,14 @@ export class Room {
   private lineup(): { players: Player[]; teams: Team[] } {
     const seats = this.buildSeats();
     const players: Player[] = seats.map((s) => ({
-      id: s.occupantId!,
+      id: s.playerId!,
       name: s.playerName ?? "Spieler",
       image: s.playerImage,
     }));
     const teams: Team[] = [0, 1].map((t) => ({
       id: `T${t}`,
       name: this.teamNames[t as 0 | 1],
-      playerIds: seats.filter((s) => s.teamIndex === t).map((s) => s.occupantId!),
+      playerIds: seats.filter((s) => s.teamIndex === t).map((s) => s.playerId!),
     })) as Team[];
     return { players, teams };
   }
@@ -397,12 +500,19 @@ export class Room {
     const state = this.controller.state;
 
     if (action.type === "BULLOFF_THROW") {
-      if (seat.teamIndex !== action.teamIndex) {
+      // Betreiber sitzt bei "lokal" auf beiden Plätzen seines Teams -> irgendein eigener Platz im Team genügt.
+      const inTeam = this.buildSeats().some(
+        (s) => s.occupantId === memberId && s.teamIndex === action.teamIndex,
+      );
+      if (!inTeam) {
         return { ok: false, error: "Du wirfst für das andere Team." };
       }
     } else if (action.type === "RECORD_VISIT" || action.type === "RECORD_SCORE") {
       const thrower = currentThrower(state);
-      if (!thrower || thrower.playerId !== memberId) {
+      const throwerSeat = thrower
+        ? this.buildSeats().find((s) => s.playerId === thrower.playerId)
+        : null;
+      if (!throwerSeat || throwerSeat.occupantId !== memberId) {
         return { ok: false, error: "Nur der Spieler am Wurf darf werten." };
       }
     }
@@ -433,6 +543,7 @@ export class Room {
       rematch: this.rematch,
       pause: this.pauseInfo(),
       bot: this.bot ? { ...this.bot, seatKey: this.botSeatKey() } : null,
+      localTeams: [this.localTeams[0], this.localTeams[1]],
       videoEnabled,
       livekitRoom: this.roomId,
     };
@@ -500,11 +611,11 @@ export class Room {
     const seats = this.buildSeats();
 
     const players: FinishedPlayer[] = seats
-      .filter((s) => s.occupantId && s.occupantId !== BOT_ID)
+      .filter((s) => s.playerId && s.occupantId && s.playerId !== BOT_ID)
       .map((s) => {
-        const l = pstats.find((p) => p.playerId === s.occupantId) ?? null;
+        const l = pstats.find((p) => p.playerId === s.playerId) ?? null;
         return {
-          id: s.occupantId!,
+          id: s.playerId!,
           name: s.playerName ?? "?",
           image: s.playerImage,
           darts: l?.darts ?? 0,

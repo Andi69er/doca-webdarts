@@ -26,6 +26,13 @@ export interface AppApi {
 
   takeSeat: (seatKey: string | null) => Promise<void>;
   placeBot: (seatKey: string | null) => Promise<void>;
+  setLocalTeam: (teamIndex: number, local: boolean) => Promise<void>;
+  setPartner: (
+    teamIndex: number,
+    name: string,
+    memberId?: string | null,
+    image?: string | null,
+  ) => Promise<void>;
   updateConfig: (config: MatchConfig, teamNames: [string, string]) => Promise<void>;
   setTeamName: (teamIndex: number, name: string) => Promise<void>;
   startMatch: () => Promise<void>;
@@ -168,6 +175,14 @@ export function useApp(): AppApi {
 
     takeSeat: (seatKey) => guard(emitAck("room:takeSeat", { roomId: rid(), seatKey }).then(() => undefined)),
     placeBot: (seatKey) => guard(emitAck("room:placeBot", { roomId: rid(), seatKey }).then(() => undefined)),
+    setLocalTeam: (teamIndex, local) =>
+      guard(emitAck("room:setLocalTeam", { roomId: rid(), teamIndex, local }).then(() => undefined)),
+    setPartner: (teamIndex, name, memberId = null, image = null) =>
+      guard(
+        emitAck("room:setPartner", { roomId: rid(), teamIndex, name, memberId, image }).then(
+          () => undefined,
+        ),
+      ),
     updateConfig: (config, teamNames) =>
       guard(emitAck("room:updateConfig", { roomId: rid(), config, teamNames }).then(() => undefined)),
     setTeamName: (teamIndex, name) =>

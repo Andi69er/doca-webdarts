@@ -71,7 +71,7 @@ function scheduleSave(): void {
 /** Match-Beiträge einarbeiten. Bots (`bot:*`) werden ignoriert. */
 export function recordCareer(players: FinishedPlayerInput[]): void {
   for (const p of players) {
-    if (!p.id || p.id.startsWith("bot:")) continue;
+    if (!p.id || p.id.startsWith("bot:") || p.id.startsWith("partner:")) continue;
     const cur: CareerAgg =
       store.get(p.id) ?? {
         name: p.name,

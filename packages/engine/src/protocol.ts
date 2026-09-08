@@ -79,11 +79,16 @@ export interface Seat {
   key: string;
   teamIndex: number;
   indexInTeam: number;
+  /** Wer steuert diesen Platz (Gerät/Mitglied). Bei "lokal" ist das für den Partner der Betreiber von Platz 1. */
   occupantId: string | null;
+  /** Identität dieses Spielers im Match (für Wurfreihenfolge & Statistik). Bei normalen Plätzen = occupantId. */
+  playerId: string | null;
   playerName: string | null;
   /** Profilbild-URL (Mitglied / PDC-Star / Bot); leer = keins. */
   playerImage: string | null;
   connected: boolean;
+  /** true, wenn dieser Platz der lokale Partner ist (kein eigenes Gerät, teilt Kamera mit Platz 1). */
+  isLocalPartner: boolean;
 }
 
 export interface SpectatorInfo {
@@ -144,6 +149,8 @@ export interface RoomState {
   pause: PauseInfo | null;
   /** Bot-Gegner, falls beim Raum-Erstellen gewählt. `seatKey` = wo er sitzt. */
   bot: (BotConfig & { seatKey: string | null }) | null;
+  /** Pro Team: "Beide an einem Board" (1 Kamera, Platz-1-Betreiber führt auch Platz 2). */
+  localTeams: [boolean, boolean];
   /** Ist auf dem Server ein LiveKit-Key hinterlegt? Sonst läuft alles ohne Video. */
   videoEnabled: boolean;
   /** LiveKit-Raumname (= roomId) für die Client-SDK. */
@@ -177,6 +184,22 @@ export interface ClientToServerEvents {
   /** Bot auf einen freien Platz setzen (seatKey) oder wieder entfernen (null). */
   "room:placeBot": (
     payload: { roomId: string; seatKey: string | null },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  /** Für ein Team "Beide an einem Board" ein-/ausschalten (nur Lobby). */
+  "room:setLocalTeam": (
+    payload: { roomId: string; teamIndex: number; local: boolean },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  /** Partner auf Platz 2 eines "lokalen" Teams eintragen/ändern/entfernen (leerer Name = entfernen). */
+  "room:setPartner": (
+    payload: {
+      roomId: string;
+      teamIndex: number;
+      name: string;
+      memberId?: string | null;
+      image?: string | null;
+    },
     ack: (res: AckResult<null>) => void,
   ) => void;
   "room:enter": (

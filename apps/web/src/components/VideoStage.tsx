@@ -80,49 +80,46 @@ function Stage({ room }: { room: RoomState }) {
       ? scoreboard(room.match as MatchState).thrower?.playerId ?? null
       : null;
 
-  // Bekannte Namen + Bilder aus den Sitzplätzen (LiveKit-Identity = occupantId).
-  const nameById = new Map<string, string>();
-  const imgById = new Map<string, string | null>();
-  for (const s of room.seats) {
-    if (!s.occupantId) continue;
-    nameById.set(s.occupantId, s.playerName ?? "Spieler");
-    imgById.set(s.occupantId, s.playerImage);
+  // Kamera-Track je LiveKit-Identity (= occupantId des Platzes).
+  // Bei "lokal" teilen sich Platz 1 und der Partner-Platz denselben Track.
+  const trackByIdentity = new Map<string, (typeof tracks)[number]>();
+  for (const tr of tracks) {
+    const id = tr.participant.identity;
+    const prev = trackByIdentity.get(id);
+    if (!prev || (!prev.publication && tr.publication)) trackByIdentity.set(id, tr);
   }
 
-  const sorted = [...tracks].sort((a, b) => {
-    const aActive = a.participant.identity === activeId ? -1 : 0;
-    const bActive = b.participant.identity === activeId ? -1 : 0;
-    return aActive - bActive;
-  });
+  // Eine Kachel je besetztem Platz – aktiver Werfer nach vorne.
+  const seats = room.seats
+    .filter((s) => s.occupantId)
+    .sort((a, b) => (a.playerId === activeId ? -1 : 0) - (b.playerId === activeId ? -1 : 0));
 
-  const count = sorted.length;
+  const count = seats.length;
   const stageClass =
     count <= 1 ? "video-stage count-1" : count === 2 ? "video-stage count-2" : "video-stage";
 
   return (
     <div className={stageClass}>
       {count === 0 && <div className="vtile placeholder">Warte auf Kamerabilder…</div>}
-      {sorted.map((tr, i) => {
-        const id = tr.participant.identity;
-        const isThrower = id === activeId;
+      {seats.map((s, i) => {
+        const tr = trackByIdentity.get(s.occupantId!);
+        const isThrower = s.playerId != null && s.playerId === activeId;
         const big = count > 2 && i === 0;
-        const label = nameById.get(id) ?? tr.participant.name ?? "Gast";
+        const label = s.playerName ?? "Spieler";
         return (
-          <div
-            key={tr.participant.sid + (tr.publication?.trackSid ?? "ph")}
-            className={`vtile ${big ? "big" : count > 2 ? "small" : ""}`}
-          >
-            {tr.publication ? (
+          <div key={s.key} className={`vtile ${big ? "big" : count > 2 ? "small" : ""}`}>
+            {tr?.publication ? (
               <VideoTrack trackRef={tr} />
             ) : (
               <div className="placeholder" style={{ width: "100%", height: "100%" }}>
-                {label} – Kamera aus
+                {label}{s.isLocalPartner ? " (am selben Board)" : " – Kamera aus"}
               </div>
             )}
             <span className={`tag ${isThrower ? "thrower" : ""}`}>
-              <Avatar src={imgById.get(id) ?? null} name={label} size={18} />
+              <Avatar src={s.playerImage} name={label} size={18} />
               {isThrower ? "▸ " : ""}
               {label}
+              {s.isLocalPartner ? " ·📍" : ""}
             </span>
           </div>
         );

@@ -10,6 +10,14 @@ export interface PdcStar {
   image: string;
 }
 
+/** DOCA-Mitglied für die Partner-Auswahl ("Beide an einem Board"). */
+export interface EmbedMember {
+  /** = "u:<uid>" (Server-Identität). */
+  id: string;
+  name: string;
+  image: string | null;
+}
+
 export interface WebdartsEmbed {
   /** WebSocket-URL des Spiel-Servers, z.B. wss://doca-webdarts.onrender.com */
   wsUrl: string;
@@ -21,6 +29,8 @@ export interface WebdartsEmbed {
   baseUrl: string;
   /** PDC-Stars mit echten Averages (für die Bot-Auswahl). */
   pdcStars: PdcStar[];
+  /** Alle DOCA-Mitglieder (für die Partner-Auswahl); optional. */
+  members?: EmbedMember[];
 }
 
 export const embed: WebdartsEmbed | null =
