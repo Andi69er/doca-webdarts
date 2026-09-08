@@ -479,3 +479,37 @@ body:not(.webdarts-embedded) #webdarts-root {
 #webdarts-root .sb2-players { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; }
 #webdarts-root .sb2-player { display: inline-flex; align-items: center; gap: 6px; }
 #webdarts-root .vtile .tag { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Einbettung in doca.at: mehr Platz + größer ---------- */
+body.webdarts-embedded .main-content {
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  padding: 1.5rem clamp(0.75rem, 3vw, 2.5rem) 1.5rem !important;
+}
+body.webdarts-embedded .webdarts-embed {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+body.webdarts-embedded #webdarts-root { font-size: 16px; }
+
+body.webdarts-embedded #webdarts-root .hub-grid {
+  grid-template-columns: 300px 1fr 360px;
+  min-height: calc(100vh - 210px);
+  align-items: stretch;
+}
+body.webdarts-embedded #webdarts-root .card { padding: 24px; }
+body.webdarts-embedded #webdarts-root .section-title { font-size: 17px; }
+body.webdarts-embedded #webdarts-root .user-list { max-height: none; flex: 1; }
+body.webdarts-embedded #webdarts-root .chat-card { min-height: 0; }
+body.webdarts-embedded #webdarts-root .chat-scroll { min-height: 320px; max-height: none; flex: 1; }
+body.webdarts-embedded #webdarts-root .uname { font-size: 15px; }
+body.webdarts-embedded #webdarts-root .chat-msg .cm-text { font-size: 15px; }
+body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
+
+@media (max-width: 1100px) {
+  body.webdarts-embedded #webdarts-root .hub-grid {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+}
