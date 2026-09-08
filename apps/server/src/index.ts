@@ -15,7 +15,7 @@ import { createLivekitToken, livekitUrl, videoEnabled } from "./livekit.js";
 import { RateLimiter, sanitizeConfig, validateAction } from "./validate.js";
 import { appendResult, recentResults } from "./results.js";
 import { careerFor, loadCareer, recordCareer } from "./stats.js";
-import { sendUsage } from "./ingest.js";
+import { sendSession, sendUsage } from "./ingest.js";
 import { authRequired, verifyTicket } from "./auth.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -71,6 +71,25 @@ interface HubMember {
 const hub = new Map<string, HubMember>();
 const chat: ChatMessage[] = [];
 const CHAT_LIMIT = 60;
+
+/** Live-Momentaufnahme für das Admin-Dashboard (per x-webdarts-key geschützt). */
+const USAGE_KEY = process.env.WEBDARTS_SECRET ?? "";
+app.get("/usage", (req, res) => {
+  if (!USAGE_KEY || req.get("x-webdarts-key") !== USAGE_KEY) {
+    return res.status(403).json({ error: "auth" });
+  }
+  const rooms = manager.list();
+  res.json({
+    ts: Date.now(),
+    online: [...hub.values()].map((m) => ({ id: m.cid, name: m.name, inRoom: m.roomId !== null })),
+    rooms: rooms.length,
+    playing: rooms.filter((r) => r.summary().phase === "match").length,
+  });
+});
+
+/** Zuletzt gemeldete Login-Sitzung je Mitglied (entprellt das Ingest bei Reconnects). */
+const lastSessionSent = new Map<string, number>();
+const SESSION_MIN_GAP_MS = 10 * 60_000;
 
 /** Pro Raum ein Timer für den nächsten Bot-Zug. */
 const botTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -198,6 +217,18 @@ io.on("connection", (socket) => {
       socket.join("hub");
       pushChat({ name: "", text: `${clean} ist online`, kind: "system" });
     }
+
+    // Nutzung protokollieren (entprellt: höchstens alle 10 Min je Person)
+    const lastSent = lastSessionSent.get(id) ?? 0;
+    if (Date.now() - lastSent > SESSION_MIN_GAP_MS) {
+      lastSessionSent.set(id, Date.now());
+      void sendSession({
+        playerId: id,
+        memberId: id.startsWith("u:") ? id : null,
+        name: clean,
+      });
+    }
+
     ack({ ok: true, data: null });
     broadcastHub();
   });
