@@ -643,17 +643,22 @@ export class Room {
         average: Number(stats.teams[t as 0 | 1].average.toFixed(2)),
         checkoutPct: Number(stats.teams[t as 0 | 1].checkoutPct.toFixed(1)),
       })),
-      players: players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        average: Number((p.darts ? (p.points / p.darts) * 3 : 0).toFixed(2)),
-        checkoutPct: Number(
-          (p.doubleAttempts ? (p.checkoutHits / p.doubleAttempts) * 100 : 0).toFixed(1),
-        ),
-        highestFinish: p.highestFinish,
-        shortestLegDarts: p.shortestLegDarts,
-        legsWon: p.legsWon,
-      })),
+      players: players.map((p) => {
+        const seat = seats.find((s) => s.playerId === p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          teamIndex: seat?.teamIndex ?? null,
+          won: seat != null && st.matchWinnerTeamIndex === seat.teamIndex,
+          average: Number((p.darts ? (p.points / p.darts) * 3 : 0).toFixed(2)),
+          checkoutPct: Number(
+            (p.doubleAttempts ? (p.checkoutHits / p.doubleAttempts) * 100 : 0).toFixed(1),
+          ),
+          highestFinish: p.highestFinish,
+          shortestLegDarts: p.shortestLegDarts,
+          legsWon: p.legsWon,
+        };
+      }),
     };
     return { record, players };
   }

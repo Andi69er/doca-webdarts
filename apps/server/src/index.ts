@@ -15,6 +15,7 @@ import { createLivekitToken, livekitUrl, videoEnabled } from "./livekit.js";
 import { RateLimiter, sanitizeConfig, validateAction } from "./validate.js";
 import { appendResult, recentResults } from "./results.js";
 import { careerFor, loadCareer, recordCareer } from "./stats.js";
+import { sendUsage } from "./ingest.js";
 import { authRequired, verifyTicket } from "./auth.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -137,6 +138,7 @@ async function broadcastRoom(roomId: string) {
   if (finished) {
     await appendResult(finished.record);
     recordCareer(finished.players);
+    void sendUsage(finished.record); // dauerhaft in die doca.at-DB
     broadcastHub(); // frische Karriere-Werte in die Online-Liste
   }
   scheduleBot(roomId);
