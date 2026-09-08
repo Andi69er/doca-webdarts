@@ -4,6 +4,7 @@ import type { AppApi } from "../useApp";
 import { embed } from "../embed";
 import { Avatar } from "./Avatar";
 import { BotPicker } from "./BotPicker";
+import { HelpModal } from "./HelpModal";
 
 const BOT_PRESETS: { key: string; label: string; average: number }[] = [
   { key: "preset:40", label: "Amateur (Ø 40)", average: 40 },
@@ -20,6 +21,7 @@ export function Hub({ app }: { app: AppApi }) {
   const [mode, setMode] = useState<GameMode>("x01");
   const [teamSize, setTeamSize] = useState<1 | 2>(2);
   const [roomName, setRoomName] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
   const [botChoice, setBotChoice] = useState("none");
   const [botCustom, setBotCustom] = useState(60);
   const pdcStars = embed?.pdcStars ?? [];
@@ -89,13 +91,28 @@ export function Hub({ app }: { app: AppApi }) {
 
   return (
     <>
-      {embed && (
-        <div className="row" style={{ marginBottom: 12 }}>
-          <a className="wd-back-link" href={`${embed.baseUrl}/dart-tools.php`}>
-            ← Zurück zum DOCA-Trainer
-          </a>
+      <div className="wd-hubhead">
+        <div className="wd-hubhead-side">
+          {embed && (
+            <a className="wd-back-link" href={`${embed.baseUrl}/dart-tools.php`}>
+              ← Zurück zum DOCA-Trainer
+            </a>
+          )}
         </div>
-      )}
+        <h2 className="wd-hubtitle">DOCA Webdarts</h2>
+        <div className="wd-hubhead-side wd-hubhead-r">
+          <button
+            type="button"
+            className="wd-help-btn"
+            onClick={() => setHelpOpen(true)}
+            aria-label="Hilfe – wie funktioniert Webdarts?"
+            title="Hilfe – wie funktioniert Webdarts?"
+          >
+            ?
+          </button>
+        </div>
+      </div>
+      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
       <div className="hub-grid">
       {/* Online */}
       <div className="card stack">

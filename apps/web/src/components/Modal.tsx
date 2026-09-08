@@ -8,10 +8,13 @@ export function Modal({
   title,
   onClose,
   children,
+  wide = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /** Breiterer Dialog für längere Texte (z. B. Hilfe). */
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const prevFocus = useRef<HTMLElement | null>(null);
@@ -61,7 +64,7 @@ export function Modal({
     <div className="modal-overlay" onClick={onClose}>
       <div
         ref={ref}
-        className="modal"
+        className={wide ? "modal modal-wide" : "modal"}
         role="dialog"
         aria-modal="true"
         aria-label={title}
