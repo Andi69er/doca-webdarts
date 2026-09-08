@@ -652,42 +652,64 @@ body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
 
 /* ---------- Sponsoren- / Partner-Leiste ---------- */
 #webdarts-root .wd-sponsors {
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  margin: 30px auto 6px;
+  max-width: 780px;
+  text-align: center;
 }
 #webdarts-root .wd-sponsors-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
   font-family: "Oswald", sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.14em;
   font-size: 11px;
   color: var(--muted);
+}
+#webdarts-root .wd-sponsors-label::before,
+#webdarts-root .wd-sponsors-label::after {
+  content: "";
+  width: 40px;
+  height: 1px;
+  background: var(--line);
 }
 #webdarts-root .wd-sponsors-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+}
+#webdarts-root .wd-sponsors-row > a,
+#webdarts-root .wd-sponsors-row > span {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 18px 34px;
+  height: 62px;
+  min-width: 150px;
+  padding: 10px 22px;
+  background: #f6f7f9;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+#webdarts-root .wd-sponsors-row > a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
 }
 #webdarts-root .wd-sponsor-logo {
-  height: 34px;
+  max-height: 38px;
+  max-width: 150px;
   width: auto;
-  max-width: 160px;
   object-fit: contain;
-  opacity: 0.5;
-  filter: grayscale(1);
-  transition: opacity 0.15s ease, filter 0.15s ease;
-}
-#webdarts-root .wd-sponsors a:hover .wd-sponsor-logo,
-#webdarts-root .wd-sponsor-logo:hover {
-  opacity: 1;
-  filter: grayscale(0);
 }
 @media (max-width: 640px) {
-  #webdarts-root .wd-sponsor-logo { height: 26px; }
+  #webdarts-root .wd-sponsors-row > a,
+  #webdarts-root .wd-sponsors-row > span {
+    height: 52px;
+    min-width: 120px;
+    padding: 8px 16px;
+  }
+  #webdarts-root .wd-sponsor-logo { max-height: 30px; max-width: 120px; }
 }
