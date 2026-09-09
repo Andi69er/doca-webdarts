@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { scoreboard, type Dart, type Multiplier, type MatchState } from "@webdarts/engine";
+import {
+  findCheckout,
+  scoreboard,
+  type Dart,
+  type Multiplier,
+  type MatchState,
+} from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { CheckoutDialog } from "./CheckoutDialog";
 
@@ -24,7 +30,10 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
   entryRef.current = entry;
   const typed = Number(entry || "0");
   const isCheckout = !isCricket && typed > 0 && typed === remaining;
+  const outMode = match.config.x01?.out ?? "double";
   const [checkoutScore, setCheckoutScore] = useState<number | null>(null);
+  // Checkdart-Abfrage ohne Leg-Ende: Rest VOR der Aufnahme war ein mögliches Finish.
+  const [attemptScore, setAttemptScore] = useState<number | null>(null);
 
   const press = useCallback((d: string) => {
     setEntry((e) => {
@@ -39,13 +48,20 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
     if (val === "") return;
     const score = Number(val);
     if (!isCricket && score > 0 && score === remaining) {
-      // Checkdart-Abfrage: Darts zum Checkout + Darts auf Doppel
+      // Leg beendet → volle Checkdart-Abfrage (Darts zum Checkout + Darts auf Doppel)
       setCheckoutScore(score);
+      return;
+    }
+    if (!isCricket && findCheckout(remaining, 3, outMode) !== null) {
+      // Kein Leg-Ende, aber der Rest VOR der Aufnahme war ein mathematisch
+      // mögliches Finish (Rest ≤ 170, keine Bogey-Zahl) → nur nach den Darts
+      // aufs Doppel fragen (0–3), auch bei 0 Punkten oder Bust.
+      setAttemptScore(score);
       return;
     }
     await app.dispatch({ type: "RECORD_SCORE", score, darts: 3, finishedOnDouble: false });
     setEntry("");
-  }, [app, isCricket, remaining]);
+  }, [app, isCricket, remaining, outMode]);
 
   const confirmCheckout = async (dartsUsed: number, doubleDarts: number) => {
     if (checkoutScore === null) return;
@@ -60,10 +76,23 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
     setEntry("");
   };
 
+  const confirmAttempt = async (_dartsUsed: number, doubleDarts: number) => {
+    if (attemptScore === null) return;
+    await app.dispatch({
+      type: "RECORD_SCORE",
+      score: attemptScore,
+      darts: 3,
+      finishedOnDouble: false,
+      doubleDarts,
+    });
+    setAttemptScore(null);
+    setEntry("");
+  };
+
   // Physische Tastatur: Ziffern, Rücktaste, Enter – nur wenn ich am Wurf bin
   // (pausiert, solange die Checkdart-Abfrage offen ist)
   useEffect(() => {
-    if (isCricket || !myTurn || checkoutScore !== null) return;
+    if (isCricket || !myTurn || checkoutScore !== null || attemptScore !== null) return;
     const onKey = (e: KeyboardEvent) => {
       if (finished) return;
       const el = e.target as HTMLElement | null;
@@ -81,7 +110,7 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isCricket, myTurn, finished, checkoutScore, press, del, book]);
+  }, [isCricket, myTurn, finished, checkoutScore, attemptScore, press, del, book]);
 
   // -------- Cricket: Dart für Dart --------
   const [mult, setMult] = useState<Multiplier>(1);
@@ -232,6 +261,15 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
           score={checkoutScore}
           onCancel={() => setCheckoutScore(null)}
           onConfirm={confirmCheckout}
+        />
+      )}
+
+      {attemptScore !== null && (
+        <CheckoutDialog
+          score={remaining}
+          mode="attempts"
+          onCancel={() => setAttemptScore(null)}
+          onConfirm={confirmAttempt}
         />
       )}
     </div>

@@ -223,6 +223,8 @@ body:not(.webdarts-embedded) #webdarts-root {
 }
 .seat.filled { border-style: solid; background: var(--bg-2); }
 .seat.mine { border-color: var(--accent); }
+.seat.offline { opacity: 0.6; }
+.seat.offline .seat-name { font-style: italic; }
 
 /* ---------- Match ---------- */
 .match-layout { display: grid; grid-template-columns: 1fr 390px; gap: 18px; align-items: start; }

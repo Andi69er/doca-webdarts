@@ -52,12 +52,12 @@ export function compareAttempts(a: BullOffThrow[], b: BullOffThrow[]): number {
 
 /**
  * Welches Team wirft in der laufenden Runde als Nächstes?
- * Der erste Werfer wechselt pro Runde (fair beim Nachwerfen).
+ * Die Reihenfolge ist in jeder Runde gleich: Team 0, dann Team 1, … – auch beim
+ * Nachwerfen nach einem Gleichstand (s1 → s2 → s1 → s2 …).
  */
 export function nextBullOffTeam(state: BullOffState, teamCount = 2): number | null {
   if (state.done) return null;
-  const firstThisRound = state.rounds.length % teamCount;
-  return (firstThisRound + state.currentRound.length) % teamCount;
+  return state.currentRound.length % teamCount;
 }
 
 /**

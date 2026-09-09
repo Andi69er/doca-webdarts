@@ -71,6 +71,17 @@ export function RoomLobby({ app }: { app: AppApi }) {
     }
   }, [mySeatObj?.key, mySeatObj?.indexInTeam, mySeatObj?.teamIndex]);
 
+  // Anzeige-/Eingabehilfe für die Spiellänge: "First to N" oder "Best of N".
+  // Gespeichert wird immer die Anzahl nötiger Siege (legsToWinSet / setsToWin).
+  const [legFmt, setLegFmt] = useState<"firstto" | "bestof">("firstto");
+  const [setFmt, setSetFmt] = useState<"firstto" | "bestof">("firstto");
+  const toWins = (fmt: "firstto" | "bestof", n: number, cap: number) => {
+    const raw = fmt === "bestof" ? Math.ceil((Number(n) || 1) / 2) : Number(n) || 1;
+    return Math.min(cap, Math.max(1, raw));
+  };
+  const fromWins = (fmt: "firstto" | "bestof", w: number) =>
+    fmt === "bestof" ? Math.max(1, w) * 2 - 1 : Math.max(1, w);
+
   const allSeated = state.seats.every((s) => s.occupantId);
   const teams = useMemo(
     () => [0, 1].map((t) => state.seats.filter((s) => s.teamIndex === t)),
@@ -175,8 +186,10 @@ export function RoomLobby({ app }: { app: AppApi }) {
                   );
                 }
 
+                const seatOffline = !!s.occupantId && !isBotSeat && !s.connected;
+
                 return (
-                  <div key={s.key} className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""}`}>
+                  <div key={s.key} className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""} ${seatOffline ? "offline" : ""}`}>
                     <span className="seat-name">
                       {s.occupantId ? (
                         <>
@@ -186,6 +199,9 @@ export function RoomLobby({ app }: { app: AppApi }) {
                             size={26}
                           />
                           {s.playerName}
+                          {seatOffline && (
+                            <span className="hint" style={{ marginLeft: 6 }}>· kurz weg, Platz reserviert</span>
+                          )}
                         </>
                       ) : (
                         <span className="hint">frei</span>
@@ -287,27 +303,67 @@ export function RoomLobby({ app }: { app: AppApi }) {
           )}
 
           <label className="field">
-            <span className="lbl">Legs pro Satz</span>
-            <input
-              type="number"
-              min={1}
-              max={21}
-              disabled={!isHost}
-              value={cfg.legsToWinSet}
-              onChange={(e) => patch({ legsToWinSet: Math.max(1, Number(e.target.value)) })}
-            />
+            <span className="lbl">{cfg.setsToWin > 1 ? "Legs pro Satz" : "Legs"}</span>
+            <div className="row" style={{ gap: 6 }}>
+              <select
+                disabled={!isHost}
+                value={legFmt}
+                onChange={(e) => setLegFmt(e.target.value as "firstto" | "bestof")}
+                style={{ flex: "0 0 auto" }}
+              >
+                <option value="firstto">First to</option>
+                <option value="bestof">Best of</option>
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={41}
+                disabled={!isHost}
+                value={fromWins(legFmt, cfg.legsToWinSet)}
+                onChange={(e) => patch({ legsToWinSet: toWins(legFmt, Number(e.target.value), 21) })}
+                style={{ width: 64 }}
+              />
+            </div>
           </label>
           <label className="field">
-            <span className="lbl">Sätze zum Sieg (1 = ohne)</span>
-            <input
-              type="number"
-              min={1}
-              max={13}
-              disabled={!isHost}
-              value={cfg.setsToWin}
-              onChange={(e) => patch({ setsToWin: Math.max(1, Number(e.target.value)) })}
-            />
+            <span className="lbl">Sätze (1 = ohne)</span>
+            <div className="row" style={{ gap: 6 }}>
+              <select
+                disabled={!isHost}
+                value={setFmt}
+                onChange={(e) => setSetFmt(e.target.value as "firstto" | "bestof")}
+                style={{ flex: "0 0 auto" }}
+              >
+                <option value="firstto">First to</option>
+                <option value="bestof">Best of</option>
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={25}
+                disabled={!isHost}
+                value={cfg.setsToWin > 1 ? fromWins(setFmt, cfg.setsToWin) : 1}
+                onChange={(e) => patch({ setsToWin: toWins(setFmt, Number(e.target.value), 13) })}
+                style={{ width: 64 }}
+              />
+            </div>
           </label>
+          <div className="hint" style={{ gridColumn: "1 / -1" }}>
+            {cfg.setsToWin > 1 ? (
+              <>
+                Satz: wer zuerst <strong>{cfg.legsToWinSet}</strong>{" "}
+                Leg{cfg.legsToWinSet > 1 ? "s" : ""} hat (= Best of {cfg.legsToWinSet * 2 - 1}). Match:
+                wer zuerst <strong>{cfg.setsToWin}</strong> Sätze hat (= Best of{" "}
+                {cfg.setsToWin * 2 - 1}).
+              </>
+            ) : (
+              <>
+                Wer zuerst <strong>{cfg.legsToWinSet}</strong> Leg
+                {cfg.legsToWinSet > 1 ? "s" : ""} gewinnt · First to {cfg.legsToWinSet} = Best of{" "}
+                {cfg.legsToWinSet * 2 - 1}.
+              </>
+            )}
+          </div>
           <label className="row" style={{ margin: 0, gap: 8 }}>
             <input
               type="checkbox"

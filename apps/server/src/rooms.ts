@@ -407,6 +407,15 @@ export class Room {
     if (this.buildSeats().some((s) => !s.occupantId)) {
       return { ok: false, error: "Es sind noch nicht alle Plätze besetzt." };
     }
+    const offline = this.buildSeats().find(
+      (s) => s.occupantId && s.occupantId !== BOT_ID && !s.connected,
+    );
+    if (offline) {
+      return {
+        ok: false,
+        error: `${offline.playerName ?? "Ein Spieler"} ist gerade offline – bitte warten, bis alle wieder da sind.`,
+      };
+    }
     const { players, teams } = this.lineup();
     this.controller = new MatchController(createMatch(this.config, players, teams));
     this.rematch = null;

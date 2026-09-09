@@ -33,6 +33,13 @@ const MAX_ROOM_NAME = 40;
 const MAX_CHAT = 400;
 /** Nachfrist, bis ein abgemeldeter Spieler seinen Sitz endgültig verliert. */
 const GRACE_SEATED_MS = 5 * 60_000;
+/**
+ * In der Lobby (Match noch nicht gestartet) bleibt der Sitzplatz deutlich länger
+ * reserviert – ein Spieler, der kurz weg muss (Telefon, WC …), kommt auf seinen
+ * Platz zurück statt nur noch als Zuschauer. Nur ein komplett verwaister Raum
+ * wird nach dieser Zeit aufgeräumt.
+ */
+const GRACE_SEATED_LOBBY_MS = 30 * 60_000;
 const GRACE_LOBBY_MS = 20_000;
 
 const app = express();
@@ -509,13 +516,18 @@ io.on("connection", (socket) => {
     const roomId = member.roomId;
     const room = roomId ? manager.get(roomId) : null;
     const seated = room?.isSeated(cid) ?? false;
+    const inLobby = room?.phase === "lobby";
 
     if (room) {
       room.setConnected(cid, false); // löst ggf. Auto-Pause aus
       void broadcastRoom(room.roomId);
     }
 
-    const grace = seated ? GRACE_SEATED_MS : GRACE_LOBBY_MS;
+    const grace = seated
+      ? inLobby
+        ? GRACE_SEATED_LOBBY_MS
+        : GRACE_SEATED_MS
+      : GRACE_LOBBY_MS;
     setTimeout(() => {
       const m = hub.get(cid);
       if (!m || m.socketId !== socket.id) return; // in der Zwischenzeit wieder da
