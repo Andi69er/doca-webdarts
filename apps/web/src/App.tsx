@@ -18,6 +18,13 @@ export function App() {
 
   const content = (
     <>
+      {!app.connected && app.name && (
+        <div className="conn-lost" role="alert">
+          <span className="conn-spin" aria-hidden="true" />
+          Verbindung unterbrochen – versuche neu zu verbinden … Eingaben sind gesperrt, bis die
+          Verbindung wieder steht.
+        </div>
+      )}
       {app.error && (
         <div className="error-bar" role="alert">
           <span>{app.error}</span>

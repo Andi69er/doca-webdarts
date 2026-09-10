@@ -89,25 +89,30 @@ function Stage({ room }: { room: RoomState }) {
     if (!prev || (!prev.publication && tr.publication)) trackByIdentity.set(id, tr);
   }
 
-  // Eine Kachel je besetztem Platz – aktiver Werfer nach vorne.
-  const seats = room.seats
-    .filter((s) => s.occupantId)
-    .sort((a, b) => (a.playerId === activeId ? -1 : 0) - (b.playerId === activeId ? -1 : 0));
+  // Eine Kachel je besetztem Platz – STABILE Reihenfolge (kein Umsortieren pro
+  // Wurf, das ließ die Bilder hin- und herspringen). Der aktive Werfer bekommt
+  // nur die „spot“-Klasse und wird per CSS groß dargestellt.
+  const seats = room.seats.filter((s) => s.occupantId);
 
   const count = seats.length;
+  const hasSpot = activeId != null && seats.some((s) => s.playerId === activeId);
   const stageClass =
-    count <= 1 ? "video-stage count-1" : count === 2 ? "video-stage count-2" : "video-stage";
+    count <= 1
+      ? "video-stage count-1"
+      : count === 2
+        ? `video-stage count-2${hasSpot ? " spotlight" : ""}`
+        : `video-stage${hasSpot ? " spotlight" : ""}`;
 
   return (
     <div className={stageClass}>
       {count === 0 && <div className="vtile placeholder">Warte auf Kamerabilder…</div>}
-      {seats.map((s, i) => {
+      {seats.map((s) => {
         const tr = trackByIdentity.get(s.occupantId!);
         const isThrower = s.playerId != null && s.playerId === activeId;
-        const big = count > 2 && i === 0;
+        const cls = isThrower && hasSpot ? "spot big" : count > 2 ? "small" : "";
         const label = s.playerName ?? "Spieler";
         return (
-          <div key={s.key} className={`vtile ${big ? "big" : count > 2 ? "small" : ""}`}>
+          <div key={s.key} className={`vtile ${cls}`}>
             {tr?.publication ? (
               <VideoTrack trackRef={tr} />
             ) : (
