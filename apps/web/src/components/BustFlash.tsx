@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { findCheckout, type MatchState, type X01LegState } from "@webdarts/engine";
+import type { MatchState, X01LegState } from "@webdarts/engine";
 
 /**
- * „BUST"-Einblendung: tauct groß aus dem Nichts auf, bleibt 3 s, fliegt
- * seitlich wieder raus. Ausgelöst bei echtem Bust (überworfen / Rest 1 /
- * auf 0 ohne Doppel) oder wenn jemand auf einem Finish stand und 0 geworfen hat.
+ * „BUST"-Einblendung: taucht groß aus dem Nichts auf, bleibt 3 s, fliegt
+ * seitlich wieder raus. Ausgelöst, sobald eine X01-Aufnahme 0 zählt –
+ * echter Bust (überworfen / Rest 1 / auf 0 ohne Doppel) genauso wie drei
+ * Nieten. Nicht beim Ausbullen: dort landen keine Visits im Leg.
  */
 export function BustFlash({ match }: { match: MatchState }) {
   const [key, setKey] = useState(0); // > 0 = anzeigen; neuer Key = Animation neu
   const seen = useRef(0);
 
   useEffect(() => {
+    if (match.phase !== "playing") return;
     if (match.leg.mode !== "x01") return;
     const leg = match.leg as X01LegState;
     const n = leg.visits.length;
@@ -21,11 +23,7 @@ export function BustFlash({ match }: { match: MatchState }) {
     seen.current = n;
     const v = leg.visits[n - 1];
     if (!v) return;
-    const out = match.config.x01?.out ?? "double";
-    const remAfter = leg.remaining[v.teamIndex] ?? 0;
-    const remBefore = v.bust ? remAfter : remAfter + v.scored;
-    const wasOnFinish = findCheckout(remBefore, 3, out) !== null;
-    if (v.bust || (wasOnFinish && v.scored === 0)) {
+    if (v.bust || v.scored === 0) {
       setKey((k) => k + 1);
     }
   }, [match]);
