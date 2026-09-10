@@ -280,7 +280,8 @@ export function RoomLobby({ app }: { app: AppApi }) {
         </div>
       </div>
 
-      {/* ── 2) Format ─────────────────────────────────────────────────── */}
+      {/* ── 2) Format + Optionen nebeneinander ───────────────────────── */}
+      <div className="lobby-row2">
       <div className="card stack lobby-block">
         <div className="lobby-block-head">
           <h3 className="section-title">Format</h3>
@@ -424,6 +425,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
             Match-entscheidenden Leg
           </span>
         </div>
+      </div>
       </div>
 
       {/* ── 4) Gegner & Verbindung ───────────────────────────────────── */}
