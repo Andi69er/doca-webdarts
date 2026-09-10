@@ -31,8 +31,14 @@ const MAX_MEMBERS_PER_ROOM = 25;
 const MAX_NAME = 24;
 const MAX_ROOM_NAME = 40;
 const MAX_CHAT = 400;
-/** Nachfrist, bis ein abgemeldeter Spieler seinen Sitz endgültig verliert. */
-const GRACE_SEATED_MS = 5 * 60_000;
+/**
+ * Nachfrist, bis ein abgemeldeter Spieler im LAUFENDEN Match seinen Sitz
+ * endgültig verliert. Das Match pausiert derweil automatisch – lieber lange
+ * warten, als jemanden für einen Toiletten-/Anruf-/WLAN-Aussetzer rauszuwerfen.
+ * Kommt er nach Ablauf zurück, bekommt er seinen Platz per Reclaim trotzdem
+ * wieder, solange ihn niemand übernommen hat.
+ */
+const GRACE_SEATED_MS = 20 * 60_000;
 /**
  * In der Lobby (Match noch nicht gestartet) bleibt der Sitzplatz deutlich länger
  * reserviert – ein Spieler, der kurz weg muss (Telefon, WC …), kommt auf seinen

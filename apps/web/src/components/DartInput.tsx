@@ -48,7 +48,21 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
     if (val === "") return;
     const score = Number(val);
     if (!isCricket && score > 0 && score === remaining) {
-      // Leg beendet → volle Checkdart-Abfrage (Darts zum Checkout + Darts auf Doppel)
+      // Leg beendet. Geht das Finish NUR mit 3 Darts (kein 2-Dart-Weg)? Dann ist
+      // die Aufnahme eindeutig 3 Darts / 1 Dart aufs Doppel → keine Rückfrage.
+      const twoDartRoute = findCheckout(score, 2, outMode);
+      if (!twoDartRoute) {
+        await app.dispatch({
+          type: "RECORD_SCORE",
+          score,
+          darts: 3,
+          finishedOnDouble: true,
+          doubleDarts: outMode === "double" ? 1 : 0,
+        });
+        setEntry("");
+        return;
+      }
+      // Sonst: volle Checkdart-Abfrage (Darts zum Checkout + Darts auf Doppel)
       setCheckoutScore(score);
       return;
     }

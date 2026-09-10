@@ -65,6 +65,8 @@ export class Room {
 
   private members = new Map<string, Member>();
   private seatAssignments = new Map<string, string>();
+  /** cid -> zuletzt belegter Platz, für Reclaim nach unbeabsichtigtem Rausflug. */
+  private lastSeat = new Map<string, string>();
   private controller: MatchController | null = null;
   private rematch: RematchState | null = null;
   /** Manuelle Pause (WC / Telefon). */
@@ -121,6 +123,19 @@ export class Room {
     } else {
       this.members.set(id, { id, name, image, connected: true });
     }
+    // Rückkehr nach unbeabsichtigtem Rausflug: eigenen Platz zurückgeben,
+    // solange er noch frei ist (im laufenden Match kann ihn ohnehin niemand
+    // sonst belegen).
+    const prevSeat = this.lastSeat.get(id);
+    if (
+      prevSeat &&
+      !this.isSeated(id) &&
+      !this.seatAssignments.has(prevSeat) &&
+      this.buildSeats().some((s) => s.key === prevSeat && !s.isLocalPartner)
+    ) {
+      this.seatAssignments.set(prevSeat, id);
+    }
+    this.lastSeat.delete(id);
   }
 
   setConnected(id: string, connected: boolean) {
@@ -138,7 +153,11 @@ export class Room {
     this.members.delete(id);
     this.offlineSeats.delete(id);
     for (const [sk, mid] of this.seatAssignments) {
-      if (mid === id) this.seatAssignments.delete(sk);
+      if (mid === id) {
+        // Platz merken, damit der Spieler ihn bei Rückkehr zurückbekommt.
+        this.lastSeat.set(id, sk);
+        this.seatAssignments.delete(sk);
+      }
     }
     this.rematch = null; // Aufstellung hat sich geändert
     if (this.manualPause?.byId === id) {
@@ -286,6 +305,7 @@ export class Room {
 
   takeSeat(memberId: string, targetKey: string | null): { ok: true } | { ok: false; error: string } {
     if (this.phase === "match") return { ok: false, error: "Spiel läuft bereits." };
+    this.lastSeat.delete(memberId); // bewusste Platzwahl -> kein Auto-Reclaim mehr
     for (const [sk, mid] of this.seatAssignments) {
       if (mid === memberId) this.seatAssignments.delete(sk);
     }
@@ -421,6 +441,7 @@ export class Room {
     this.rematch = null;
     this.manualPause = null;
     this.offlineSeats.clear();
+    this.lastSeat.clear();
     this.resultWritten = false;
     this.phase = "match";
     return { ok: true };
@@ -432,6 +453,7 @@ export class Room {
     this.rematch = null;
     this.manualPause = null;
     this.offlineSeats.clear();
+    this.lastSeat.clear();
     this.phase = "lobby";
     return { ok: true };
   }
@@ -467,6 +489,7 @@ export class Room {
     this.rematch = null;
     this.manualPause = null;
     this.offlineSeats.clear();
+    this.lastSeat.clear();
     this.resultWritten = false;
   }
 
