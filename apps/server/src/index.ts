@@ -62,6 +62,58 @@ app.get("/results", async (req, res) => {
   res.json(await recentResults(Number.isFinite(limit) ? limit : 50));
 });
 
+// --- 2K/3K-Liga-Daten-Proxy -------------------------------------------------
+// Der doca.at-Server erreicht backend3.3k-darts.com (Hetzner) seit ~09/2026
+// nicht mehr (TCP-Timeout, Routing-Problem AT↔Hetzner). Dieser Dienst kommt
+// durch und reicht die ÖFFENTLICHEN, ungeschützten Frontend-API-Daten (kein
+// Login, kein Key nötig) 1:1 weiter. Fest verdrahtet, nur Lesepfade unter
+// event/<id>, kurzer In-Memory-Cache gegen Doppelabrufe.
+const TWOK_BASE = "https://backend3.3k-darts.com/2k-backend3/api/v1/frontend/";
+const TWOK_TTL = 90_000;
+const twokCache = new Map<string, { ts: number; status: number; body: string }>();
+
+app.get(/^\/2k\/(.+)$/, async (req, res) => {
+  const key = process.env.WEBDARTS_SECRET ?? "";
+  if (!key || req.get("x-webdarts-key") !== key) {
+    return res.status(403).json({ error: "auth" });
+  }
+  const path = String((req.params as Record<string, string>)[0] ?? "").replace(/\?.*$/, "");
+  // Nur die bekannten Lese-Endpunkte: event/<id> und daran hängende Unterpfade.
+  if (!/^event\/\d+(?:\/[a-zA-Z]+(?:\/\d+)?)*$/.test(path)) {
+    return res.status(400).json({ error: "bad path" });
+  }
+
+  const hit = twokCache.get(path);
+  if (hit && Date.now() - hit.ts < TWOK_TTL) {
+    return res.status(hit.status).type("application/json").send(hit.body);
+  }
+
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 12_000);
+    const upstream = await fetch(TWOK_BASE + path, {
+      signal: ac.signal,
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        Origin: "https://portal.3k-darts.com",
+        Referer: "https://portal.3k-darts.com/",
+      },
+    });
+    clearTimeout(timer);
+    const body = await upstream.text();
+    twokCache.set(path, { ts: Date.now(), status: upstream.status, body });
+    if (twokCache.size > 200) {
+      const oldest = twokCache.keys().next().value;
+      if (oldest) twokCache.delete(oldest);
+    }
+    res.status(upstream.status).type("application/json").send(body);
+  } catch (e) {
+    res.status(502).json({ error: "upstream", detail: (e as Error).message });
+  }
+});
+
 const httpServer = createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: { origin: CLIENT_ORIGINS, methods: ["GET", "POST"] },
