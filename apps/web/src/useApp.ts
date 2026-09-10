@@ -14,6 +14,7 @@ export interface AppApi {
 
   setName: (name: string) => Promise<void>;
   sendChat: (text: string) => Promise<void>;
+  sendRoomChat: (text: string) => Promise<void>;
 
   createRoom: (p: {
     name?: string;
@@ -152,6 +153,8 @@ export function useApp(): AppApi {
         }),
       ),
     sendChat: (text) => guard(emitAck("hub:chat", { text }).then(() => undefined)),
+    sendRoomChat: (text) =>
+      guard(emitAck("room:chat", { roomId: rid(), text }).then(() => undefined)),
 
     createRoom: (p) =>
       guard(

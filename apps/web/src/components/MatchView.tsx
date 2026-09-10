@@ -5,6 +5,7 @@ import { CricketBoard } from "./CricketBoard";
 import { DartInput } from "./DartInput";
 import { BullOffPanel } from "./BullOffPanel";
 import { LegBullOffPanel } from "./LegBullOffPanel";
+import { RoomChat } from "./RoomChat";
 import { MatchStats } from "./MatchStats";
 import { RematchPanel } from "./RematchPanel";
 import { PauseBanner } from "./PauseBanner";
@@ -75,6 +76,8 @@ export function MatchView({ app }: { app: AppApi }) {
           )}
 
           {match.phase === "finished" && <RematchPanel app={app} />}
+
+          <RoomChat app={app} />
         </div>
       </div>
     </div>

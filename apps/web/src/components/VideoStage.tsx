@@ -9,6 +9,7 @@ import {
 import { Track } from "livekit-client";
 import { scoreboard, type MatchState, type RoomState } from "@webdarts/engine";
 import { emitAck } from "../net";
+import { audioCaptureOpts, videoCaptureOpts } from "../mediaPrefs";
 import { Avatar } from "./Avatar";
 
 export function VideoStage({ room }: { room: RoomState }) {
@@ -58,8 +59,8 @@ export function VideoStage({ room }: { room: RoomState }) {
       serverUrl={state.url}
       token={state.token}
       connect
-      video
-      audio
+      video={videoCaptureOpts()}
+      audio={audioCaptureOpts()}
       style={{ display: "contents" }}
     >
       <Stage room={room} />

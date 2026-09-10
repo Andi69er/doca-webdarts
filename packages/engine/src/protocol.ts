@@ -62,6 +62,8 @@ export interface ChatMessage {
   text: string;
   ts: number;
   kind: "user" | "system";
+  /** Nur im Raum-Chat: Rolle des Absenders. */
+  role?: "player" | "spectator";
 }
 
 export interface HubState {
@@ -155,6 +157,8 @@ export interface RoomState {
   videoEnabled: boolean;
   /** LiveKit-Raumname (= roomId) für die Client-SDK. */
   livekitRoom: string;
+  /** Text-Chat des Raums (Spieler + Zuschauer), neueste zuletzt. */
+  chat: ChatMessage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +175,10 @@ export interface ClientToServerEvents {
     ack: (res: AckResult<null>) => void,
   ) => void;
   "hub:chat": (payload: { text: string }, ack: (res: AckResult<null>) => void) => void;
+  "room:chat": (
+    payload: { roomId: string; text: string },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
 
   "room:create": (
     payload: {

@@ -15,6 +15,7 @@ import {
   nextBullOffTeam,
   seatKey,
   type BotConfig,
+  type ChatMessage,
   type CricketLegState,
   type HubRoomSummary,
   type MatchAction,
@@ -587,7 +588,24 @@ export class Room {
       localTeams: [this.localTeams[0], this.localTeams[1]],
       videoEnabled,
       livekitRoom: this.roomId,
+      chat: this.chatLog,
     };
+  }
+
+  // --- Raum-Chat ---------------------------------------------------------
+
+  private chatLog: ChatMessage[] = [];
+
+  addChat(name: string, text: string, role: "player" | "spectator") {
+    this.chatLog.push({
+      id: genRoomId(),
+      name,
+      text,
+      ts: Date.now(),
+      kind: "user",
+      role,
+    });
+    if (this.chatLog.length > 60) this.chatLog.splice(0, this.chatLog.length - 60);
   }
 
   // --- Bot-Steuerung ------------------------------------------------

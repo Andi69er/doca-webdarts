@@ -314,6 +314,17 @@ io.on("connection", (socket) => {
     broadcastHub();
   });
 
+  socket.on("room:chat", ({ roomId, text }, ack) => {
+    if (tooMany(ack, "chat", 25)) return;
+    const room = manager.get(roomId);
+    if (!room || !room.hasMember(me())) return ack({ ok: false, error: "Nicht im Raum." });
+    const clean = cleanText(text, MAX_CHAT);
+    if (!clean) return ack({ ok: false, error: "Leere Nachricht." });
+    room.addChat(displayName(), clean, room.isSeated(me()) ? "player" : "spectator");
+    ack({ ok: true, data: null });
+    void broadcastRoom(roomId);
+  });
+
   socket.on("room:create", ({ name: roomName, config, teamNames, bot }, ack) => {
     if (tooMany(ack, "create", 6)) return;
     const member = hub.get(me());
@@ -543,7 +554,9 @@ io.on("connection", (socket) => {
         room: room.roomId,
         identity: me(),
         name: displayName(),
-        canPublish: room.isSeated(me()),
+        // In der Lobby dürfen alle reden (Sprachchat). Im laufenden Match nur
+        // Spieler am Tisch – Zuschauer hören zu, reden nicht.
+        canPublish: room.phase !== "match" || room.isSeated(me()),
       });
       ack({ ok: true, data: { token, url: livekitUrl() } });
     } catch (err) {

@@ -3,6 +3,7 @@ import type { MatchConfig } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { TeamNameModal } from "./TeamNameModal";
 import { CameraCheck } from "./CameraCheck";
+import { LobbyAudio } from "./LobbyAudio";
 import { Avatar } from "./Avatar";
 import { embed, type EmbedMember } from "../embed";
 
@@ -570,6 +571,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           {state.spectators.map((s) => s.name).join(", ") || "—"}
         </div>
 
+        {state.videoEnabled && <LobbyAudio roomId={state.roomId} />}
         {state.videoEnabled && <CameraCheck />}
       </div>
 

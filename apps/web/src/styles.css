@@ -321,6 +321,30 @@ body:not(.webdarts-embedded) #webdarts-root {
   border: 1px dashed var(--line); border-radius: 14px; padding: 24px;
 }
 
+/* ---------- Raum-Chat ---------- */
+.room-chat { gap: 8px; }
+.room-chat-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: none; border: 0; padding: 0; cursor: pointer; width: 100%; text-align: left;
+}
+.room-chat-scroll {
+  max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+  background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px;
+  font-size: 13px;
+}
+.room-chat .chat-msg { line-height: 1.35; }
+.room-chat .cm-name { color: var(--gold); font-weight: 600; margin-right: 6px; }
+.room-chat .cm-name.spec { color: var(--muted); }
+
+/* ---------- Sprachchat Lobby ---------- */
+.lobby-audio {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--panel-2); border: 1px solid var(--line-soft);
+  border-radius: 10px; padding: 8px 12px;
+}
+.lobby-audio .lbl { margin-right: 4px; }
+.lobby-audio button { padding: 5px 12px; font-size: 13px; }
+
 /* ---------- Kamera-Selbsttest (Lobby) ---------- */
 .camcheck-preview {
   width: 100%; max-width: 360px; aspect-ratio: 4 / 3; align-self: center;
