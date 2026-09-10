@@ -1,10 +1,55 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { MatchConfig } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { TeamNameModal } from "./TeamNameModal";
 import { CameraCheck } from "./CameraCheck";
 import { Avatar } from "./Avatar";
 import { embed, type EmbedMember } from "../embed";
+
+/**
+ * Zahlenfeld, das sich frei mit der Tastatur bearbeiten lässt (Feld darf beim
+ * Tippen kurz leer sein) und erst bei Verlassen / Enter clampt & meldet.
+ */
+function NumField({
+  value,
+  min,
+  max,
+  disabled,
+  onCommit,
+  style,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  disabled?: boolean;
+  onCommit: (n: number) => void;
+  style?: CSSProperties;
+}) {
+  const [txt, setTxt] = useState(String(value));
+  useEffect(() => setTxt(String(value)), [value]);
+  const commit = () => {
+    const n = Math.round(Number(txt));
+    if (!Number.isFinite(n)) {
+      setTxt(String(value));
+      return;
+    }
+    onCommit(Math.max(min, Math.min(max, n)));
+  };
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      value={txt}
+      min={min}
+      max={max}
+      disabled={disabled}
+      onChange={(e) => setTxt(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      style={style}
+    />
+  );
+}
 
 /** Partner-Eingabe für "Beide an einem Board": Freitext oder Mitglied aus der Liste. */
 function PartnerEditor({
@@ -257,7 +302,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           )}
 
           <label className="field">
-            <span className="lbl">Sätze (1 = ohne)</span>
+            <span className="lbl">Sätze (0 = ohne)</span>
             <div className="row" style={{ gap: 6 }}>
               <select
                 disabled={!isHost}
@@ -268,13 +313,12 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 <option value="firstto">First to</option>
                 <option value="bestof">Best of</option>
               </select>
-              <input
-                type="number"
-                min={1}
-                max={25}
+              <NumField
+                min={0}
+                max={setFmt === "bestof" ? 25 : 13}
                 disabled={!isHost}
-                value={usesSets ? fromWins(setFmt, cfg.setsToWin) : 1}
-                onChange={(e) => patch({ setsToWin: toWins(setFmt, Number(e.target.value), 13) })}
+                value={usesSets ? fromWins(setFmt, cfg.setsToWin) : 0}
+                onCommit={(n) => patch({ setsToWin: n <= 0 ? 1 : toWins(setFmt, n, 13) })}
                 style={{ width: 56 }}
               />
             </div>
@@ -292,13 +336,12 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 <option value="firstto">First to</option>
                 <option value="bestof">Best of</option>
               </select>
-              <input
-                type="number"
+              <NumField
                 min={1}
-                max={41}
+                max={legFmt === "bestof" ? 41 : 21}
                 disabled={!isHost}
                 value={fromWins(legFmt, cfg.legsToWinSet)}
-                onChange={(e) => patch({ legsToWinSet: toWins(legFmt, Number(e.target.value), 21) })}
+                onCommit={(n) => patch({ legsToWinSet: toWins(legFmt, n, 21) })}
                 style={{ width: 56 }}
               />
             </div>
@@ -364,17 +407,12 @@ export function RoomLobby({ app }: { app: AppApi }) {
             {(cfg.legBulloffRounds ?? 0) > 0 && (
               <>
                 {" – Limit "}
-                <input
-                  type="number"
+                <NumField
                   min={5}
                   max={40}
                   disabled={!isHost}
                   value={cfg.legBulloffRounds ?? 20}
-                  onChange={(e) =>
-                    patch({
-                      legBulloffRounds: Math.max(5, Math.min(40, Number(e.target.value) || 20)),
-                    })
-                  }
+                  onCommit={(n) => patch({ legBulloffRounds: n })}
                   style={{ width: 52 }}
                 />
                 {" Aufnahmen/Spieler"}
