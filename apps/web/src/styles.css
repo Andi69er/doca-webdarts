@@ -249,14 +249,15 @@ body:not(.webdarts-embedded) #webdarts-root {
 #webdarts-root .lobby-setup .hint { font-size: 11.5px; }
 
 /* Optionen: kompakte Zeilen statt großer Kacheln */
-.lobby-opt {
+#webdarts-root .lobby-opt {
   display: grid; grid-template-columns: auto 1fr; column-gap: 9px; row-gap: 1px;
   padding: 7px 0; border-top: 1px solid var(--line-soft); cursor: pointer;
 }
 .lobby-block .lobby-opt:first-of-type { border-top: 0; padding-top: 2px; }
-.lobby-opt > input[type="checkbox"] { width: 16px; height: 16px; margin-top: 2px; grid-area: 1 / 1; }
-.lobby-opt-main { grid-area: 1 / 2; display: block; font-size: 13px; }
-.lobby-opt > .hint { grid-area: 2 / 2; display: block; font-size: 11.5px; margin-top: 1px; }
+#webdarts-root .lobby-opt > input[type="checkbox"] { width: 16px; height: 16px; margin-top: 2px; grid-area: 1 / 1; }
+#webdarts-root .lobby-opt-main { grid-area: 1 / 2; display: block; font-size: 13px; }
+#webdarts-root .lobby-opt-main label { display: inline; }
+#webdarts-root .lobby-opt > .hint { grid-area: 2 / 2; display: block; font-size: 11.5px; margin-top: 1px; }
 
 .seat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 640px) { .seat-grid { grid-template-columns: 1fr; } }

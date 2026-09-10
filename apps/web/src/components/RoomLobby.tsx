@@ -370,30 +370,36 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <h3 className="section-title">Optionen</h3>
           {lockNote}
         </div>
-        <label className="lobby-opt">
+        <div className="lobby-opt">
           <input
+            id="opt-bulloff"
             type="checkbox"
             disabled={!isHost}
             checked={cfg.bullOff}
             onChange={(e) => patch({ bullOff: e.target.checked })}
           />
-          <span className="lobby-opt-main">Ausbullen um den Anwurf</span>
+          <span className="lobby-opt-main">
+            <label htmlFor="opt-bulloff">Ausbullen um den Anwurf</label>
+          </span>
           <span className="hint">vor dem ersten Leg wird ausgebullt</span>
-        </label>
+        </div>
 
-        <label className="lobby-opt">
+        <div className="lobby-opt">
           <input
+            id="opt-twoclear"
             type="checkbox"
             disabled={!isHost}
             checked={!!cfg.twoClearLegs}
             onChange={(e) => patch({ twoClearLegs: e.target.checked })}
           />
-          <span className="lobby-opt-main">2 Clear Legs</span>
+          <span className="lobby-opt-main">
+            <label htmlFor="opt-twoclear">2 Clear Legs</label>
+          </span>
           <span className="hint">
             nur im Entscheidungssatz: 2 Legs Vorsprung, Sudden Death bei {cfg.legsToWinSet + 2}:
             {cfg.legsToWinSet + 2}
           </span>
-        </label>
+        </div>
 
         <div className="lobby-opt">
           <input
