@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { defaultConfig, type BotConfig, type GameMode, type HubRoomSummary } from "@webdarts/engine";
+import { defaultConfig, type BotConfig, type HubRoomSummary } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { embed } from "../embed";
 import { Avatar } from "./Avatar";
@@ -19,8 +19,6 @@ export function Hub({ app }: { app: AppApi }) {
   const [text, setText] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const [mode, setMode] = useState<GameMode>("x01");
-  const [teamSize, setTeamSize] = useState<1 | 2>(2);
   const [roomName, setRoomName] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [botChoice, setBotChoice] = useState("none");
@@ -98,7 +96,7 @@ export function Hub({ app }: { app: AppApi }) {
   };
 
   const createRoom = () => {
-    const cfg = { ...defaultConfig(), mode, teamSize };
+    const cfg = defaultConfig(); // Spielart, Team-Größe & Rest werden in der Lobby eingestellt
     app.createRoom({
       name: roomName.trim(),
       config: cfg,
@@ -251,24 +249,7 @@ export function Hub({ app }: { app: AppApi }) {
             aria-label="Raumname (optional)"
             maxLength={40}
           />
-          <div className="row">
-            <select
-              value={mode}
-              aria-label="Spielart"
-              onChange={(e) => setMode(e.target.value as GameMode)}
-            >
-              <option value="x01">X01</option>
-              <option value="cricket">Cricket</option>
-            </select>
-            <select
-              value={teamSize}
-              aria-label="Team-Größe"
-              onChange={(e) => setTeamSize(Number(e.target.value) as 1 | 2)}
-            >
-              <option value={2}>Doppel</option>
-              <option value={1}>Einzel</option>
-            </select>
-          </div>
+          <div className="hint">Spielart, Team-Größe und alle Regeln stellst du danach in der Lobby ein.</div>
 
           <BotPicker
             value={botChoice}
