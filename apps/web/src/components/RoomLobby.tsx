@@ -91,9 +91,11 @@ export function RoomLobby({ app }: { app: AppApi }) {
   const modalTeam = nameModal;
   const members = embed?.members ?? [];
   const isDoubles = state.config.teamSize === 2;
+  const usesSets = cfg.setsToWin > 1;
+  const lockNote = isHost ? null : <span className="lobby-lock">nur der Host ändert das</span>;
 
   return (
-    <div className="stack">
+    <div className="stack lobby-setup">
       {members.length > 0 && (
         <datalist id="wd-members">
           {members.map((m) => (
@@ -101,6 +103,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           ))}
         </datalist>
       )}
+
       <div className="row" style={{ justifyContent: "space-between" }}>
         <button className="ghost" onClick={app.leaveRoom}>
           ← Zurück zur Lobby
@@ -110,7 +113,10 @@ export function RoomLobby({ app }: { app: AppApi }) {
         </span>
       </div>
 
-      {state.name && <h2 className="room-title">{state.name}</h2>}
+      <div className="lobby-head">
+        <h2 className="room-title">{state.name || "Neues Match"}</h2>
+        <p className="hint">Stelle dein Spiel zusammen.</p>
+      </div>
 
       {state.bot && (
         <div className="hint">
@@ -119,8 +125,186 @@ export function RoomLobby({ app }: { app: AppApi }) {
         </div>
       )}
 
-      <div className="card stack">
-        <h3 className="section-title">Aufstellung</h3>
+      {/* ── 1) Spielmodus ─────────────────────────────────────────────── */}
+      <div className="card stack lobby-block">
+        <div className="lobby-block-head">
+          <h3 className="section-title">Spielmodus</h3>
+          {lockNote}
+        </div>
+        <div className="grid2">
+          <label className="field">
+            <span className="lbl">Spielart</span>
+            <select
+              disabled={!isHost}
+              value={cfg.mode}
+              onChange={(e) => patch({ mode: e.target.value as MatchConfig["mode"] })}
+            >
+              <option value="x01">X01</option>
+              <option value="cricket">Cricket</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span className="lbl">Team-Größe</span>
+            <select
+              disabled={!isHost}
+              value={cfg.teamSize}
+              onChange={(e) => patch({ teamSize: Number(e.target.value) as 1 | 2 })}
+            >
+              <option value={2}>Doppel (2v2)</option>
+              <option value={1}>Einzel (1v1)</option>
+            </select>
+          </label>
+
+          {cfg.mode === "x01" && (
+            <>
+              <label className="field">
+                <span className="lbl">Punktzahl</span>
+                <select
+                  disabled={!isHost}
+                  value={cfg.x01!.startScore}
+                  onChange={(e) => patch({ x01: { ...cfg.x01!, startScore: Number(e.target.value) } })}
+                >
+                  {[301, 501, 701].map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span className="lbl">Checkout</span>
+                <select
+                  disabled={!isHost}
+                  value={cfg.x01!.out}
+                  onChange={(e) =>
+                    patch({ x01: { ...cfg.x01!, out: e.target.value as "straight" | "double" | "master" } })
+                  }
+                >
+                  <option value="double">Double Out</option>
+                  <option value="master">Master Out</option>
+                  <option value="straight">Straight Out</option>
+                </select>
+              </label>
+            </>
+          )}
+
+          {cfg.mode === "cricket" && (
+            <label className="field">
+              <span className="lbl">Cricket-Variante</span>
+              <select
+                disabled={!isHost}
+                value={cfg.cricket!.variant}
+                onChange={(e) =>
+                  patch({ cricket: { variant: e.target.value as "standard" | "cutthroat" } })
+                }
+              >
+                <option value="standard">Standard</option>
+                <option value="cutthroat">Cut-Throat</option>
+              </select>
+            </label>
+          )}
+        </div>
+      </div>
+
+      {/* ── 2) Format ─────────────────────────────────────────────────── */}
+      <div className="card stack lobby-block">
+        <div className="lobby-block-head">
+          <h3 className="section-title">Format</h3>
+          {lockNote}
+        </div>
+        <div className="grid2">
+          <label className="field">
+            <span className="lbl">Sätze (1 = ohne)</span>
+            <div className="row" style={{ gap: 6 }}>
+              <select
+                disabled={!isHost}
+                value={setFmt}
+                onChange={(e) => setSetFmt(e.target.value as "firstto" | "bestof")}
+                style={{ flex: "0 0 auto" }}
+              >
+                <option value="firstto">First to</option>
+                <option value="bestof">Best of</option>
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={25}
+                disabled={!isHost}
+                value={usesSets ? fromWins(setFmt, cfg.setsToWin) : 1}
+                onChange={(e) => patch({ setsToWin: toWins(setFmt, Number(e.target.value), 13) })}
+                style={{ width: 64 }}
+              />
+            </div>
+          </label>
+
+          <label className="field">
+            <span className="lbl">{usesSets ? "Legs pro Satz" : "Legs"}</span>
+            <div className="row" style={{ gap: 6 }}>
+              <select
+                disabled={!isHost}
+                value={legFmt}
+                onChange={(e) => setLegFmt(e.target.value as "firstto" | "bestof")}
+                style={{ flex: "0 0 auto" }}
+              >
+                <option value="firstto">First to</option>
+                <option value="bestof">Best of</option>
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={41}
+                disabled={!isHost}
+                value={fromWins(legFmt, cfg.legsToWinSet)}
+                onChange={(e) => patch({ legsToWinSet: toWins(legFmt, Number(e.target.value), 21) })}
+                style={{ width: 64 }}
+              />
+            </div>
+          </label>
+        </div>
+        <div className="hint">
+          {usesSets ? (
+            <>
+              Satz: wer zuerst <strong>{cfg.legsToWinSet}</strong> Leg
+              {cfg.legsToWinSet > 1 ? "s" : ""} hat (= Best of {cfg.legsToWinSet * 2 - 1}). Match: wer
+              zuerst <strong>{cfg.setsToWin}</strong> Sätze hat (= Best of {cfg.setsToWin * 2 - 1}).
+            </>
+          ) : (
+            <>
+              Wer zuerst <strong>{cfg.legsToWinSet}</strong> Leg{cfg.legsToWinSet > 1 ? "s" : ""}{" "}
+              gewinnt · First to {cfg.legsToWinSet} = Best of {cfg.legsToWinSet * 2 - 1}.
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── 3) Optionen ──────────────────────────────────────────────── */}
+      <div className="card stack lobby-block">
+        <div className="lobby-block-head">
+          <h3 className="section-title">Optionen</h3>
+          {lockNote}
+        </div>
+        <label className="lobby-opt">
+          <input
+            type="checkbox"
+            disabled={!isHost}
+            checked={cfg.bullOff}
+            onChange={(e) => patch({ bullOff: e.target.checked })}
+          />
+          <span>
+            Ausbullen um den Anwurf
+            <span className="hint"> – vor dem ersten Leg wird ausgebullt</span>
+          </span>
+        </label>
+      </div>
+
+      {/* ── 4) Gegner & Verbindung ───────────────────────────────────── */}
+      <div className="card stack lobby-block">
+        <div className="lobby-block-head">
+          <h3 className="section-title">Gegner &amp; Verbindung</h3>
+        </div>
+
         <div className="seat-grid">
           {teams.map((seats, ti) => (
             <div key={ti} className={`team-col ${ti === 0 ? "a" : "b"}`}>
@@ -154,7 +338,8 @@ export function RoomLobby({ app }: { app: AppApi }) {
               )}
               {seats.map((s) => {
                 const mine = s.occupantId === app.myId;
-                const isBotSeat = s.occupantId === state.bot?.seatKey || s.playerName === state.bot?.name;
+                const isBotSeat =
+                  s.occupantId === state.bot?.seatKey || s.playerName === state.bot?.name;
                 const isBotHere = state.bot?.seatKey === s.key;
 
                 if (s.isLocalPartner) {
@@ -167,7 +352,9 @@ export function RoomLobby({ app }: { app: AppApi }) {
                       <span className="seat-name">
                         <Avatar src={s.playerImage} name={s.playerName ?? "P"} size={26} />
                         {s.playerName ?? <span className="hint">Partner offen</span>}
-                        <span className="hint" style={{ marginLeft: 6 }}>· lokal</span>
+                        <span className="hint" style={{ marginLeft: 6 }}>
+                          · lokal
+                        </span>
                       </span>
                       {iAmOperator ? (
                         <PartnerEditor
@@ -190,7 +377,12 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 const seatOffline = !!s.occupantId && !isBotSeat && !s.connected;
 
                 return (
-                  <div key={s.key} className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""} ${seatOffline ? "offline" : ""}`}>
+                  <div
+                    key={s.key}
+                    className={`seat ${s.occupantId ? "filled" : ""} ${mine ? "mine" : ""} ${
+                      seatOffline ? "offline" : ""
+                    }`}
+                  >
                     <span className="seat-name">
                       {s.occupantId ? (
                         <>
@@ -201,7 +393,9 @@ export function RoomLobby({ app }: { app: AppApi }) {
                           />
                           {s.playerName}
                           {seatOffline && (
-                            <span className="hint" style={{ marginLeft: 6 }}>· kurz weg, Platz reserviert</span>
+                            <span className="hint" style={{ marginLeft: 6 }}>
+                              · kurz weg, Platz reserviert
+                            </span>
                           )}
                         </>
                       ) : (
@@ -240,153 +434,17 @@ export function RoomLobby({ app }: { app: AppApi }) {
           {mySeat ? "Du bist am Tisch." : "Du bist Zuschauer."} Zuschauer:{" "}
           {state.spectators.map((s) => s.name).join(", ") || "—"}
         </div>
+
+        {state.videoEnabled && <CameraCheck />}
       </div>
 
-      {state.videoEnabled && <CameraCheck />}
-
-      <div className="card stack">
-        <h3 className="section-title">Modus {isHost ? "" : "(nur Host ändert)"}</h3>
-        <div className="grid2">
-          <label className="field">
-            <span className="lbl">Spielart</span>
-            <select disabled={!isHost} value={cfg.mode} onChange={(e) => patch({ mode: e.target.value as MatchConfig["mode"] })}>
-              <option value="x01">X01</option>
-              <option value="cricket">Cricket</option>
-            </select>
-          </label>
-          <label className="field">
-            <span className="lbl">Team-Größe</span>
-            <select disabled={!isHost} value={cfg.teamSize} onChange={(e) => patch({ teamSize: Number(e.target.value) as 1 | 2 })}>
-              <option value={2}>Doppel (2v2)</option>
-              <option value={1}>Einzel (1v1)</option>
-            </select>
-          </label>
-
-          {cfg.mode === "x01" && (
-            <>
-              <label className="field">
-            <span className="lbl">Startpunkte</span>
-                <select
-                  disabled={!isHost}
-                  value={cfg.x01!.startScore}
-                  onChange={(e) => patch({ x01: { ...cfg.x01!, startScore: Number(e.target.value) } })}
-                >
-                  {[301, 501, 701].map((v) => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-            <span className="lbl">Finish</span>
-                <select
-                  disabled={!isHost}
-                  value={cfg.x01!.out}
-                  onChange={(e) => patch({ x01: { ...cfg.x01!, out: e.target.value as "straight" | "double" | "master" } })}
-                >
-                  <option value="double">Double-Out</option>
-                  <option value="master">Master-Out</option>
-                  <option value="straight">Straight-Out</option>
-                </select>
-              </label>
-            </>
-          )}
-
-          {cfg.mode === "cricket" && (
-            <label className="field">
-            <span className="lbl">Cricket-Variante</span>
-              <select
-                disabled={!isHost}
-                value={cfg.cricket!.variant}
-                onChange={(e) => patch({ cricket: { variant: e.target.value as "standard" | "cutthroat" } })}
-              >
-                <option value="standard">Standard</option>
-                <option value="cutthroat">Cut-Throat</option>
-              </select>
-            </label>
-          )}
-
-          <label className="field">
-            <span className="lbl">{cfg.setsToWin > 1 ? "Legs pro Satz" : "Legs"}</span>
-            <div className="row" style={{ gap: 6 }}>
-              <select
-                disabled={!isHost}
-                value={legFmt}
-                onChange={(e) => setLegFmt(e.target.value as "firstto" | "bestof")}
-                style={{ flex: "0 0 auto" }}
-              >
-                <option value="firstto">First to</option>
-                <option value="bestof">Best of</option>
-              </select>
-              <input
-                type="number"
-                min={1}
-                max={41}
-                disabled={!isHost}
-                value={fromWins(legFmt, cfg.legsToWinSet)}
-                onChange={(e) => patch({ legsToWinSet: toWins(legFmt, Number(e.target.value), 21) })}
-                style={{ width: 64 }}
-              />
-            </div>
-          </label>
-          <label className="field">
-            <span className="lbl">Sätze (1 = ohne)</span>
-            <div className="row" style={{ gap: 6 }}>
-              <select
-                disabled={!isHost}
-                value={setFmt}
-                onChange={(e) => setSetFmt(e.target.value as "firstto" | "bestof")}
-                style={{ flex: "0 0 auto" }}
-              >
-                <option value="firstto">First to</option>
-                <option value="bestof">Best of</option>
-              </select>
-              <input
-                type="number"
-                min={1}
-                max={25}
-                disabled={!isHost}
-                value={cfg.setsToWin > 1 ? fromWins(setFmt, cfg.setsToWin) : 1}
-                onChange={(e) => patch({ setsToWin: toWins(setFmt, Number(e.target.value), 13) })}
-                style={{ width: 64 }}
-              />
-            </div>
-          </label>
-          <div className="hint" style={{ gridColumn: "1 / -1" }}>
-            {cfg.setsToWin > 1 ? (
-              <>
-                Satz: wer zuerst <strong>{cfg.legsToWinSet}</strong>{" "}
-                Leg{cfg.legsToWinSet > 1 ? "s" : ""} hat (= Best of {cfg.legsToWinSet * 2 - 1}). Match:
-                wer zuerst <strong>{cfg.setsToWin}</strong> Sätze hat (= Best of{" "}
-                {cfg.setsToWin * 2 - 1}).
-              </>
-            ) : (
-              <>
-                Wer zuerst <strong>{cfg.legsToWinSet}</strong> Leg
-                {cfg.legsToWinSet > 1 ? "s" : ""} gewinnt · First to {cfg.legsToWinSet} = Best of{" "}
-                {cfg.legsToWinSet * 2 - 1}.
-              </>
-            )}
-          </div>
-          <label className="row" style={{ margin: 0, gap: 8 }}>
-            <input
-              type="checkbox"
-              disabled={!isHost}
-              checked={cfg.bullOff}
-              onChange={(e) => patch({ bullOff: e.target.checked })}
-              style={{ width: 18, height: 18 }}
-            />
-            <span>Ausbullen um den Anwurf</span>
-          </label>
-        </div>
-
-        {isHost ? (
-          <button className="primary big" disabled={!allSeated} onClick={app.startMatch}>
-            {allSeated ? "Match starten" : "Warte auf alle Spieler…"}
-          </button>
-        ) : (
-          <div className="hint">Der Host startet das Match.</div>
-        )}
-      </div>
+      {isHost ? (
+        <button className="primary big" disabled={!allSeated} onClick={app.startMatch}>
+          {allSeated ? "Match erstellen" : "Warte auf alle Spieler…"}
+        </button>
+      ) : (
+        <div className="hint">Der Host startet das Match.</div>
+      )}
 
       {modalTeam !== null && (
         <TeamNameModal
