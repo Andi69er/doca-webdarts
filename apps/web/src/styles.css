@@ -183,9 +183,9 @@ body:not(.webdarts-embedded) #webdarts-root {
 .uname { font-weight: 600; }
 .ustatus { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
 
-.chat-card { min-height: 380px; }
+.chat-card { min-height: 0; }
 .chat-scroll {
-  flex: 1; min-height: 260px; max-height: 55vh; overflow-y: auto;
+  flex: 0 0 auto; height: 42vh; max-height: 460px; min-height: 200px; overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
   background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: 10px; padding: 12px;
 }
@@ -620,7 +620,7 @@ body.webdarts-embedded #webdarts-root .section-title { font-size: 17px; }
 body.webdarts-embedded #webdarts-root .user-list { max-height: none; flex: 1; overflow: visible; }
 body.webdarts-embedded #webdarts-root .chat-card { min-height: 0; }
 body.webdarts-embedded #webdarts-root .chat-scroll {
-  min-height: 260px; max-height: 55vh; flex: 1 1 auto; overflow-y: auto;
+  flex: 0 0 auto; height: 42vh; max-height: 460px; min-height: 200px; overflow-y: auto;
 }
 body.webdarts-embedded #webdarts-root .uname { font-size: 15px; }
 body.webdarts-embedded #webdarts-root .chat-msg .cm-text { font-size: 15px; }
