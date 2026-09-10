@@ -15,7 +15,17 @@ let socket: WdSocket | null = null;
 
 export function getSocket(): WdSocket {
   if (!socket) {
-    socket = io(SERVER_URL, { autoConnect: true, transports: ["websocket"] });
+    socket = io(SERVER_URL, {
+      autoConnect: true,
+      // WebSocket bevorzugen, aber auf HTTP-Long-Polling zurückfallen können –
+      // überlebt Server-Neustarts / Proxy-Timeouts (Render) deutlich besser.
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 4000,
+      timeout: 12000,
+    });
   }
   return socket;
 }
