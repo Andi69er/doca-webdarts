@@ -4,8 +4,8 @@ import { Modal } from "./Modal";
 /**
  * Checkdart-Abfrage – analog zu darts-live / 2K.
  *
- * `mode = "checkout"`  → das Leg wurde beendet: „Mit wie vielen Darts gecheckt?"
- *                        und danach „Wie viele davon auf Doppel?".
+ * `mode = "checkout"`  → das Leg wurde beendet: „Wie viele Darts hast du
+ *                        insgesamt geworfen?" und danach „Wie viele davon auf Doppel?".
  * `mode = "attempts"`  → das Leg läuft weiter, aber der Rest VOR der Aufnahme war
  *                        ein mathematisch mögliches Finish: nur „Wie viele Darts
  *                        auf Doppel?" (0–3) – für eine korrekte Doppelquote.
@@ -68,7 +68,7 @@ export function CheckoutDialog({
     <Modal title={`Checkout ${score}`} onClose={onCancel}>
       <div className="field">
         <span className="lbl" id="cd-darts">
-          Mit wie vielen Darts gecheckt?
+          Wie viele Darts hast du insgesamt geworfen?
         </span>
         <div className="checkdart-row" role="group" aria-labelledby="cd-darts">
           {[1, 2, 3].map((d) => (

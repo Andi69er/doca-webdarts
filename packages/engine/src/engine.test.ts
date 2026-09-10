@@ -98,6 +98,43 @@ describe("X01 – Bust & Double-Out", () => {
   });
 });
 
+describe("X01 – Checkout per RECORD_SCORE (Endsumme)", () => {
+  const solo = [
+    { id: "a1", name: "A" },
+    { id: "b1", name: "B" },
+  ];
+  const soloTeams = [
+    { id: "A", name: "A", playerIds: ["a1"] },
+    { id: "B", name: "B", playerIds: ["b1"] },
+  ];
+  const cfg = (start: number): MatchConfig => ({
+    mode: "x01",
+    x01: { startScore: start, out: "double", in: "straight" },
+    legsToWinSet: 1,
+    setsToWin: 1,
+    bullOff: false,
+    teamSize: 1,
+  });
+
+  // Ungerade Checkouts (41, 3, 5 …) wurden vorher intern zu einem 1-Punkt-Bust
+  // verrechnet und nie als Leg-Gewinn gewertet.
+  for (const co of [40, 41, 3, 5, 7, 19, 49, 50, 51, 60, 100, 170]) {
+    it(`Checkout ${co} wird als Leg-Sieg gewertet (nicht Bust)`, () => {
+      let m = createMatch(cfg(co), solo, soloTeams);
+      m = reduceMatch(m, {
+        type: "RECORD_SCORE",
+        score: co,
+        darts: 3,
+        finishedOnDouble: true,
+        doubleDarts: 1,
+      });
+      expect(m.legsWonInSet[0]).toBe(1);
+      expect(m.phase).toBe("finished");
+      expect(m.matchWinnerTeamIndex).toBe(0);
+    });
+  }
+});
+
 describe("X01 – Legs, Anwurfwechsel, Match-Ende", () => {
   it("Team A gewinnt 2 Legs → Match zu Ende, Anwurf wechselt zwischen Legs", () => {
     const cfg: MatchConfig = {

@@ -290,14 +290,24 @@ function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState
 function scoreToDarts(score: number, finishedOnDouble: boolean): Dart[] {
   if (score === 0) return [{ value: 0, multiplier: 1 }];
   if (finishedOnDouble) {
-    const doubleVal = Math.min(50, score);
+    // Der LETZTE Dart muss ein gültiges Doppel sein: D1..D20 (gerade 2..40)
+    // oder Bull (50). Der Rest wird als ein Single-Dart davorgesetzt, sodass die
+    // Punkte exakt aufgehen. Wichtig für ungerade Checkouts wie 41 (= 1 + D20).
+    let doubleVal: number;
+    if (score <= 50 && score % 2 === 0) {
+      doubleVal = score; // sauberes Doppel
+    } else if (score <= 51) {
+      doubleVal = score - 1; // ungerade ≤ 51 → Single 1 + gerades Doppel
+    } else {
+      doubleVal = 50; // hoher Rest → Bull-Finish
+    }
     const rest = score - doubleVal;
     const darts: Dart[] = [];
     if (rest > 0) darts.push({ value: rest, multiplier: 1 });
     darts.push(
       doubleVal === 50
         ? { value: 25, multiplier: 2 }
-        : { value: Math.floor(doubleVal / 2), multiplier: 2 },
+        : { value: doubleVal / 2, multiplier: 2 },
     );
     return darts;
   }
