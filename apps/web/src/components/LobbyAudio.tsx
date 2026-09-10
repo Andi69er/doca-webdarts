@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useConnectionState,
+  useLocalParticipant,
+} from "@livekit/components-react";
+import { ConnectionState } from "livekit-client";
 import { emitAck } from "../net";
 import { getMicDeviceId } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
@@ -80,6 +86,20 @@ export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boo
 
 function MicBar({ hub, onLeave }: { hub: boolean; onLeave?: () => void }) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+  const connState = useConnectionState();
+  const micInit = useRef(false);
+
+  // Nach dem Beitreten (Hub) das Mikro gleich aktiv schalten.
+  useEffect(() => {
+    if (!hub || micInit.current) return;
+    if (connState === ConnectionState.Connected) {
+      micInit.current = true;
+      const mic = getMicDeviceId();
+      void localParticipant
+        .setMicrophoneEnabled(true, mic ? { deviceId: mic } : undefined)
+        .catch(() => {});
+    }
+  }, [hub, connState, localParticipant]);
 
   const toggleMic = () => {
     const mic = getMicDeviceId();
