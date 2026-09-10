@@ -97,7 +97,7 @@ export function BullOffPanel({
           </div>
           <div className="row">
             <button className="primary" disabled={darts.length === 0} onClick={submit}>
-              Wurf werten ({darts.length})
+              Wurf bestätigen ({darts.length})
             </button>
             <button className="ghost" disabled={darts.length === 0} onClick={() => setDarts(darts.slice(0, -1))}>
               letzten zurück

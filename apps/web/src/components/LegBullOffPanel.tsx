@@ -96,7 +96,7 @@ export function LegBullOffPanel({ app, disabled = false }: { app: AppApi; disabl
           </div>
           <div className="row">
             <button className="primary" disabled={darts.length === 0} onClick={submit}>
-              Wurf werten ({darts.length})
+              Wurf bestätigen ({darts.length})
             </button>
             <button
               className="ghost"
