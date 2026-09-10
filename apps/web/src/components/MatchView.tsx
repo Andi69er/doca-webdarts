@@ -6,6 +6,7 @@ import { DartInput } from "./DartInput";
 import { BullOffPanel } from "./BullOffPanel";
 import { LegBullOffPanel } from "./LegBullOffPanel";
 import { RoomChat } from "./RoomChat";
+import { WinnerCelebration } from "./WinnerCelebration";
 import { MatchStats } from "./MatchStats";
 import { RematchPanel } from "./RematchPanel";
 import { PauseBanner } from "./PauseBanner";
@@ -80,6 +81,8 @@ export function MatchView({ app }: { app: AppApi }) {
           <RoomChat app={app} />
         </div>
       </div>
+
+      <WinnerCelebration match={match} />
     </div>
   );
 }
