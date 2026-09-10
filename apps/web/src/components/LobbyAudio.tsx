@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
-import { LiveKitRoom, RoomAudioRenderer, StartAudio, useLocalParticipant } from "@livekit/components-react";
+import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
 import { emitAck } from "../net";
 import { getMicDeviceId } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
 
 /**
  * Sprachchat über LiveKit – reine Audio-Verbindung, Mikro standardmäßig AUS.
- * `hub` = globaler Kanal aller Online (im Hub); sonst der aktuelle Raum.
+ * `hub` = globaler Kanal aller Online: **opt-in**, erst auf „Beitreten" verbindet
+ * er (spart LiveKit-Kontingent, kein Ton-Symbol wenn man nicht will). Im Raum
+ * verbindet er automatisch (da will man mit dem Gegner reden).
  */
 export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boolean }) {
+  const [joined, setJoined] = useState(!hub);
   const [conn, setConn] = useState<
-    { status: "loading" } | { status: "off" } | { status: "ready"; token: string; url: string }
-  >({ status: "loading" });
+    { status: "idle" } | { status: "loading" } | { status: "off" } | { status: "ready"; token: string; url: string }
+  >({ status: hub ? "idle" : "loading" });
 
   useEffect(() => {
+    if (!joined) return;
     let cancelled = false;
+    setConn({ status: "loading" });
     const req = hub
       ? emitAck("livekit:hubToken", {})
       : emitAck("livekit:token", { roomId: roomId ?? "" });
@@ -28,43 +33,73 @@ export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boo
     return () => {
       cancelled = true;
     };
-  }, [roomId, hub]);
+  }, [roomId, hub, joined]);
 
-  if (conn.status !== "ready") return null;
+  if (hub && !joined) {
+    return (
+      <div className="lobby-audio">
+        <span className="lbl">🎙 Sprachchat</span>
+        <button className="ghost" onClick={() => setJoined(true)}>
+          Beitreten
+        </button>
+      </div>
+    );
+  }
+
+  if (conn.status === "off") {
+    return (
+      <div className="lobby-audio">
+        <span className="lbl">🎙 Sprachchat</span>
+        <span className="hint">gerade nicht verfügbar</span>
+        {hub && (
+          <button className="ghost" onClick={() => setJoined(false)}>
+            OK
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (conn.status !== "ready") {
+    return (
+      <div className="lobby-audio">
+        <span className="lbl">🎙 Sprachchat</span>
+        <span className="hint">verbinde …</span>
+      </div>
+    );
+  }
 
   return (
     <LiveKitRoom serverUrl={conn.url} token={conn.token} connect audio={false} video={false}>
       <RoomAudioRenderer />
       <AutoStartAudio />
-      <MicBar hub={hub} />
+      <MicBar hub={hub} onLeave={hub ? () => setJoined(false) : undefined} />
     </LiveKitRoom>
   );
 }
 
-function MicBar({ hub }: { hub: boolean }) {
+function MicBar({ hub, onLeave }: { hub: boolean; onLeave?: () => void }) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
-  const canTalk = localParticipant.permissions?.canPublish ?? false;
+
+  const toggleMic = () => {
+    const mic = getMicDeviceId();
+    void localParticipant.setMicrophoneEnabled(
+      !isMicrophoneEnabled,
+      mic ? { deviceId: mic } : undefined,
+    );
+  };
 
   return (
     <div className="lobby-audio">
       <span className="lbl">🎙 Sprachchat{hub ? " (alle Online)" : ""}</span>
-      {canTalk ? (
-        <button
-          className={isMicrophoneEnabled ? "primary" : "ghost"}
-          onClick={() => {
-            const mic = getMicDeviceId();
-            void localParticipant.setMicrophoneEnabled(
-              !isMicrophoneEnabled,
-              mic ? { deviceId: mic } : undefined,
-            );
-          }}
-        >
-          {isMicrophoneEnabled ? "🎤 Mikro an" : "🔇 Mikro aus"}
+      <button className={isMicrophoneEnabled ? "primary" : "ghost"} onClick={toggleMic}>
+        {isMicrophoneEnabled ? "🎤 Mikro an" : "🔇 Mikro aus"}
+      </button>
+      {onLeave && (
+        <button className="ghost" onClick={onLeave}>
+          Verlassen
         </button>
-      ) : (
-        <span className="hint">nur zuhören</span>
       )}
-      <StartAudio label="🔊 Ton aktivieren" className="ghost" />
     </div>
   );
 }
