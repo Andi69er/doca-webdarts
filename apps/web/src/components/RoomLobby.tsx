@@ -94,6 +94,29 @@ export function RoomLobby({ app }: { app: AppApi }) {
   const usesSets = cfg.setsToWin > 1;
   const lockNote = isHost ? null : <span className="lobby-lock">nur der Host ändert das</span>;
 
+  // WM-Modus: Distanzen der PDC-WM als Schnellwahl (füllt nur die Format-Felder).
+  const WM_ROUNDS: { key: string; label: string; sets: number }[] = [
+    { key: "r12", label: "Runde 1 / 2 · Best of 5 Sätze", sets: 3 },
+    { key: "r3", label: "Runde 3 / Achtelfinale · Best of 7", sets: 4 },
+    { key: "qf", label: "Viertelfinale · Best of 9", sets: 5 },
+    { key: "sf", label: "Halbfinale · Best of 11", sets: 6 },
+    { key: "f", label: "Finale · Best of 13", sets: 7 },
+  ];
+  const wmCurrent =
+    cfg.mode === "x01" && cfg.legsToWinSet === 3 && !!cfg.twoClearLegs
+      ? (WM_ROUNDS.find((r) => r.sets === cfg.setsToWin)?.key ?? "")
+      : "";
+  const applyWm = (key: string) => {
+    const r = WM_ROUNDS.find((x) => x.key === key);
+    if (!r) return;
+    patch({
+      setsToWin: r.sets,
+      legsToWinSet: 3,
+      twoClearLegs: true,
+      x01: { ...(cfg.x01 ?? { startScore: 501, out: "double", in: "straight" }), startScore: 501, out: "double" },
+    });
+  };
+
   return (
     <div className="stack lobby-setup">
       {members.length > 0 && (
@@ -214,6 +237,28 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <h3 className="section-title">Format</h3>
           {lockNote}
         </div>
+        {cfg.mode === "x01" && (
+          <label className="field">
+            <span className="lbl">WM-Modus (Distanz)</span>
+            <select
+              disabled={!isHost}
+              value={wmCurrent}
+              onChange={(e) => applyWm(e.target.value)}
+            >
+              <option value="">— frei einstellen</option>
+              {WM_ROUNDS.map((r) => (
+                <option key={r.key} value={r.key}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <span className="hint">
+              PDC-WM-Distanz: je Satz First to 3 Legs, Entscheidungssatz 2 Clear Legs. Füllt die
+              Felder unten.
+            </span>
+          </label>
+        )}
+
         <div className="grid2">
           <label className="field">
             <span className="lbl">Sätze (1 = ohne)</span>
