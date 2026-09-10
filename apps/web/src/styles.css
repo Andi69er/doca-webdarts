@@ -256,6 +256,21 @@ body:not(.webdarts-embedded) #webdarts-root {
   border: 1px dashed var(--line); border-radius: 14px; padding: 24px;
 }
 
+/* ---------- Kamera-Selbsttest (Lobby) ---------- */
+.camcheck-preview {
+  width: 100%; max-width: 360px; aspect-ratio: 4 / 3; align-self: center;
+  background: #0b0f18; border-radius: 10px; object-fit: cover;
+  transform: scaleX(-1); /* Spiegelbild wie gewohnt */
+}
+.camcheck-ok {
+  border: 1px solid var(--accent); background: #10331c;
+  border-radius: 8px; padding: 8px 10px; color: var(--accent-hi);
+}
+.camcheck-err {
+  border: 1px solid var(--danger); background: #331416;
+  border-radius: 8px; padding: 8px 10px; color: #ffc9ca;
+}
+
 /* ---------- Scoreboard (darts-live-Stil) ---------- */
 .sb2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .sb2-team {
