@@ -158,7 +158,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <h3 className="section-title">Spielmodus</h3>
           {lockNote}
         </div>
-        <div className="grid2">
+        <div className="lobby-fields">
           <label className="field">
             <span className="lbl">Spielart</span>
             <select
@@ -241,29 +241,21 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <h3 className="section-title">Format</h3>
           {lockNote}
         </div>
-        {cfg.mode === "x01" && (
-          <label className="field">
-            <span className="lbl">WM-Modus (Distanz)</span>
-            <select
-              disabled={!isHost}
-              value={wmCurrent}
-              onChange={(e) => applyWm(e.target.value)}
-            >
-              <option value="">– nicht nach WM-Distanz –</option>
-              {WM_ROUNDS.map((r) => (
-                <option key={r.key} value={r.key}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-            <span className="hint">
-              „– nicht nach WM-Distanz –": es zählen nur die unten eingestellten Sätze/Legs. Sonst
-              füllt die Auswahl die Felder (je Satz First to 3 Legs, Entscheidungssatz 2 Clear Legs).
-            </span>
-          </label>
-        )}
+        <div className="lobby-fields">
+          {cfg.mode === "x01" && (
+            <label className="field" style={{ gridColumn: "1 / -1" }}>
+              <span className="lbl">WM-Modus (Distanz)</span>
+              <select disabled={!isHost} value={wmCurrent} onChange={(e) => applyWm(e.target.value)}>
+                <option value="">– nicht nach WM-Distanz –</option>
+                {WM_ROUNDS.map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
-        <div className="grid2">
           <label className="field">
             <span className="lbl">Sätze (1 = ohne)</span>
             <div className="row" style={{ gap: 6 }}>
@@ -283,7 +275,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 disabled={!isHost}
                 value={usesSets ? fromWins(setFmt, cfg.setsToWin) : 1}
                 onChange={(e) => patch({ setsToWin: toWins(setFmt, Number(e.target.value), 13) })}
-                style={{ width: 64 }}
+                style={{ width: 56 }}
               />
             </div>
           </label>
@@ -307,7 +299,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 disabled={!isHost}
                 value={fromWins(legFmt, cfg.legsToWinSet)}
                 onChange={(e) => patch({ legsToWinSet: toWins(legFmt, Number(e.target.value), 21) })}
-                style={{ width: 64 }}
+                style={{ width: 56 }}
               />
             </div>
           </label>
@@ -315,14 +307,14 @@ export function RoomLobby({ app }: { app: AppApi }) {
         <div className="hint">
           {usesSets ? (
             <>
-              Satz: wer zuerst <strong>{cfg.legsToWinSet}</strong> Leg
-              {cfg.legsToWinSet > 1 ? "s" : ""} hat (= Best of {cfg.legsToWinSet * 2 - 1}). Match: wer
-              zuerst <strong>{cfg.setsToWin}</strong> Sätze hat (= Best of {cfg.setsToWin * 2 - 1}).
+              First to <strong>{cfg.setsToWin}</strong> Sätze · je Satz First to{" "}
+              <strong>{cfg.legsToWinSet}</strong> Legs
+              {cfg.twoClearLegs ? " · Entscheidungssatz 2 Clear Legs" : ""}.
             </>
           ) : (
             <>
-              Wer zuerst <strong>{cfg.legsToWinSet}</strong> Leg{cfg.legsToWinSet > 1 ? "s" : ""}{" "}
-              gewinnt · First to {cfg.legsToWinSet} = Best of {cfg.legsToWinSet * 2 - 1}.
+              First to <strong>{cfg.legsToWinSet}</strong> Legs (= Best of {cfg.legsToWinSet * 2 - 1})
+              {cfg.twoClearLegs ? " · 2 Clear Legs" : ""}.
             </>
           )}
         </div>
@@ -341,10 +333,8 @@ export function RoomLobby({ app }: { app: AppApi }) {
             checked={cfg.bullOff}
             onChange={(e) => patch({ bullOff: e.target.checked })}
           />
-          <span>
-            Ausbullen um den Anwurf
-            <span className="hint"> – vor dem ersten Leg wird ausgebullt</span>
-          </span>
+          <span className="lobby-opt-main">Ausbullen um den Anwurf</span>
+          <span className="hint">vor dem ersten Leg wird ausgebullt</span>
         </label>
 
         <label className="lobby-opt">
@@ -354,13 +344,10 @@ export function RoomLobby({ app }: { app: AppApi }) {
             checked={!!cfg.twoClearLegs}
             onChange={(e) => patch({ twoClearLegs: e.target.checked })}
           />
-          <span>
-            2 Clear Legs
-            <span className="hint">
-              {" "}
-              – nur im Entscheidungssatz: Sieg erst mit 2 Legs Vorsprung, Sudden Death bei{" "}
-              {cfg.legsToWinSet + 2}:{cfg.legsToWinSet + 2}
-            </span>
+          <span className="lobby-opt-main">2 Clear Legs</span>
+          <span className="hint">
+            nur im Entscheidungssatz: 2 Legs Vorsprung, Sudden Death bei {cfg.legsToWinSet + 2}:
+            {cfg.legsToWinSet + 2}
           </span>
         </label>
 
@@ -372,11 +359,11 @@ export function RoomLobby({ app }: { app: AppApi }) {
             checked={(cfg.legBulloffRounds ?? 0) > 0}
             onChange={(e) => patch({ legBulloffRounds: e.target.checked ? 20 : 0 })}
           />
-          <span>
-            <label htmlFor="opt-legbull">Nach X Runden das Leg durch Ausbullen entscheiden</label>
+          <span className="lobby-opt-main">
+            <label htmlFor="opt-legbull">Leg nach X Runden ausbullen</label>
             {(cfg.legBulloffRounds ?? 0) > 0 && (
-              <span className="row" style={{ gap: 6, margin: "6px 0" }}>
-                <span className="hint">Limit (Aufnahmen pro Spieler):</span>
+              <>
+                {" – Limit "}
                 <input
                   type="number"
                   min={5}
@@ -388,14 +375,15 @@ export function RoomLobby({ app }: { app: AppApi }) {
                       legBulloffRounds: Math.max(5, Math.min(40, Number(e.target.value) || 20)),
                     })
                   }
-                  style={{ width: 64 }}
+                  style={{ width: 52 }}
                 />
-              </span>
+                {" Aufnahmen/Spieler"}
+              </>
             )}
-            <span className="hint">
-              alle Spieler werfen 3 Darts auf Bull (A1 → B1 → A2 → B2), näher gewinnt das Leg. Greift
-              nicht, wenn das Leg das Match entscheiden würde.
-            </span>
+          </span>
+          <span className="hint">
+            alle werfen 3 Darts auf Bull (A1 → B1 → A2 → B2), näher gewinnt das Leg – nicht im
+            Match-entscheidenden Leg
           </span>
         </div>
       </div>
