@@ -47,6 +47,8 @@ const GRACE_SEATED_MS = 20 * 60_000;
  */
 const GRACE_SEATED_LOBBY_MS = 30 * 60_000;
 const GRACE_LOBBY_MS = 20_000;
+/** Ab wie vielen gleichzeitig Online der globale Hub-Sprachchat deaktiviert wird. */
+const HUB_VOICE_MAX = 12;
 
 const app = express();
 app.disable("x-powered-by");
@@ -548,6 +550,8 @@ io.on("connection", (socket) => {
     if (tooMany(ack, "token", 20)) return;
     if (!hub.get(me())) return ack({ ok: false, error: "Nicht in der Lobby." });
     if (!videoEnabled) return ack({ ok: true, data: { disabled: true } });
+    // Schutz des LiveKit-Kontingents: globaler Sprachkanal nur bis HUB_VOICE_MAX Online.
+    if (hub.size > HUB_VOICE_MAX) return ack({ ok: true, data: { disabled: true } });
     try {
       const token = await createLivekitToken({
         room: "webdarts-hub",

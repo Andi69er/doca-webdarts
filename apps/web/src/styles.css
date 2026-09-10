@@ -321,6 +321,17 @@ body:not(.webdarts-embedded) #webdarts-root {
   border: 1px dashed var(--line); border-radius: 14px; padding: 24px;
 }
 
+/* ---------- Toast (auto-dismiss) ---------- */
+.wd-toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  z-index: 4000; max-width: min(92vw, 460px);
+  background: #2a2c35; color: #fff; border: 1px solid var(--gold);
+  border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.4;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); cursor: pointer;
+  animation: wd-toast-in 0.2s ease;
+}
+@keyframes wd-toast-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+
 /* ---------- Raum-Chat ---------- */
 .room-chat { gap: 8px; }
 .room-chat-head {

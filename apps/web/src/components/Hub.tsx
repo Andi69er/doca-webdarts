@@ -30,6 +30,22 @@ export function Hub({ app }: { app: AppApi }) {
   const [portal, setPortal] = useState<Record<string, PortalStats>>({});
   const portalAsked = useRef<Set<string>>(new Set());
 
+  // Hub-Sprachchat nur bis 12 gleichzeitig Online (LiveKit-Kontingent).
+  const HUB_VOICE_MAX = 12;
+  const onlineCount = hub?.users.length ?? 0;
+  const voiceOk = onlineCount <= HUB_VOICE_MAX;
+  const [voiceToast, setVoiceToast] = useState(false);
+  const prevVoiceOk = useRef(true);
+  useEffect(() => {
+    if (prevVoiceOk.current && !voiceOk) setVoiceToast(true);
+    prevVoiceOk.current = voiceOk;
+  }, [voiceOk]);
+  useEffect(() => {
+    if (!voiceToast) return;
+    const t = setTimeout(() => setVoiceToast(false), 10_000);
+    return () => clearTimeout(t);
+  }, [voiceToast]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ block: "end" });
   }, [hub?.chat.length]);
@@ -201,10 +217,21 @@ export function Hub({ app }: { app: AppApi }) {
         </div>
       </div>
 
+      {voiceToast && (
+        <div className="wd-toast" role="status" onClick={() => setVoiceToast(false)}>
+          Hub-Sprachchat pausiert – mehr als {HUB_VOICE_MAX} gleichzeitig online. Er kommt automatisch
+          zurück, sobald wieder weniger da sind. (Tippen zum Schließen)
+        </div>
+      )}
+
       {/* Chat */}
       <div className="card stack chat-card">
         <h3 className="section-title">Lobby-Chat</h3>
-        <LobbyAudio hub />
+        {voiceOk ? (
+          <LobbyAudio hub />
+        ) : (
+          <div className="hint">🎙 Sprachchat pausiert ({onlineCount} online, Limit {HUB_VOICE_MAX}).</div>
+        )}
         <div className="chat-scroll" role="log" aria-live="polite" aria-label="Lobby-Chat-Verlauf">
           {hub.chat.length === 0 && <div className="hint">Noch nichts gesagt. Frag doch nach einem Spiel!</div>}
           {hub.chat.map((m) =>
