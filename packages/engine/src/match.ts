@@ -201,7 +201,21 @@ function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState
 
   const usesSets = state.config.setsToWin > 1;
 
-  if (legsWonInSet[winnerTeamIndex]! >= state.config.legsToWinSet) {
+  // „2 Clear Legs" gilt nur im Entscheidungssatz. Ohne Sätze ist das ganze
+  // Leg-Match der Entscheidungssatz; mit Sätzen der, in dem beide Teams nur
+  // noch diesen einen Satz zum Match-Sieg brauchen.
+  const legTarget = state.config.legsToWinSet;
+  const wLegs = legsWonInSet[winnerTeamIndex]!;
+  const lLegs = legsWonInSet[1 - winnerTeamIndex]!;
+  const decidingSet =
+    !usesSets ||
+    (setsWon[0]! === state.config.setsToWin - 1 && setsWon[1]! === state.config.setsToWin - 1);
+  const twoClear = !!state.config.twoClearLegs && decidingSet;
+  const setDecided = twoClear
+    ? wLegs >= legTarget && (wLegs - lLegs >= 2 || wLegs >= legTarget + 3)
+    : wLegs >= legTarget;
+
+  if (setDecided) {
     if (usesSets) {
       setsWon[winnerTeamIndex] = setsWon[winnerTeamIndex]! + 1;
       setIndex += 1;

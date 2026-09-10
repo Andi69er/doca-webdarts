@@ -274,6 +274,7 @@ export function defaultConfig(): MatchConfig {
     legsToWinSet: 3,
     setsToWin: 1,
     bullOff: true,
+    twoClearLegs: false,
     teamSize: 2,
   };
 }

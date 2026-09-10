@@ -28,6 +28,7 @@ export function sanitizeConfig(raw: unknown): MatchConfig {
     legsToWinSet: clampInt(r.legsToWinSet, 1, 21, 3),
     setsToWin: clampInt(r.setsToWin, 1, 13, 1),
     bullOff: Boolean(r.bullOff),
+    twoClearLegs: Boolean(r.twoClearLegs),
     teamSize: r.teamSize === 1 ? 1 : 2,
   };
 }

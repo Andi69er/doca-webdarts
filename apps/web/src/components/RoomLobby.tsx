@@ -297,6 +297,23 @@ export function RoomLobby({ app }: { app: AppApi }) {
             <span className="hint"> – vor dem ersten Leg wird ausgebullt</span>
           </span>
         </label>
+
+        <label className="lobby-opt">
+          <input
+            type="checkbox"
+            disabled={!isHost}
+            checked={!!cfg.twoClearLegs}
+            onChange={(e) => patch({ twoClearLegs: e.target.checked })}
+          />
+          <span>
+            2 Clear Legs
+            <span className="hint">
+              {" "}
+              – nur im Entscheidungssatz: Sieg erst mit 2 Legs Vorsprung, Sudden Death bei{" "}
+              {cfg.legsToWinSet + 2}:{cfg.legsToWinSet + 2}
+            </span>
+          </span>
+        </label>
       </div>
 
       {/* ── 4) Gegner & Verbindung ───────────────────────────────────── */}

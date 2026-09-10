@@ -124,6 +124,66 @@ describe("X01 – Legs, Anwurfwechsel, Match-Ende", () => {
   });
 });
 
+describe("2 Clear Legs (Entscheidungssatz)", () => {
+  const solo = [
+    { id: "a1", name: "A" },
+    { id: "b1", name: "B" },
+  ];
+  const soloTeams = [
+    { id: "A", name: "A", playerIds: ["a1"] },
+    { id: "B", name: "B", playerIds: ["b1"] },
+  ];
+  const MISS: Dart = { value: 0, multiplier: 1 };
+  const D1: Dart = { value: 1, multiplier: 2 };
+  const cfg = (over: Partial<MatchConfig>): MatchConfig => ({
+    mode: "x01",
+    x01: { startScore: 2, out: "double", in: "straight" },
+    legsToWinSet: 3,
+    setsToWin: 1,
+    bullOff: false,
+    teamSize: 1,
+    ...over,
+  });
+  const winLegFor = (m: ReturnType<typeof createMatch>, pid: string) => {
+    let g = 0;
+    while (currentThrower(m)?.playerId !== pid && g++ < 12) {
+      m = reduceMatch(m, { type: "RECORD_VISIT", darts: [MISS] });
+    }
+    return reduceMatch(m, { type: "RECORD_VISIT", darts: [D1] });
+  };
+
+  it("ohne 2-Clear: 3:2 beendet das Match", () => {
+    let m = createMatch(cfg({ twoClearLegs: false }), solo, soloTeams);
+    for (const p of ["a1", "b1", "a1", "b1", "a1"]) m = winLegFor(m, p);
+    expect(m.legsWonInSet).toEqual([3, 2]);
+    expect(m.phase).toBe("finished");
+    expect(m.matchWinnerTeamIndex).toBe(0);
+  });
+
+  it("mit 2-Clear: 3:2 läuft weiter, 4:2 beendet", () => {
+    let m = createMatch(cfg({ twoClearLegs: true }), solo, soloTeams);
+    for (const p of ["a1", "b1", "a1", "b1", "a1"]) m = winLegFor(m, p); // 3:2
+    expect(m.phase).toBe("playing");
+    expect(m.legsWonInSet).toEqual([3, 2]);
+    m = winLegFor(m, "b1"); // 3:3
+    m = winLegFor(m, "a1"); // 4:3
+    expect(m.phase).toBe("playing");
+    m = winLegFor(m, "a1"); // 5:3 → 2 Vorsprung
+    expect(m.phase).toBe("finished");
+    expect(m.matchWinnerTeamIndex).toBe(0);
+  });
+
+  it("mit 2-Clear: Sudden Death bei 5:5 → 6:5 beendet", () => {
+    let m = createMatch(cfg({ twoClearLegs: true }), solo, soloTeams);
+    for (const p of ["a1", "b1", "a1", "b1", "a1", "b1", "a1", "b1", "a1", "b1"]) m = winLegFor(m, p);
+    expect(m.legsWonInSet).toEqual([5, 5]);
+    expect(m.phase).toBe("playing");
+    m = winLegFor(m, "b1"); // 5:6 → Sudden Death, B gewinnt
+    expect(m.phase).toBe("finished");
+    expect(m.matchWinnerTeamIndex).toBe(1);
+  });
+});
+
 describe("Ausbullen", () => {
   it("näherer Wurf gewinnt den Anwurf", () => {
     const cfg: MatchConfig = { ...x01Config, bullOff: true };

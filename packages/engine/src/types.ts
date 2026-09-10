@@ -99,6 +99,14 @@ export interface MatchConfig {
   setsToWin: number;
   /** Vor dem ersten Leg wird ausgebullt, um den Anwurf zu bestimmen. */
   bullOff: boolean;
+  /**
+   * „2 Clear Legs" – nur im Entscheidungssatz (wie PDC-WM): der Satz ist erst
+   * gewonnen, wenn ein Team `legsToWinSet` Legs UND mindestens 2 Legs Vorsprung
+   * hat. Sudden Death, sobald beide Teams `legsToWinSet + 2` Legs haben (dann
+   * entscheidet das nächste Leg). Ohne Sätze zählt das gesamte Leg-Match als
+   * Entscheidungssatz.
+   */
+  twoClearLegs?: boolean;
   /** Spieler pro Team: 2 = Doppel (Standard), 1 = Einzel. Bestimmt die Sitzplätze. */
   teamSize: 1 | 2;
 }
