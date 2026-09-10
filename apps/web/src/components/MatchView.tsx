@@ -4,6 +4,7 @@ import { Scoreboard } from "./Scoreboard";
 import { CricketBoard } from "./CricketBoard";
 import { DartInput } from "./DartInput";
 import { BullOffPanel } from "./BullOffPanel";
+import { LegBullOffPanel } from "./LegBullOffPanel";
 import { MatchStats } from "./MatchStats";
 import { RematchPanel } from "./RematchPanel";
 import { PauseBanner } from "./PauseBanner";
@@ -65,7 +66,11 @@ export function MatchView({ app }: { app: AppApi }) {
             <BullOffPanel app={app} myTeamIndex={myTeamIndex} disabled={paused} />
           )}
 
-          {match.phase === "playing" && !amSpectator && (
+          {match.phase === "playing" && match.legBullOff && !match.legBullOff.done && (
+            <LegBullOffPanel app={app} disabled={paused || amSpectator} />
+          )}
+
+          {match.phase === "playing" && !amSpectator && !(match.legBullOff && !match.legBullOff.done) && (
             <DartInput app={app} paused={paused} />
           )}
 

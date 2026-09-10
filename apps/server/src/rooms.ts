@@ -516,6 +516,15 @@ export class Room {
       if (!inTeam) {
         return { ok: false, error: "Du wirfst für das andere Team." };
       }
+    } else if (action.type === "LEG_BULLOFF_THROW") {
+      const lbo = (state as { legBullOff?: { order: string[]; attempts: unknown[]; done: boolean } })
+        .legBullOff;
+      if (!lbo || lbo.done) return { ok: false, error: "Kein Leg-Ausbullen aktiv." };
+      const expected = lbo.order[lbo.attempts.length];
+      const expSeat = this.buildSeats().find((s) => s.playerId === expected);
+      if (!expSeat || expSeat.occupantId !== memberId) {
+        return { ok: false, error: "Du bist nicht am Wurf." };
+      }
     } else if (action.type === "RECORD_VISIT" || action.type === "RECORD_SCORE") {
       const thrower = currentThrower(state);
       const throwerSeat = thrower

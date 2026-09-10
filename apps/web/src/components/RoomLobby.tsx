@@ -359,6 +359,41 @@ export function RoomLobby({ app }: { app: AppApi }) {
             </span>
           </span>
         </label>
+
+        <div className="lobby-opt">
+          <input
+            id="opt-legbull"
+            type="checkbox"
+            disabled={!isHost}
+            checked={(cfg.legBulloffRounds ?? 0) > 0}
+            onChange={(e) => patch({ legBulloffRounds: e.target.checked ? 20 : 0 })}
+          />
+          <span>
+            <label htmlFor="opt-legbull">Nach X Runden das Leg durch Ausbullen entscheiden</label>
+            {(cfg.legBulloffRounds ?? 0) > 0 && (
+              <span className="row" style={{ gap: 6, margin: "6px 0" }}>
+                <span className="hint">Limit (Aufnahmen pro Spieler):</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={40}
+                  disabled={!isHost}
+                  value={cfg.legBulloffRounds ?? 20}
+                  onChange={(e) =>
+                    patch({
+                      legBulloffRounds: Math.max(5, Math.min(40, Number(e.target.value) || 20)),
+                    })
+                  }
+                  style={{ width: 64 }}
+                />
+              </span>
+            )}
+            <span className="hint">
+              alle Spieler werfen 3 Darts auf Bull (A1 → B1 → A2 → B2), näher gewinnt das Leg. Greift
+              nicht, wenn das Leg das Match entscheiden würde.
+            </span>
+          </span>
+        </div>
       </div>
 
       {/* ── 4) Gegner & Verbindung ───────────────────────────────────── */}

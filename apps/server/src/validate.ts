@@ -29,6 +29,7 @@ export function sanitizeConfig(raw: unknown): MatchConfig {
     setsToWin: clampInt(r.setsToWin, 1, 13, 1),
     bullOff: Boolean(r.bullOff),
     twoClearLegs: Boolean(r.twoClearLegs),
+    legBulloffRounds: clampInt(r.legBulloffRounds, 0, 40, 0),
     teamSize: r.teamSize === 1 ? 1 : 2,
   };
 }
@@ -86,6 +87,25 @@ export function validateAction(raw: unknown): MatchAction | null {
         }
       }
       return { type: "BULLOFF_THROW", teamIndex: a.teamIndex, playerId: a.playerId, darts };
+    }
+
+    case "LEG_BULLOFF_THROW": {
+      if (a.teamIndex !== 0 && a.teamIndex !== 1) return null;
+      if (typeof a.playerId !== "string") return null;
+      if (!Array.isArray(a.darts) || a.darts.length === 0 || a.darts.length > 3) return null;
+      const kinds = new Set(["DBULL", "SBULL", "MISS", "mm"]);
+      const darts: BullOffThrow[] = [];
+      for (const t of a.darts) {
+        if (!t || !kinds.has(t.kind)) return null;
+        if (t.kind === "mm") {
+          const mm = Number(t.mm);
+          if (!Number.isFinite(mm) || mm < 0) return null;
+          darts.push({ kind: "mm", mm });
+        } else {
+          darts.push({ kind: t.kind });
+        }
+      }
+      return { type: "LEG_BULLOFF_THROW", teamIndex: a.teamIndex, playerId: a.playerId, darts };
     }
 
     default:

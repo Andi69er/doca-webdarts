@@ -100,6 +100,14 @@ export interface MatchConfig {
   /** Vor dem ersten Leg wird ausgebullt, um den Anwurf zu bestimmen. */
   bullOff: boolean;
   /**
+   * „Nach X Runden das Leg durch Ausbullen entscheiden": Hat nach dieser Anzahl
+   * Aufnahmen PRO SPIELER (0 = aus) niemand ausgecheckt, werfen alle Spieler in
+   * fester Reihenfolge (A1 → B1 → A2 → B2 …) je 3 Darts auf Bull – der beste Wurf
+   * eines Teams gewinnt das Leg. Greift NICHT, wenn dieses Leg das Match
+   * entscheiden würde (dann wird normal zu Ende gespielt).
+   */
+  legBulloffRounds?: number;
+  /**
    * „2 Clear Legs" – nur im Entscheidungssatz (wie PDC-WM): der Satz ist erst
    * gewonnen, wenn ein Team `legsToWinSet` Legs UND mindestens 2 Legs Vorsprung
    * hat. Sudden Death, sobald beide Teams `legsToWinSet + 2` Legs haben (dann
@@ -200,6 +208,26 @@ export interface LegRecord {
 }
 
 // ---------------------------------------------------------------------------
+// Leg-Entscheidungs-Ausbullen (Timeout nach X Runden)
+// ---------------------------------------------------------------------------
+
+export interface LegBullOffAttempt {
+  playerId: string;
+  teamIndex: number;
+  /** Bis zu 3 Darts auf Bull. */
+  darts: BullOffThrow[];
+}
+
+export interface LegBullOffState {
+  /** Wurfreihenfolge als playerId-Liste, z.B. [A1, B1, A2, B2]. */
+  order: string[];
+  /** Bereits abgegebene Würfe – in Reihenfolge von `order`. */
+  attempts: LegBullOffAttempt[];
+  winnerTeamIndex: number | null;
+  done: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Match-Zustand
 // ---------------------------------------------------------------------------
 
@@ -236,6 +264,12 @@ export interface MatchState {
   /** Abgeschlossene Legs (ältestes zuerst) – Grundlage der Match-Statistik. */
   history: LegRecord[];
 
+  /**
+   * Läuft gerade das Leg-Entscheidungs-Ausbullen (Timeout nach X Runden)?
+   * `phase` bleibt dabei "playing", die normale Eingabe ist aber gesperrt.
+   */
+  legBullOff?: LegBullOffState | null;
+
   /** Gewinner-Team-Index, sobald `phase === "finished"`. */
   matchWinnerTeamIndex: number | null;
 }
@@ -248,6 +282,8 @@ export type MatchAction =
   | { type: "START_BULLOFF" }
   /** Ein kompletter Ausbull-Wurf (1–3 Darts) für ein Team. */
   | { type: "BULLOFF_THROW"; teamIndex: number; playerId: string; darts: BullOffThrow[] }
+  /** Ein Wurf beim Leg-Entscheidungs-Ausbullen (nach Runden-Timeout). */
+  | { type: "LEG_BULLOFF_THROW"; playerId: string; teamIndex: number; darts: BullOffThrow[] }
   | { type: "BEGIN_PLAY" }
   /** Eine komplette Aufnahme des aktuell werfenden Spielers, Dart für Dart. */
   | { type: "RECORD_VISIT"; darts: Dart[] }

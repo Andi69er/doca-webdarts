@@ -5,6 +5,7 @@ import {
   currentThrower,
   findCheckout,
   nextBullOffTeam,
+  nextLegBullOffPlayer,
   matchStats,
   reduceMatch,
   scoreboard,
@@ -121,6 +122,82 @@ describe("X01 – Legs, Anwurfwechsel, Match-Ende", () => {
     expect(m.legsWonInSet[0]).toBe(2);
     expect(m.phase).toBe("finished");
     expect(m.matchWinnerTeamIndex).toBe(0);
+  });
+});
+
+describe("Leg-Ausbullen nach X Runden", () => {
+  const solo = [
+    { id: "a1", name: "A" },
+    { id: "b1", name: "B" },
+  ];
+  const soloTeams = [
+    { id: "A", name: "A", playerIds: ["a1"] },
+    { id: "B", name: "B", playerIds: ["b1"] },
+  ];
+  const MISS_V: Dart = { value: 0, multiplier: 1 };
+  const cfg = (over: Partial<MatchConfig>): MatchConfig => ({
+    mode: "x01",
+    x01: { startScore: 501, out: "double", in: "straight" },
+    legsToWinSet: 3,
+    setsToWin: 1,
+    bullOff: false,
+    teamSize: 1,
+    legBulloffRounds: 2,
+    ...over,
+  });
+  const stall = (m: ReturnType<typeof createMatch>, n: number) => {
+    for (let i = 0; i < n; i++) m = reduceMatch(m, { type: "RECORD_VISIT", darts: [MISS_V] });
+    return m;
+  };
+
+  it("startet das Leg-Ausbullen, sobald beide Teams das Limit erreicht haben", () => {
+    let m = createMatch(cfg({}), solo, soloTeams);
+    m = stall(m, 3); // a1, b1, a1 → min pro Team = 1
+    expect(m.legBullOff ?? null).toBeNull();
+    m = stall(m, 1); // b1 → min = 2 → Trigger
+    expect(m.legBullOff).toBeTruthy();
+    expect(m.legBullOff!.order).toEqual(["a1", "b1"]);
+    expect(m.legBullOff!.done).toBe(false);
+  });
+
+  it("wertet die Würfe und schreibt das Leg dem Sieger zu", () => {
+    let m = createMatch(cfg({}), solo, soloTeams);
+    m = stall(m, 4);
+    expect(nextLegBullOffPlayer(m.legBullOff!)).toBe("a1");
+    m = reduceMatch(m, {
+      type: "LEG_BULLOFF_THROW",
+      playerId: "a1",
+      teamIndex: 0,
+      darts: [{ kind: "DBULL" }],
+    });
+    m = reduceMatch(m, {
+      type: "LEG_BULLOFF_THROW",
+      playerId: "b1",
+      teamIndex: 1,
+      darts: [{ kind: "MISS" }],
+    });
+    expect(m.legBullOff ?? null).toBeNull();
+    expect(m.legsWonInSet).toEqual([1, 0]);
+    expect(m.phase).toBe("playing");
+  });
+
+  it("Wurf außer der Reihe wird ignoriert", () => {
+    let m = createMatch(cfg({}), solo, soloTeams);
+    m = stall(m, 4);
+    m = reduceMatch(m, {
+      type: "LEG_BULLOFF_THROW",
+      playerId: "b1",
+      teamIndex: 1,
+      darts: [{ kind: "DBULL" }],
+    });
+    expect(m.legBullOff!.attempts.length).toBe(0);
+  });
+
+  it("greift nicht, wenn das Leg das Match entscheiden würde", () => {
+    let m = createMatch(cfg({ legsToWinSet: 1 }), solo, soloTeams);
+    m = stall(m, 10);
+    expect(m.legBullOff ?? null).toBeNull();
+    expect(m.phase).toBe("playing");
   });
 });
 

@@ -7,6 +7,12 @@
  */
 
 import { addBullOffThrow, createBullOff } from "./bulloff";
+import {
+  addLegBullOffThrow,
+  createLegBullOff,
+  legBullOffOrder,
+  shouldStartLegBullOff,
+} from "./legbulloff";
 import { findCheckout } from "./checkout";
 import { applyCricketVisit, createCricketLeg } from "./cricket";
 import { applyX01Visit, createX01Leg } from "./x01";
@@ -44,6 +50,7 @@ export function createMatch(config: MatchConfig, players: Player[], teams: Team[
     legStarterTeamIndex: 0,
     visitCounter: 0,
     history: [],
+    legBullOff: null,
     matchWinnerTeamIndex: null,
   };
 }
@@ -119,6 +126,21 @@ export function reduceMatch(state: MatchState, action: MatchAction): MatchState 
       return next;
     }
 
+    case "LEG_BULLOFF_THROW": {
+      if (state.phase !== "playing" || !state.legBullOff || state.legBullOff.done) return state;
+      const lbo = addLegBullOffThrow(state.legBullOff, {
+        playerId: action.playerId,
+        teamIndex: action.teamIndex,
+        darts: action.darts,
+      });
+      if (lbo.done && lbo.winnerTeamIndex !== null) {
+        // Aktuelles (unfertiges) Leg dem Ausbull-Sieger zuschreiben und fortfahren.
+        const decidedLeg = { ...state.leg, winnerTeamIndex: lbo.winnerTeamIndex } as LegState;
+        return advanceAfterLeg({ ...state, leg: decidedLeg, legBullOff: null }, lbo.winnerTeamIndex);
+      }
+      return { ...state, legBullOff: lbo };
+    }
+
     case "BEGIN_PLAY":
       return state.phase === "bulloff" ? { ...state, phase: "playing" } : state;
 
@@ -144,6 +166,7 @@ function recordVisit(
   doubleAttempts: number,
 ): MatchState {
   if (state.phase !== "playing") return state;
+  if (state.legBullOff && !state.legBullOff.done) return state; // Leg-Ausbullen läuft
   const thrower = currentThrower(state);
   if (!thrower) return state;
 
@@ -175,7 +198,12 @@ function recordVisit(
   }
 
   let next: MatchState = { ...state, leg: newLeg, visitCounter: state.visitCounter + 1 };
-  if (legWon) next = advanceAfterLeg(next, thrower.teamIndex);
+  if (legWon) {
+    next = advanceAfterLeg(next, thrower.teamIndex);
+  } else if (shouldStartLegBullOff(next, (newLeg as { visits: { teamIndex: number }[] }).visits)) {
+    // Leg läuft zu lange → per Bull-Wurf entscheiden (A1 → B1 → A2 → B2 …).
+    next = { ...next, legBullOff: createLegBullOff(legBullOffOrder(next)) };
+  }
   return next;
 }
 
@@ -232,6 +260,7 @@ function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState
         setsWon,
         setIndex,
         legIndexInSet,
+        legBullOff: null,
         phase: "finished",
         matchWinnerTeamIndex: winnerTeamIndex,
       };
@@ -247,6 +276,7 @@ function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState
     setsWon,
     setIndex,
     legIndexInSet,
+    legBullOff: null,
     globalLegNumber: state.globalLegNumber + 1,
     legStarterTeamIndex: nextStarter,
     visitCounter: 0,
