@@ -10,6 +10,7 @@ import { Track } from "livekit-client";
 import { scoreboard, type MatchState, type RoomState } from "@webdarts/engine";
 import { emitAck } from "../net";
 import { audioCaptureOpts, videoCaptureOpts } from "../mediaPrefs";
+import { AutoStartAudio } from "./AutoStartAudio";
 import { Avatar } from "./Avatar";
 
 export function VideoStage({ room }: { room: RoomState }) {
@@ -61,10 +62,17 @@ export function VideoStage({ room }: { room: RoomState }) {
       connect
       video={videoCaptureOpts()}
       audio={audioCaptureOpts()}
+      options={{
+        publishDefaults: {
+          simulcast: false,
+          videoEncoding: { maxBitrate: 1_400_000, maxFramerate: 24 },
+        },
+      }}
       style={{ display: "contents" }}
     >
       <Stage room={room} />
       <RoomAudioRenderer />
+      <AutoStartAudio />
       <StartAudio label="🔊 Ton aktivieren" />
     </LiveKitRoom>
   );

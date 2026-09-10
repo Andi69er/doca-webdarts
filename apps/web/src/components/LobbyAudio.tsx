@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { LiveKitRoom, RoomAudioRenderer, StartAudio, useLocalParticipant } from "@livekit/components-react";
 import { emitAck } from "../net";
 import { getMicDeviceId } from "../mediaPrefs";
+import { AutoStartAudio } from "./AutoStartAudio";
 
 /**
  * Sprachchat über LiveKit – reine Audio-Verbindung, Mikro standardmäßig AUS.
@@ -34,6 +35,7 @@ export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boo
   return (
     <LiveKitRoom serverUrl={conn.url} token={conn.token} connect audio={false} video={false}>
       <RoomAudioRenderer />
+      <AutoStartAudio />
       <MicBar hub={hub} />
     </LiveKitRoom>
   );

@@ -619,7 +619,9 @@ body.webdarts-embedded #webdarts-root .card { padding: 24px; }
 body.webdarts-embedded #webdarts-root .section-title { font-size: 17px; }
 body.webdarts-embedded #webdarts-root .user-list { max-height: none; flex: 1; overflow: visible; }
 body.webdarts-embedded #webdarts-root .chat-card { min-height: 0; }
-body.webdarts-embedded #webdarts-root .chat-scroll { min-height: 320px; max-height: none; flex: 1; }
+body.webdarts-embedded #webdarts-root .chat-scroll {
+  min-height: 260px; max-height: 55vh; flex: 1 1 auto; overflow-y: auto;
+}
 body.webdarts-embedded #webdarts-root .uname { font-size: 15px; }
 body.webdarts-embedded #webdarts-root .chat-msg .cm-text { font-size: 15px; }
 body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
