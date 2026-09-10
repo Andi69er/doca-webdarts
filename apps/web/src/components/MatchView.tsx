@@ -7,6 +7,7 @@ import { BullOffPanel } from "./BullOffPanel";
 import { LegBullOffPanel } from "./LegBullOffPanel";
 import { RoomChat } from "./RoomChat";
 import { WinnerCelebration } from "./WinnerCelebration";
+import { BustFlash } from "./BustFlash";
 import { MatchStats } from "./MatchStats";
 import { RematchPanel } from "./RematchPanel";
 import { PauseBanner } from "./PauseBanner";
@@ -83,6 +84,7 @@ export function MatchView({ app }: { app: AppApi }) {
       </div>
 
       <WinnerCelebration match={match} />
+      <BustFlash match={match} />
     </div>
   );
 }

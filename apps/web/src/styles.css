@@ -362,6 +362,26 @@ body:not(.webdarts-embedded) #webdarts-root {
   100% { transform: translateY(-96vh) translateX(var(--dx, 0)) scale(1) rotate(400deg); opacity: 0; }
 }
 
+/* ---------- BUST-Einblendung ---------- */
+.bustflash {
+  position: fixed; left: 50%; top: 36%; z-index: 4500; pointer-events: none;
+  text-align: center; will-change: transform, opacity;
+  animation: bustflash 3s ease forwards;
+}
+.bustflash-word {
+  display: block; font-family: "Oswald", sans-serif; font-weight: 800; line-height: 1;
+  font-size: clamp(64px, 16vw, 180px); letter-spacing: 0.06em; color: #ff4d4f;
+  text-shadow: 0 0 34px rgba(255, 77, 79, 0.55), 0 6px 0 #7a1416;
+}
+.bustflash-emo { font-size: clamp(30px, 7vw, 66px); }
+@keyframes bustflash {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.25) rotate(-10deg); }
+  12%  { opacity: 1; transform: translate(-50%, -50%) scale(1.14) rotate(4deg); }
+  22%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  72%  { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(170%, -50%) scale(0.8) rotate(14deg); }
+}
+
 /* ---------- Toast (auto-dismiss) ---------- */
 .wd-toast {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
