@@ -108,7 +108,11 @@ export function RoomLobby({ app }: { app: AppApi }) {
       : "";
   const applyWm = (key: string) => {
     const r = WM_ROUNDS.find((x) => x.key === key);
-    if (!r) return;
+    if (!r) {
+      // „– nicht nach WM-Distanz –": kein 2-Clear mehr, nur die eingestellten Sätze/Legs.
+      if (cfg.twoClearLegs) patch({ twoClearLegs: false });
+      return;
+    }
     patch({
       setsToWin: r.sets,
       legsToWinSet: 3,
@@ -245,7 +249,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
               value={wmCurrent}
               onChange={(e) => applyWm(e.target.value)}
             >
-              <option value="">— frei einstellen</option>
+              <option value="">– nicht nach WM-Distanz –</option>
               {WM_ROUNDS.map((r) => (
                 <option key={r.key} value={r.key}>
                   {r.label}
@@ -253,8 +257,8 @@ export function RoomLobby({ app }: { app: AppApi }) {
               ))}
             </select>
             <span className="hint">
-              PDC-WM-Distanz: je Satz First to 3 Legs, Entscheidungssatz 2 Clear Legs. Füllt die
-              Felder unten.
+              „– nicht nach WM-Distanz –": es zählen nur die unten eingestellten Sätze/Legs. Sonst
+              füllt die Auswahl die Felder (je Satz First to 3 Legs, Entscheidungssatz 2 Clear Legs).
             </span>
           </label>
         )}
