@@ -4,17 +4,20 @@ import { emitAck } from "../net";
 import { getMicDeviceId } from "../mediaPrefs";
 
 /**
- * Sprachchat in der Lobby: reine Audio-Verbindung über LiveKit, damit man sich
- * schon vor dem Match hört. Mikro standardmäßig AUS – erst per Klick an.
+ * Sprachchat über LiveKit – reine Audio-Verbindung, Mikro standardmäßig AUS.
+ * `hub` = globaler Kanal aller Online (im Hub); sonst der aktuelle Raum.
  */
-export function LobbyAudio({ roomId }: { roomId: string }) {
+export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boolean }) {
   const [conn, setConn] = useState<
     { status: "loading" } | { status: "off" } | { status: "ready"; token: string; url: string }
   >({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    emitAck("livekit:token", { roomId })
+    const req = hub
+      ? emitAck("livekit:hubToken", {})
+      : emitAck("livekit:token", { roomId: roomId ?? "" });
+    req
       .then((res) => {
         if (cancelled) return;
         if ("disabled" in res) setConn({ status: "off" });
@@ -24,25 +27,25 @@ export function LobbyAudio({ roomId }: { roomId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [roomId]);
+  }, [roomId, hub]);
 
   if (conn.status !== "ready") return null;
 
   return (
     <LiveKitRoom serverUrl={conn.url} token={conn.token} connect audio={false} video={false}>
       <RoomAudioRenderer />
-      <MicBar />
+      <MicBar hub={hub} />
     </LiveKitRoom>
   );
 }
 
-function MicBar() {
+function MicBar({ hub }: { hub: boolean }) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const canTalk = localParticipant.permissions?.canPublish ?? false;
 
   return (
     <div className="lobby-audio">
-      <span className="lbl">Sprachchat</span>
+      <span className="lbl">🎙 Sprachchat{hub ? " (alle Online)" : ""}</span>
       {canTalk ? (
         <button
           className={isMicrophoneEnabled ? "primary" : "ghost"}

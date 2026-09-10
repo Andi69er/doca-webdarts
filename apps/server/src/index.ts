@@ -544,6 +544,23 @@ io.on("connection", (socket) => {
     void broadcastRoom(payload.roomId);
   });
 
+  socket.on("livekit:hubToken", async (_payload, ack) => {
+    if (tooMany(ack, "token", 20)) return;
+    if (!hub.get(me())) return ack({ ok: false, error: "Nicht in der Lobby." });
+    if (!videoEnabled) return ack({ ok: true, data: { disabled: true } });
+    try {
+      const token = await createLivekitToken({
+        room: "webdarts-hub",
+        identity: me(),
+        name: displayName(),
+        canPublish: true, // globaler Sprachkanal: jeder darf reden
+      });
+      ack({ ok: true, data: { token, url: livekitUrl() } });
+    } catch (err) {
+      ack({ ok: false, error: "Token-Fehler: " + (err as Error).message });
+    }
+  });
+
   socket.on("livekit:token", async ({ roomId }, ack) => {
     if (tooMany(ack, "token", 20)) return;
     const room = manager.get(roomId);

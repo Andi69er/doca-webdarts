@@ -179,6 +179,11 @@ export interface ClientToServerEvents {
     payload: { roomId: string; text: string },
     ack: (res: AckResult<null>) => void,
   ) => void;
+  /** LiveKit-Token für den globalen Hub-Sprachkanal (alle Online). */
+  "livekit:hubToken": (
+    payload: Record<string, never>,
+    ack: (res: AckResult<{ token: string; url: string } | { disabled: true }>) => void,
+  ) => void;
 
   "room:create": (
     payload: {

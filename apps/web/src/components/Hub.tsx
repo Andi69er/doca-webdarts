@@ -5,6 +5,7 @@ import { embed } from "../embed";
 import { Avatar } from "./Avatar";
 import { BotPicker } from "./BotPicker";
 import { HelpModal } from "./HelpModal";
+import { LobbyAudio } from "./LobbyAudio";
 import { fetchPortalStats, type PortalStats } from "../portalStats";
 
 const BOT_PRESETS: { key: string; label: string; average: number }[] = [
@@ -203,6 +204,7 @@ export function Hub({ app }: { app: AppApi }) {
       {/* Chat */}
       <div className="card stack chat-card">
         <h3 className="section-title">Lobby-Chat</h3>
+        <LobbyAudio hub />
         <div className="chat-scroll" role="log" aria-live="polite" aria-label="Lobby-Chat-Verlauf">
           {hub.chat.length === 0 && <div className="hint">Noch nichts gesagt. Frag doch nach einem Spiel!</div>}
           {hub.chat.map((m) =>
