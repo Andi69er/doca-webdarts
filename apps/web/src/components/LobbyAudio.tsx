@@ -11,10 +11,12 @@ import { getMicDeviceId } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
 
 /**
- * Sprachchat über LiveKit – reine Audio-Verbindung, Mikro standardmäßig AUS.
- * `hub` = globaler Kanal aller Online: **opt-in**, erst auf „Beitreten" verbindet
- * er (spart LiveKit-Kontingent, kein Ton-Symbol wenn man nicht will). Im Raum
- * verbindet er automatisch (da will man mit dem Gegner reden).
+ * Sprachchat über LiveKit. `hub` = globaler Kanal aller Online: **opt-in**,
+ * erst auf „Beitreten" verbindet er (spart LiveKit-Kontingent, kein
+ * Ton-Symbol wenn man nicht will). Im Raum verbindet er automatisch (da will
+ * man mit dem Gegner reden). Sobald verbunden, schaltet sich das Mikro
+ * überall gleich aktiv, wo canPublish erlaubt ist (Hub, Raum-Lobby, Match als
+ * Spieler) – Zuschauer im Match bleiben stumm.
  */
 export function LobbyAudio({
   roomId,
@@ -106,9 +108,11 @@ function MicBar({
   const connState = useConnectionState();
   const micInit = useRef(false);
 
-  // Nach dem Beitreten (Hub) das Mikro gleich aktiv schalten.
+  // Mikro gleich beim Verbinden aktiv schalten – überall wo geredet werden darf
+  // (Hub, Raum-Lobby, Match als Spieler). Zuschauer im Match (canPublish=false)
+  // bleiben stumm, da senden ohnehin serverseitig blockiert ist.
   useEffect(() => {
-    if (!hub || micInit.current) return;
+    if (!canPublish || micInit.current) return;
     if (connState === ConnectionState.Connected) {
       micInit.current = true;
       const mic = getMicDeviceId();
@@ -116,7 +120,7 @@ function MicBar({
         .setMicrophoneEnabled(true, mic ? { deviceId: mic } : undefined)
         .catch(() => {});
     }
-  }, [hub, connState, localParticipant]);
+  }, [canPublish, connState, localParticipant]);
 
   const toggleMic = () => {
     if (!canPublish) return;
