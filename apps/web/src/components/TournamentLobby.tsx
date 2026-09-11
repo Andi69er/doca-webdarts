@@ -74,11 +74,12 @@ export function TournamentLobby({
           gap: 16,
           alignSelf: "flex-start",
           width: "auto",
+          padding: "6px 12px",
         }}
       >
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, lineHeight: 1.25 }}>
           <div style={{ fontWeight: 700 }}>{p.homeName}</div>
-          <div className="hint" style={{ margin: "1px 0" }}>
+          <div className="hint" style={{ margin: 0 }}>
             vs.
           </div>
           <div style={{ fontWeight: 700 }}>{p.awayName}</div>
