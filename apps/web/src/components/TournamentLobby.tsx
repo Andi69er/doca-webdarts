@@ -151,7 +151,9 @@ export function TournamentLobby({
         {myOpenPairings.length === 0 ? (
           <div className="hint">Aktuell kein offenes Match für dich.</div>
         ) : (
-          <div className="room-list">{myOpenPairings.map(renderPairing)}</div>
+          <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            {myOpenPairings.map(renderPairing)}
+          </div>
         )}
       </div>
 
@@ -164,7 +166,9 @@ export function TournamentLobby({
         .map((round) => (
           <div key={round.name} className="card stack">
             <h3 className="section-title">{round.name}</h3>
-            <div className="room-list">{round.pairings.map(renderPairing)}</div>
+            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {round.pairings.map(renderPairing)}
+            </div>
           </div>
         ))}
     </div>
