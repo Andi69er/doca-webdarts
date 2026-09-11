@@ -87,9 +87,13 @@ export function TournamentPage({
         </div>
       )}
 
-      {detail.rounds.length === 0 && <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>}
+      {detail.rounds.every((round) => round.pairings.length === 0) && (
+        <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>
+      )}
 
-      {detail.rounds.map((round) => (
+      {detail.rounds
+        .filter((round) => round.pairings.length > 0)
+        .map((round) => (
         <div key={round.name} className="card stack">
           <h3 className="section-title">{round.name}</h3>
           <div className="room-list">
