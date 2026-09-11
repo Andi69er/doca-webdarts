@@ -81,14 +81,29 @@ function displayNamePart(full: string, isDouble: boolean): [string, string] {
   return [clean, clean];
 }
 
+/** Voller Anzeigename für die Anwesenheitsliste, wenn die uid aufgelöst werden
+ *  konnte: "Vorname Nachname (Spielername)" aus dem echten Mitgliederdatensatz -
+ *  aussagekräftiger als der rohe 3K-Namensfetzen ("nur Nachname" bei Doppel). */
+function memberDisplayName(uid: string, members: DirectoryMember[]): string | null {
+  const numId = Number(uid.slice(2));
+  const m = members.find((x) => x.id === numId);
+  if (!m) return null;
+  const full = [m.firstname, m.lastname].filter(Boolean).join(" ").trim();
+  const username = m.username || m.darts_live_username;
+  if (full && username) return `${full} (${username})`;
+  return full || username || null;
+}
+
 /** Eindeutige Spielerliste über alle Paarungen einer Runde, für die
  *  Anwesenheitsliste in der Turnier-Lobby. Dedupliziert über uid, bei
  *  unaufgelösten Spielern über den Rohnamen. */
 class ParticipantCollector {
   private byKey = new Map<string, TournamentParticipant>();
-  add(uid: string | null, name: string): void {
-    const key = uid ?? "raw:" + name;
-    if (!this.byKey.has(key)) this.byKey.set(key, { uid, name });
+  add(uid: string | null, fallbackName: string, members: DirectoryMember[]): void {
+    const key = uid ?? "raw:" + fallbackName;
+    if (this.byKey.has(key)) return;
+    const name = (uid && memberDisplayName(uid, members)) || fallbackName;
+    this.byKey.set(key, { uid, name });
   }
   list(): TournamentParticipant[] {
     return [...this.byKey.values()];
@@ -268,11 +283,11 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
       );
       const [homeName1, homeName2] = displayNamePart(m.participantHomeName, isDouble);
       const [awayName1, awayName2] = displayNamePart(m.participantAwayName, isDouble);
-      participants.add(homeUid, homeName1);
-      participants.add(awayUid, awayName1);
+      participants.add(homeUid, homeName1, members);
+      participants.add(awayUid, awayName1, members);
       if (isDouble) {
-        participants.add(homeUid2, homeName2);
-        participants.add(awayUid2, awayName2);
+        participants.add(homeUid2, homeName2, members);
+        participants.add(awayUid2, awayName2, members);
       }
       const iAmHome = myUid !== null && (myUid === homeUid || myUid === homeUid2);
       const isMine = iAmHome || (myUid !== null && (myUid === awayUid || myUid === awayUid2));
