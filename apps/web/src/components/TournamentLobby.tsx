@@ -28,27 +28,36 @@ export function TournamentLobby({
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
   const chat = app.tournamentChat;
+  // useApp() liefert bei jedem Render ein neues Objekt - Effekte dürfen deshalb
+  // NICHT von `app` selbst abhängen (sonst Endlosschleife: jede Hub-Änderung
+  // irgendwo im Server, z.B. eine fremde Chat-Nachricht, würde hier den
+  // Turnier-Kanal verlassen+neu betreten bzw. die Daten neu laden). appRef hält
+  // immer die aktuellen Methoden, ohne dass Effekte daran hängen müssen.
+  const appRef = useRef(app);
+  useEffect(() => {
+    appRef.current = app;
+  });
 
   const load = useCallback(() => {
-    app
+    appRef.current
       .tournamentDetail(tournamentId)
       .then((d) => {
         setDetail(d);
         setError(null);
       })
       .catch((e) => setError((e as Error).message));
-  }, [app, tournamentId]);
+  }, [tournamentId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   useEffect(() => {
-    app.enterTournamentLobby(tournamentId).catch(() => {});
+    appRef.current.enterTournamentLobby(tournamentId).catch(() => {});
     return () => {
-      void app.leaveTournamentLobby(tournamentId);
+      void appRef.current.leaveTournamentLobby(tournamentId);
     };
-  }, [app, tournamentId]);
+  }, [tournamentId]);
 
   useEffect(() => {
     if (nearBottomRef.current) chatEndRef.current?.scrollIntoView({ block: "end" });

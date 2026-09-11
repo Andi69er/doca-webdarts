@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TournamentDetail } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { Modal } from "./Modal";
@@ -66,16 +66,25 @@ export function TournamentPage({
   const [busy, setBusy] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const isAdmin = app.name === ADMIN_NAME;
+  // useApp() liefert bei jedem Render ein neues Objekt - load() darf deshalb nicht
+  // von `app` selbst abhängen, sonst laedt die Seite bei jeder Hub-Aenderung
+  // irgendwo (z.B. fremde Chat-Nachricht) die Turnierdaten neu, bis der
+  // Rate-Limiter zuschlaegt ("Zu viele Anfragen"). appRef haelt die aktuellen
+  // Methoden, ohne dass der Effekt daran haengen muss.
+  const appRef = useRef(app);
+  useEffect(() => {
+    appRef.current = app;
+  });
 
   const load = useCallback(() => {
-    app
+    appRef.current
       .tournamentDetail(tournamentId)
       .then((d) => {
         setDetail(d);
         setError(null);
       })
       .catch((e) => setError((e as Error).message));
-  }, [app, tournamentId]);
+  }, [tournamentId]);
 
   useEffect(() => {
     load();

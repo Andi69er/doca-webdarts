@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TournamentSummary } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 
@@ -22,15 +22,22 @@ export function TournamentsCard({
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
   const isAdmin = app.name === ADMIN_NAME;
+  // useApp() liefert bei jedem Render ein neues Objekt - mit `[app]` als Dependency
+  // würde diese Liste bei jeder Hub-Änderung irgendwo (z.B. fremde Chat-Nachricht)
+  // neu geladen, bis der Rate-Limiter zuschlägt. Einmalig beim Mounten laden.
+  const appRef = useRef(app);
+  useEffect(() => {
+    appRef.current = app;
+  });
 
   const load = () => {
-    app
+    appRef.current
       .listTournaments()
       .then(setList)
       .catch((e) => setError((e as Error).message));
   };
 
-  useEffect(load, [app]);
+  useEffect(load, []);
 
   const add = () => {
     const id = Number(eventId.trim());
