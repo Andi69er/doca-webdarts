@@ -64,35 +64,46 @@ export function TournamentLobby({
     const unresolved = !p.resolved;
     const canStart = detail.hasProfile && p.isMine && p.status === "open" && !unresolved;
     return (
-      <div key={p.matchId} className="room-card">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <strong>
-            {p.homeName} vs. {p.awayName}
-          </strong>
-          <span className={`badge ${p.status === "open" ? "" : "live"}`}>
-            {p.status === "open" ? "offen" : `beendet ${p.legsHome ?? "?"}:${p.legsAway ?? "?"}`}
-          </span>
-        </div>
-        {unresolved && (
-          <div className="hint">
-            Nicht automatisch zuordenbar (Namen mehrdeutig oder unbekannt) – bitte manuell spielen.
+      <div
+        key={p.matchId}
+        className="room-card"
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700 }}>{p.homeName}</div>
+          <div className="hint" style={{ margin: "1px 0" }}>
+            vs.
           </div>
-        )}
-        {canStart && (
+          <div style={{ fontWeight: 700 }}>{p.awayName}</div>
+          {unresolved && (
+            <div className="hint" style={{ marginTop: 4 }}>
+              Nicht automatisch zuordenbar (Namen mehrdeutig oder unbekannt) – bitte manuell spielen.
+            </div>
+          )}
+        </div>
+        {canStart ? (
           <button
             className="primary"
-            style={{ alignSelf: "flex-start" }}
+            aria-label={p.iAmHome ? "Spiel starten" : "Beitreten"}
+            title={p.iAmHome ? "Spiel starten" : "Beitreten"}
             disabled={busy === p.matchId}
             onClick={() => start(p.matchId)}
+            style={{
+              flex: "0 0 auto",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: "50%",
+              fontSize: 16,
+              lineHeight: 1,
+            }}
           >
-            {p.iAmHome
-              ? busy === p.matchId
-                ? "Öffne Raum…"
-                : "Spiel starten"
-              : busy === p.matchId
-                ? "Trete bei…"
-                : "Beitreten"}
+            {busy === p.matchId ? "…" : "▶"}
           </button>
+        ) : (
+          <span className={`badge ${p.status === "open" ? "" : "live"}`} style={{ flex: "0 0 auto" }}>
+            {p.status === "open" ? "offen" : `beendet ${p.legsHome ?? "?"}:${p.legsAway ?? "?"}`}
+          </span>
         )}
       </div>
     );
