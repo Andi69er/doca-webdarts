@@ -79,7 +79,12 @@ export function TournamentLobby({
           </div>
         )}
         {canStart && (
-          <button className="primary" disabled={busy === p.matchId} onClick={() => start(p.matchId)}>
+          <button
+            className="primary"
+            style={{ alignSelf: "flex-start" }}
+            disabled={busy === p.matchId}
+            onClick={() => start(p.matchId)}
+          >
             {p.iAmHome
               ? busy === p.matchId
                 ? "Öffne Raum…"
@@ -99,7 +104,14 @@ export function TournamentLobby({
         <button className="ghost" onClick={onBack}>
           ← Zurück zur Lobby
         </button>
-        <h2 className="room-title">{detail.name}</h2>
+        <div style={{ textAlign: "center" }}>
+          <div className="hint" style={{ letterSpacing: "0.08em" }}>
+            TURNIER-LOBBY
+          </div>
+          <h2 className="room-title" style={{ margin: 0 }}>
+            {detail.name}
+          </h2>
+        </div>
         <button className="ghost" onClick={load}>
           ↻ Aktualisieren
         </button>
