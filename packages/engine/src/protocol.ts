@@ -172,6 +172,8 @@ export interface TournamentSummary {
   threeKEventId: number;
   /** Match-Format, das beim Start einer Paarung vorbefüllt wird. Noch nicht gesetzt = null. */
   hasProfile: boolean;
+  /** 3K eventKindCd === "DOUBLE" – bestimmt teamSize im Matchprofil und Spieler-Auflösung. */
+  isDouble: boolean;
 }
 
 /** Eine einzelne Paarung aus dem 3K-Spielplan, aus Sicht des anfragenden Mitglieds. */
@@ -183,12 +185,17 @@ export interface TournamentPairing {
   /** Aufgelöste Webdarts-Identität ("u:<uid>") oder null, wenn (noch) nicht zuordenbar. */
   homeUid: string | null;
   awayUid: string | null;
+  /** Zweiter Spieler des Heim-/Gast-Teams bei Doppel-Events; bei Einzel immer null. */
+  homeUid2: string | null;
+  awayUid2: string | null;
+  /** true, wenn alle für diese Paarung nötigen Spieler automatisch zugeordnet werden konnten. */
+  resolved: boolean;
   status: "open" | "finished";
   legsHome: number | null;
   legsAway: number | null;
-  /** Bin ich (Heim oder Gast) an dieser Paarung beteiligt? */
+  /** Bin ich (Heim oder Gast, bzw. bei Doppel: Teil eines der beiden Teams) an dieser Paarung beteiligt? */
   isMine: boolean;
-  /** Bin ich der Heimspieler? Nur der darf die Paarung starten (Hin-/Rückspiel-Zuordnung bei 3K). */
+  /** Bin ich im Heim-Team? Nur das Heim-Team darf die Paarung starten (Hin-/Rückspiel-Zuordnung bei 3K). */
   iAmHome: boolean;
 }
 

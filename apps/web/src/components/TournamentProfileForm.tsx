@@ -6,10 +6,13 @@ import type { GameMode, InOutMode, MatchConfig } from "@webdarts/engine";
  *  ergänzen, sobald ein Turnier das braucht. */
 export function TournamentProfileForm({
   initial,
+  isDouble,
   onSave,
   onCancel,
 }: {
   initial: MatchConfig | null;
+  /** 3K eventKindCd === "DOUBLE" – bestimmt teamSize, keine Wahl fürs Admin-Formular. */
+  isDouble: boolean;
   onSave: (config: MatchConfig) => void;
   onCancel: () => void;
 }) {
@@ -31,13 +34,14 @@ export function TournamentProfileForm({
       bullOff,
       twoClearLegs: false,
       legBulloffRounds: 0,
-      teamSize: 1,
+      teamSize: isDouble ? 2 : 1,
     };
     onSave(config);
   };
 
   return (
     <div className="stack">
+      <div className="hint">{isDouble ? "Doppel-Turnier – Räume werden automatisch 2v2 angelegt." : "Einzel-Turnier."}</div>
       <div className="field">
         <span className="lbl">Spielart</span>
         <select value={mode} onChange={(e) => setMode(e.target.value as GameMode)}>

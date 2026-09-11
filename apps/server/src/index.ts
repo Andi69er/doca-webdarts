@@ -657,7 +657,7 @@ io.on("connection", (socket) => {
     const tid = String(id);
     const mid = Number(matchId);
 
-    // Für diese Paarung existiert schon ein Raum (der Heim-Spieler hat ihn eröffnet)?
+    // Für diese Paarung existiert schon ein Raum (ein Heim-Spieler hat ihn eröffnet)?
     // Dann rein statt einen zweiten anzulegen; eigenen Platz nehmen, falls vorgesehen und frei.
     const existing = getMatchRoom(tid, mid);
     if (existing && manager.get(existing.roomId)) {
@@ -665,8 +665,10 @@ io.on("connection", (socket) => {
       room.addMember(member.cid, member.name, member.image);
       member.roomId = existing.roomId;
       socket.join(existing.roomId);
-      if (me() === existing.awayUid) room.takeSeat(member.cid, "t1p0");
-      else if (me() === existing.homeUid) room.takeSeat(member.cid, "t0p0");
+      if (me() === existing.homeUid) room.takeSeat(member.cid, "t0p0");
+      else if (existing.homeUid2 !== null && me() === existing.homeUid2) room.takeSeat(member.cid, "t0p1");
+      else if (me() === existing.awayUid) room.takeSeat(member.cid, "t1p0");
+      else if (existing.awayUid2 !== null && me() === existing.awayUid2) room.takeSeat(member.cid, "t1p1");
       ack({ ok: true, data: { roomId: existing.roomId } });
       void broadcastRoom(existing.roomId);
       broadcastHub();
@@ -676,34 +678,45 @@ io.on("connection", (socket) => {
     try {
       const pairing = await resolvePairing(tid, mid);
       if (!pairing) return ack({ ok: false, error: "Paarung nicht gefunden." });
-      if (!pairing.homeUid || !pairing.awayUid) {
+      const homeIds = pairing.isDouble ? [pairing.homeUid, pairing.homeUid2] : [pairing.homeUid];
+      const awayIds = pairing.isDouble ? [pairing.awayUid, pairing.awayUid2] : [pairing.awayUid];
+      if (homeIds.some((u) => !u) || awayIds.some((u) => !u)) {
         return ack({
           ok: false,
-          error: "Diese Paarung konnte nicht automatisch zugeordnet werden (Doppel wird hier noch nicht unterstützt).",
+          error: "Diese Paarung konnte nicht automatisch zugeordnet werden – bitte manuell spielen.",
         });
       }
-      if (me() !== pairing.homeUid && me() !== pairing.awayUid) {
+      const iAmHome = homeIds.includes(me());
+      const iAmAway = awayIds.includes(me());
+      if (!iAmHome && !iAmAway) {
         return ack({ ok: false, error: "Du bist nicht Teil dieser Paarung." });
       }
-      if (me() !== pairing.homeUid) {
-        const homeFirst = parseSingleDisplayName(pairing.homeName).fullName;
-        return ack({ ok: false, error: `Nur ${homeFirst} (Heim) kann dieses Match eröffnen – bitte kurz warten.` });
+      if (!iAmHome) {
+        const homeLabel = parseSingleDisplayName(pairing.homeName).fullName;
+        return ack({ ok: false, error: `Nur ${homeLabel} (Heim) kann dieses Match eröffnen – bitte kurz warten.` });
       }
       if (manager.count() >= MAX_ROOMS) return ack({ ok: false, error: "Server ausgelastet – zu viele Räume." });
 
       const homeName = parseSingleDisplayName(pairing.homeName).fullName;
       const awayName = parseSingleDisplayName(pairing.awayName).fullName;
+      const config = sanitizeConfig({ ...pairing.profile, teamSize: pairing.isDouble ? 2 : 1 });
       const room = manager.create(
         member.cid,
         member.name,
-        sanitizeConfig(pairing.profile),
+        config,
         [homeName, awayName],
         `Turnier: ${homeName} vs. ${awayName}`,
         null,
         member.image,
       );
-      room.takeSeat(member.cid, "t0p0");
-      setMatchRoom(tid, mid, { roomId: room.roomId, homeUid: pairing.homeUid, awayUid: pairing.awayUid });
+      room.takeSeat(member.cid, me() === pairing.homeUid ? "t0p0" : "t0p1");
+      setMatchRoom(tid, mid, {
+        roomId: room.roomId,
+        homeUid: pairing.homeUid!,
+        homeUid2: pairing.homeUid2,
+        awayUid: pairing.awayUid!,
+        awayUid2: pairing.awayUid2,
+      });
       member.roomId = room.roomId;
       socket.join(room.roomId);
       pushChat({ name: "", text: `${member.name} hat ein Turnier-Match eröffnet`, kind: "system" });

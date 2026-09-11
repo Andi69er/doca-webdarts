@@ -98,7 +98,7 @@ export function TournamentPage({
           <h3 className="section-title">{round.name}</h3>
           <div className="room-list">
             {round.pairings.map((p) => {
-              const unresolved = !p.homeUid || !p.awayUid;
+              const unresolved = !p.resolved;
               const canStart = detail.hasProfile && p.isMine && p.status === "open" && !unresolved;
               return (
                 <div key={p.matchId} className="room-card">
@@ -113,7 +113,9 @@ export function TournamentPage({
                     </span>
                   </div>
                   {unresolved && (
-                    <div className="hint">Nicht automatisch zugeordnet (z. B. Doppel) – bitte manuell spielen.</div>
+                    <div className="hint">
+                      Nicht automatisch zuordenbar (Namen mehrdeutig oder unbekannt) – bitte manuell spielen.
+                    </div>
                   )}
                   {canStart && (
                     <button className="primary" disabled={busy === p.matchId} onClick={() => start(p.matchId)}>
@@ -137,6 +139,7 @@ export function TournamentPage({
         <Modal title="Matchprofil festlegen" onClose={() => setProfileOpen(false)}>
           <TournamentProfileForm
             initial={detail.profile}
+            isDouble={detail.isDouble}
             onCancel={() => setProfileOpen(false)}
             onSave={(config) => {
               app

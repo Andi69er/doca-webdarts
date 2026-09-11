@@ -12,24 +12,41 @@ import { customAlphabet } from "nanoid";
 import type { MatchConfig, TournamentDetail, TournamentPairing, TournamentSummary } from "@webdarts/engine";
 import { fetchEventInfo, fetchPhaseRounds, fetchRoundMatches } from "./threeK.js";
 import { getMemberDirectory } from "./memberDirectory.js";
-import { matchSingle, type DirectoryMember } from "./nameMatch.js";
+import { matchSingle, matchDoubleTeam, type DirectoryMember } from "./nameMatch.js";
+
+interface ResolvedTeams {
+  homeUid: string | null;
+  homeUid2: string | null;
+  awayUid: string | null;
+  awayUid2: string | null;
+}
 
 /**
- * Heim/Gast einer Paarung auflösen. Doppel-Events (`eventKindCd: "DOUBLE"`)
- * zeigen bei 3K nur den Team-Namen ("Nachname & Nachname"), nicht die zwei
- * Einzel-Accounts dahinter – dafür gibt's keinen API-Weg (siehe Memory
- * webdarts-3k-tournament-integration.md). Phase 1 löst deshalb nur Einzel
- * automatisch auf; Doppel-Paarungen bleiben ohne Uid (Anzeige informativ,
- * "Spiel starten" bleibt deaktiviert) bis die Zuordnung gebaut ist.
+ * Heim/Gast einer Paarung auflösen. Bei Einzel je ein Uid pro Seite
+ * (homeUid2/awayUid2 bleiben null). Bei Doppel-Events (`eventKindCd:
+ * "DOUBLE"`) zeigt 3K nur den Team-Namen ("Nachname & Nachname"), nicht die
+ * zwei Einzel-Accounts dahinter – matchDoubleTeam splittet auf die zwei
+ * Nachnamen und matcht sie einzeln gegen die Mitgliederliste (siehe Memory
+ * webdarts-3k-tournament-integration.md). 0 oder >1 Treffer pro Nachname
+ * bleibt null, ist dann von einem Admin manuell zu klären.
  */
-function resolveHomeAway(
+function resolveTeams(
   homeName: string,
   awayName: string,
   isDouble: boolean,
   members: DirectoryMember[],
-): [string | null, string | null] {
-  if (isDouble) return [null, null];
-  return [matchSingle(homeName, members), matchSingle(awayName, members)];
+): ResolvedTeams {
+  if (isDouble) {
+    const [homeUid, homeUid2] = matchDoubleTeam(homeName, members);
+    const [awayUid, awayUid2] = matchDoubleTeam(awayName, members);
+    return { homeUid, homeUid2, awayUid, awayUid2 };
+  }
+  return {
+    homeUid: matchSingle(homeName, members),
+    homeUid2: null,
+    awayUid: matchSingle(awayName, members),
+    awayUid2: null,
+  };
 }
 
 const FILE = resolve(process.env.TOURNAMENTS_FILE ?? "data/tournaments.json");
@@ -39,6 +56,7 @@ interface TournamentRecord {
   id: string;
   name: string;
   threeKEventId: number;
+  isDouble: boolean;
   profile: MatchConfig | null;
   createdBy: string;
   createdAt: number;
@@ -75,6 +93,7 @@ export async function listTournaments(): Promise<TournamentSummary[]> {
     name: r.name,
     threeKEventId: r.threeKEventId,
     hasProfile: r.profile !== null,
+    isDouble: r.isDouble ?? false,
   }));
 }
 
@@ -88,17 +107,19 @@ export async function addTournament(
     throw new Error("Dieses 3K-Turnier ist schon verknüpft.");
   }
   const info = await fetchEventInfo(threeKEventId); // wirft, wenn ID unerreichbar/ungültig
+  const isDouble = info.eventKindCd === "DOUBLE";
   const rec: TournamentRecord = {
     id: genId(),
     name: (name?.trim() || info.name || `Turnier ${threeKEventId}`).slice(0, 60),
     threeKEventId,
+    isDouble,
     profile: null,
     createdBy,
     createdAt: Date.now(),
   };
   records.push(rec);
   await persist();
-  return { id: rec.id, name: rec.name, threeKEventId: rec.threeKEventId, hasProfile: false };
+  return { id: rec.id, name: rec.name, threeKEventId: rec.threeKEventId, hasProfile: false, isDouble };
 }
 
 export async function setTournamentProfile(id: string, profile: MatchConfig): Promise<void> {
@@ -120,6 +141,11 @@ async function getRecord(id: string): Promise<TournamentRecord> {
 export async function getTournamentDetail(id: string, myUid: string | null): Promise<TournamentDetail> {
   const rec = await getRecord(id);
   const info = await fetchEventInfo(rec.threeKEventId);
+  const isDouble = info.eventKindCd === "DOUBLE";
+  if (rec.isDouble !== isDouble) {
+    rec.isDouble = isDouble; // Selbstheilung für Turniere, die vor diesem Feld angelegt wurden
+    await persist();
+  }
   const phase = info.phases[0];
   if (!phase) {
     return {
@@ -127,21 +153,29 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
       name: rec.name,
       threeKEventId: rec.threeKEventId,
       hasProfile: rec.profile !== null,
+      isDouble,
       profile: rec.profile,
       rounds: [],
     };
   }
   const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
   const members = await getMemberDirectory();
-  const isDouble = info.eventKindCd === "DOUBLE";
 
   const outRounds: { name: string; pairings: TournamentPairing[] }[] = [];
   for (const round of rounds) {
     const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
     const pairings: TournamentPairing[] = matches.map((m) => {
-      const [homeUid, awayUid] = resolveHomeAway(m.participantHomeName, m.participantAwayName, isDouble, members);
-      const iAmHome = myUid !== null && myUid === homeUid;
-      const isMine = iAmHome || (myUid !== null && myUid === awayUid);
+      const { homeUid, homeUid2, awayUid, awayUid2 } = resolveTeams(
+        m.participantHomeName,
+        m.participantAwayName,
+        isDouble,
+        members,
+      );
+      const iAmHome = myUid !== null && (myUid === homeUid || myUid === homeUid2);
+      const isMine = iAmHome || (myUid !== null && (myUid === awayUid || myUid === awayUid2));
+      const resolved = isDouble
+        ? Boolean(homeUid && homeUid2 && awayUid && awayUid2)
+        : Boolean(homeUid && awayUid);
       return {
         matchId: m.id,
         roundName: round.name,
@@ -149,6 +183,9 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
         awayName: m.participantAwayName,
         homeUid,
         awayUid,
+        homeUid2,
+        awayUid2,
+        resolved,
         status: m.statusCd === "FINISH" ? "finished" : "open",
         legsHome: m.legsHome,
         legsAway: m.legsAway,
@@ -164,6 +201,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
     name: rec.name,
     threeKEventId: rec.threeKEventId,
     hasProfile: rec.profile !== null,
+    isDouble,
     profile: rec.profile,
     rounds: outRounds,
   };
@@ -175,8 +213,11 @@ export async function resolvePairing(
   matchId: number,
 ): Promise<{
   profile: MatchConfig;
+  isDouble: boolean;
   homeUid: string | null;
+  homeUid2: string | null;
   awayUid: string | null;
+  awayUid2: string | null;
   homeName: string;
   awayName: string;
 } | null> {
@@ -192,11 +233,19 @@ export async function resolvePairing(
     const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
     const hit = matches.find((m) => m.id === matchId);
     if (!hit) continue;
-    const [homeUid, awayUid] = resolveHomeAway(hit.participantHomeName, hit.participantAwayName, isDouble, members);
+    const { homeUid, homeUid2, awayUid, awayUid2 } = resolveTeams(
+      hit.participantHomeName,
+      hit.participantAwayName,
+      isDouble,
+      members,
+    );
     return {
       profile: rec.profile,
+      isDouble,
       homeUid,
+      homeUid2,
       awayUid,
+      awayUid2,
       homeName: hit.participantHomeName,
       awayName: hit.participantAwayName,
     };
@@ -209,7 +258,9 @@ export async function resolvePairing(
 interface MatchRoomEntry {
   roomId: string;
   homeUid: string;
+  homeUid2: string | null;
   awayUid: string;
+  awayUid2: string | null;
 }
 const matchRoom = new Map<string, MatchRoomEntry>(); // "tournamentId:matchId" -> ...
 
