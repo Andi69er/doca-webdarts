@@ -11,12 +11,12 @@ import { getMicDeviceId } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
 
 /**
- * Sprachchat über LiveKit. `hub` = globaler Kanal aller Online: **opt-in**,
- * erst auf „Beitreten" verbindet er (spart LiveKit-Kontingent, kein
- * Ton-Symbol wenn man nicht will). Im Raum verbindet er automatisch (da will
- * man mit dem Gegner reden). Sobald verbunden, schaltet sich das Mikro
- * überall gleich aktiv, wo canPublish erlaubt ist (Hub, Raum-Lobby, Match als
- * Spieler) – Zuschauer im Match bleiben stumm.
+ * Sprachchat über LiveKit – verbindet überall automatisch (Hub, Raum-Lobby,
+ * Match als Spieler), kein manueller "Beitreten"-Schritt mehr. Sobald
+ * verbunden, schaltet sich das Mikro gleich mit an, wo canPublish erlaubt ist
+ * – Zuschauer im Match bleiben stumm. Schutz gegen zu hohes LiveKit-Kontingent
+ * im Hub: der Server liefert ab HUB_VOICE_MAX gleichzeitig Online kein Token
+ * mehr (Kanal pausiert automatisch, kein Opt-in nötig dafür).
  */
 export function LobbyAudio({
   roomId,
@@ -28,13 +28,11 @@ export function LobbyAudio({
   /** Darf ich in diesem Kanal reden? false = Zuschauer im laufenden Match, nur zuhören. */
   canPublish?: boolean;
 }) {
-  const [joined, setJoined] = useState(!hub);
   const [conn, setConn] = useState<
-    { status: "idle" } | { status: "loading" } | { status: "off" } | { status: "ready"; token: string; url: string }
-  >({ status: hub ? "idle" : "loading" });
+    { status: "loading" } | { status: "off" } | { status: "ready"; token: string; url: string }
+  >({ status: "loading" });
 
   useEffect(() => {
-    if (!joined) return;
     let cancelled = false;
     setConn({ status: "loading" });
     const req = hub
@@ -50,29 +48,13 @@ export function LobbyAudio({
     return () => {
       cancelled = true;
     };
-  }, [roomId, hub, joined]);
-
-  if (hub && !joined) {
-    return (
-      <div className="lobby-audio">
-        <span className="lbl">🎙 Sprachchat</span>
-        <button className="ghost" onClick={() => setJoined(true)}>
-          Beitreten
-        </button>
-      </div>
-    );
-  }
+  }, [roomId, hub]);
 
   if (conn.status === "off") {
     return (
       <div className="lobby-audio">
         <span className="lbl">🎙 Sprachchat</span>
         <span className="hint">gerade nicht verfügbar</span>
-        {hub && (
-          <button className="ghost" onClick={() => setJoined(false)}>
-            OK
-          </button>
-        )}
       </div>
     );
   }
@@ -90,20 +72,12 @@ export function LobbyAudio({
     <LiveKitRoom serverUrl={conn.url} token={conn.token} connect audio={false} video={false}>
       <RoomAudioRenderer />
       <AutoStartAudio />
-      <MicBar hub={hub} canPublish={canPublish} onLeave={hub ? () => setJoined(false) : undefined} />
+      <MicBar hub={hub} canPublish={canPublish} />
     </LiveKitRoom>
   );
 }
 
-function MicBar({
-  hub,
-  canPublish,
-  onLeave,
-}: {
-  hub: boolean;
-  canPublish: boolean;
-  onLeave?: () => void;
-}) {
+function MicBar({ hub, canPublish }: { hub: boolean; canPublish: boolean }) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const connState = useConnectionState();
   const micInit = useRef(false);
@@ -140,11 +114,6 @@ function MicBar({
         </button>
       ) : (
         <span className="hint">🔇 Nur zuhören (Zuschauer)</span>
-      )}
-      {onLeave && (
-        <button className="ghost" onClick={onLeave}>
-          Verlassen
-        </button>
       )}
     </div>
   );
