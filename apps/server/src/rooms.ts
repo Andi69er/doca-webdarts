@@ -62,6 +62,9 @@ export class Room {
   hostId: string;
   config: MatchConfig;
   teamNames: [string, string];
+  /** Aus einer Turnier-Paarung erzeugt: Format + Teamnamen sind vom Admin-Matchprofil
+   *  fixiert, Spieler dürfen sie (noch) nicht ändern. */
+  readonly tournamentLocked: boolean;
   phase: "lobby" | "match" = "lobby";
 
   private members = new Map<string, Member>();
@@ -94,11 +97,13 @@ export class Room {
     name = "",
     bot: BotConfig | null = null,
     hostImage: string | null = null,
+    tournamentLocked = false,
   ) {
     this.name = name.trim().slice(0, 40);
     this.hostId = hostId;
     this.config = config;
     this.teamNames = teamNames;
+    this.tournamentLocked = tournamentLocked;
     this.bot = bot
       ? {
           average: Math.max(10, Math.min(120, Math.round(bot.average))),
@@ -379,6 +384,9 @@ export class Room {
 
   updateConfig(memberId: string, config: MatchConfig, teamNames: [string, string]) {
     if (memberId !== this.hostId) return { ok: false as const, error: "Nur der Host darf das ändern." };
+    if (this.tournamentLocked) {
+      return { ok: false as const, error: "Turnier-Matchprofil ist fest vorgegeben und kann nicht geändert werden." };
+    }
     if (this.phase === "match") return { ok: false as const, error: "Spiel läuft bereits." };
     this.config = config;
     this.teamNames = teamNames;
@@ -394,6 +402,9 @@ export class Room {
   }
 
   setTeamName(memberId: string, teamIndex: number, name: string): { ok: true } | { ok: false; error: string } {
+    if (this.tournamentLocked) {
+      return { ok: false, error: "Teamname kommt aus dem Turnier und kann nicht geändert werden." };
+    }
     if (this.phase === "match") return { ok: false, error: "Spiel läuft bereits." };
     if (teamIndex !== 0 && teamIndex !== 1) return { ok: false, error: "Ungültiges Team." };
     const isCaptain = this.seatAssignments.get(seatKey(teamIndex, 0)) === memberId;
@@ -579,6 +590,7 @@ export class Room {
       phase: this.phase,
       config: this.config,
       teamNames: this.teamNames,
+      tournamentLocked: this.tournamentLocked,
       seats,
       spectators,
       match: this.controller?.state ?? null,
@@ -756,8 +768,9 @@ export class RoomManager {
     name = "",
     bot: BotConfig | null = null,
     hostImage: string | null = null,
+    tournamentLocked = false,
   ): Room {
-    const room = new Room(hostId, hostName, config, teamNames, name, bot, hostImage);
+    const room = new Room(hostId, hostName, config, teamNames, name, bot, hostImage, tournamentLocked);
     this.rooms.set(room.roomId, room);
     return room;
   }

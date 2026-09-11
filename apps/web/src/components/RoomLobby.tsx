@@ -104,19 +104,27 @@ export function RoomLobby({ app }: { app: AppApi }) {
 
   const patch = (p: Partial<MatchConfig>) => app.updateConfig({ ...cfg, ...p }, state.teamNames);
 
-  /** Darf ich den Namen von Team `ti` setzen? Host oder Spieler 1 des Teams. */
+  /** Darf ich den Namen von Team `ti` setzen? Host oder Spieler 1 des Teams – nie bei
+   *  Turnier-Räumen, deren Teamnamen vom Admin-Matchprofil kommen. */
   const canEditTeam = (ti: number) =>
-    isHost || (mySeatObj?.teamIndex === ti && mySeatObj?.indexInTeam === 0);
+    !state.tournamentLocked && (isHost || (mySeatObj?.teamIndex === ti && mySeatObj?.indexInTeam === 0));
+  /** Darf ich Spielmodus/Format/Optionen ändern? Nur der Host, nie bei Turnier-Räumen. */
+  const canEditFormat = isHost && !state.tournamentLocked;
 
   // Namens-Popup: teamIndex oder null
   const [nameModal, setNameModal] = useState<number | null>(null);
   const promptedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (mySeatObj && mySeatObj.indexInTeam === 0 && !promptedRef.current.has(mySeatObj.key)) {
+    if (
+      !state.tournamentLocked &&
+      mySeatObj &&
+      mySeatObj.indexInTeam === 0 &&
+      !promptedRef.current.has(mySeatObj.key)
+    ) {
       promptedRef.current.add(mySeatObj.key);
       setNameModal(mySeatObj.teamIndex);
     }
-  }, [mySeatObj?.key, mySeatObj?.indexInTeam, mySeatObj?.teamIndex]);
+  }, [mySeatObj?.key, mySeatObj?.indexInTeam, mySeatObj?.teamIndex, state.tournamentLocked]);
 
   // Anzeige-/Eingabehilfe für die Spiellänge: "First to N" oder "Best of N".
   // Gespeichert wird immer die Anzahl nötiger Siege (legsToWinSet / setsToWin).
@@ -138,7 +146,11 @@ export function RoomLobby({ app }: { app: AppApi }) {
   const members = embed?.members ?? [];
   const isDoubles = state.config.teamSize === 2;
   const usesSets = cfg.setsToWin > 1;
-  const lockNote = isHost ? null : <span className="lobby-lock">nur der Host ändert das</span>;
+  const lockNote = state.tournamentLocked ? (
+    <span className="lobby-lock">vom Turnier-Matchprofil festgelegt</span>
+  ) : isHost ? null : (
+    <span className="lobby-lock">nur der Host ändert das</span>
+  );
 
   // WM-Modus: Distanzen der PDC-WM als Schnellwahl (füllt nur die Format-Felder).
   const WM_ROUNDS: { key: string; label: string; sets: number }[] = [
@@ -208,7 +220,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <label className="field">
             <span className="lbl">Spielart</span>
             <select
-              disabled={!isHost}
+              disabled={!canEditFormat}
               value={cfg.mode}
               onChange={(e) => patch({ mode: e.target.value as MatchConfig["mode"] })}
             >
@@ -220,7 +232,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <label className="field">
             <span className="lbl">Team-Größe</span>
             <select
-              disabled={!isHost}
+              disabled={!canEditFormat}
               value={cfg.teamSize}
               onChange={(e) => patch({ teamSize: Number(e.target.value) as 1 | 2 })}
             >
@@ -234,7 +246,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
               <label className="field">
                 <span className="lbl">Punktzahl</span>
                 <select
-                  disabled={!isHost}
+                  disabled={!canEditFormat}
                   value={cfg.x01!.startScore}
                   onChange={(e) => patch({ x01: { ...cfg.x01!, startScore: Number(e.target.value) } })}
                 >
@@ -249,7 +261,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
               <label className="field">
                 <span className="lbl">Checkout</span>
                 <select
-                  disabled={!isHost}
+                  disabled={!canEditFormat}
                   value={cfg.x01!.out}
                   onChange={(e) =>
                     patch({ x01: { ...cfg.x01!, out: e.target.value as "straight" | "double" | "master" } })
@@ -267,7 +279,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
             <label className="field">
               <span className="lbl">Cricket-Variante</span>
               <select
-                disabled={!isHost}
+                disabled={!canEditFormat}
                 value={cfg.cricket!.variant}
                 onChange={(e) =>
                   patch({ cricket: { variant: e.target.value as "standard" | "cutthroat" } })
@@ -292,7 +304,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           {cfg.mode === "x01" && (
             <label className="field" style={{ gridColumn: "1 / -1" }}>
               <span className="lbl">WM-Modus (Distanz)</span>
-              <select disabled={!isHost} value={wmCurrent} onChange={(e) => applyWm(e.target.value)}>
+              <select disabled={!canEditFormat} value={wmCurrent} onChange={(e) => applyWm(e.target.value)}>
                 <option value="">– nicht nach WM-Distanz –</option>
                 {WM_ROUNDS.map((r) => (
                   <option key={r.key} value={r.key}>
@@ -307,7 +319,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
             <span className="lbl">Sätze (0 = ohne)</span>
             <div className="row" style={{ gap: 6 }}>
               <select
-                disabled={!isHost}
+                disabled={!canEditFormat}
                 value={setFmt}
                 onChange={(e) => setSetFmt(e.target.value as "firstto" | "bestof")}
                 style={{ flex: "0 0 auto" }}
@@ -318,7 +330,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
               <NumField
                 min={0}
                 max={setFmt === "bestof" ? 25 : 13}
-                disabled={!isHost}
+                disabled={!canEditFormat}
                 value={usesSets ? fromWins(setFmt, cfg.setsToWin) : 0}
                 onCommit={(n) => patch({ setsToWin: n <= 0 ? 1 : toWins(setFmt, n, 13) })}
                 style={{ width: 56 }}
@@ -330,7 +342,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
             <span className="lbl">{usesSets ? "Legs pro Satz" : "Legs"}</span>
             <div className="row" style={{ gap: 6 }}>
               <select
-                disabled={!isHost}
+                disabled={!canEditFormat}
                 value={legFmt}
                 onChange={(e) => setLegFmt(e.target.value as "firstto" | "bestof")}
                 style={{ flex: "0 0 auto" }}
@@ -341,7 +353,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
               <NumField
                 min={1}
                 max={legFmt === "bestof" ? 41 : 21}
-                disabled={!isHost}
+                disabled={!canEditFormat}
                 value={fromWins(legFmt, cfg.legsToWinSet)}
                 onCommit={(n) => patch({ legsToWinSet: toWins(legFmt, n, 21) })}
                 style={{ width: 56 }}
@@ -375,7 +387,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <input
             id="opt-bulloff"
             type="checkbox"
-            disabled={!isHost}
+            disabled={!canEditFormat}
             checked={cfg.bullOff}
             onChange={(e) => patch({ bullOff: e.target.checked })}
           />
@@ -389,7 +401,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <input
             id="opt-twoclear"
             type="checkbox"
-            disabled={!isHost}
+            disabled={!canEditFormat}
             checked={!!cfg.twoClearLegs}
             onChange={(e) => patch({ twoClearLegs: e.target.checked })}
           />
@@ -406,7 +418,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
           <input
             id="opt-legbull"
             type="checkbox"
-            disabled={!isHost}
+            disabled={!canEditFormat}
             checked={(cfg.legBulloffRounds ?? 0) > 0}
             onChange={(e) => patch({ legBulloffRounds: e.target.checked ? 20 : 0 })}
           />
@@ -418,7 +430,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
                 <NumField
                   min={5}
                   max={40}
-                  disabled={!isHost}
+                  disabled={!canEditFormat}
                   value={cfg.legBulloffRounds ?? 20}
                   onCommit={(n) => patch({ legBulloffRounds: n })}
                   style={{ width: 52 }}

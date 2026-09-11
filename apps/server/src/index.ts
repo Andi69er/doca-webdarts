@@ -708,6 +708,7 @@ io.on("connection", (socket) => {
         `Turnier: ${homeName} vs. ${awayName}`,
         null,
         member.image,
+        true, // tournamentLocked: Format + Teamnamen kommen vom Admin-Matchprofil
       );
       room.takeSeat(member.cid, me() === pairing.homeUid ? "t0p0" : "t0p1");
       setMatchRoom(tid, mid, {

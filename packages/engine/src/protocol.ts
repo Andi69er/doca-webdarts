@@ -141,6 +141,9 @@ export interface RoomState {
   phase: RoomPhase;
   config: MatchConfig;
   teamNames: [string, string];
+  /** Aus einer Turnier-Paarung erzeugt: Format + Teamnamen kommen vom Admin-Matchprofil
+   *  und dürfen von den Spielern (noch) nicht geändert werden. */
+  tournamentLocked: boolean;
   /** Länge 2 (Einzel) oder 4 (Doppel). */
   seats: Seat[];
   spectators: SpectatorInfo[];
