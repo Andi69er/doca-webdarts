@@ -7,11 +7,13 @@ import { Hub } from "./components/Hub";
 import { RoomLobby } from "./components/RoomLobby";
 import { MatchView } from "./components/MatchView";
 import { TournamentPage } from "./components/TournamentPage";
+import { TournamentLobby } from "./components/TournamentLobby";
 import { SponsorStrip } from "./components/SponsorStrip";
 
 export function App() {
   const app = useApp();
   const [tournamentId, setTournamentId] = useState<string | null>(null);
+  const [tournamentLobbyId, setTournamentLobbyId] = useState<string | null>(null);
 
   let view: JSX.Element;
   if (!app.name) view = <NameGate app={app} />;
@@ -19,7 +21,12 @@ export function App() {
   else if (app.room) view = <MatchView app={app} />;
   else if (tournamentId)
     view = <TournamentPage app={app} tournamentId={tournamentId} onBack={() => setTournamentId(null)} />;
-  else view = <Hub app={app} onOpenTournament={setTournamentId} />;
+  else if (tournamentLobbyId)
+    view = (
+      <TournamentLobby app={app} tournamentId={tournamentLobbyId} onBack={() => setTournamentLobbyId(null)} />
+    );
+  else
+    view = <Hub app={app} onOpenTournament={setTournamentId} onEnterTournament={setTournamentLobbyId} />;
 
   const content = (
     <>

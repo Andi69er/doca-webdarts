@@ -5,7 +5,17 @@ import type { AppApi } from "../useApp";
 const ADMIN_NAME = "Andi69er";
 
 /** "Turniere"-Block im Hub, unter "Räume": Liste der an 3K angebundenen Turniere. */
-export function TournamentsCard({ app, onOpen }: { app: AppApi; onOpen: (id: string) => void }) {
+export function TournamentsCard({
+  app,
+  onOpen,
+  onEnter,
+}: {
+  app: AppApi;
+  /** Admin-Seite (Matchprofil/Zuordnung/Freigabe). */
+  onOpen: (id: string) => void;
+  /** Turnier-Lobby (Spieler-Sicht). */
+  onEnter: (id: string) => void;
+}) {
   const [list, setList] = useState<TournamentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [eventId, setEventId] = useState("");
@@ -78,7 +88,14 @@ export function TournamentsCard({ app, onOpen }: { app: AppApi; onOpen: (id: str
               {t.hasProfile ? "Matchprofil festgelegt" : "Matchprofil fehlt noch"}
               {!t.published && " · Entwurf (nur für dich sichtbar)"}
             </div>
-            <button onClick={() => onOpen(t.id)}>Öffnen</button>
+            <div className="row" style={{ gap: 6 }}>
+              <button onClick={() => onEnter(t.id)}>Turnier betreten</button>
+              {isAdmin && (
+                <button className="ghost" onClick={() => onOpen(t.id)}>
+                  Verwalten
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

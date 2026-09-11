@@ -16,7 +16,17 @@ const BOT_PRESETS: { key: string; label: string; average: number }[] = [
   { key: "preset:85", label: "Profi (Ø 85)", average: 85 },
 ];
 
-export function Hub({ app, onOpenTournament }: { app: AppApi; onOpenTournament: (id: string) => void }) {
+export function Hub({
+  app,
+  onOpenTournament,
+  onEnterTournament,
+}: {
+  app: AppApi;
+  /** Öffnet die Admin-Seite (Matchprofil/Zuordnung/Freigabe) – nur für den Turnier-Admin sichtbar. */
+  onOpenTournament: (id: string) => void;
+  /** Öffnet die Turnier-Lobby (Spieler-Sicht: eigene Matches + Spielplan) – für alle. */
+  onEnterTournament: (id: string) => void;
+}) {
   const hub = app.hub;
   const [text, setText] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -330,7 +340,7 @@ export function Hub({ app, onOpenTournament }: { app: AppApi; onOpenTournament: 
         </div>
       </div>
 
-      <TournamentsCard app={app} onOpen={onOpenTournament} />
+      <TournamentsCard app={app} onOpen={onOpenTournament} onEnter={onEnterTournament} />
       </div>
       </div>
     </>
