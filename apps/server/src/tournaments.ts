@@ -9,10 +9,16 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { customAlphabet } from "nanoid";
-import type { MatchConfig, TournamentDetail, TournamentPairing, TournamentSummary } from "@webdarts/engine";
+import type {
+  MatchConfig,
+  TournamentDetail,
+  TournamentPairing,
+  TournamentParticipant,
+  TournamentSummary,
+} from "@webdarts/engine";
 import { fetchEventInfo, fetchPhaseRounds, fetchRoundMatches } from "./threeK.js";
 import { getMemberDirectory } from "./memberDirectory.js";
-import { matchSingle, matchDoubleTeam, type DirectoryMember } from "./nameMatch.js";
+import { matchSingle, matchDoubleTeam, parseSingleDisplayName, type DirectoryMember } from "./nameMatch.js";
 
 interface ResolvedTeams {
   homeUid: string | null;
@@ -61,6 +67,32 @@ function resolveTeams(
   const [homeUid, homeUid2] = applyOverride(homeName, autoHome, overrides);
   const [awayUid, awayUid2] = applyOverride(awayName, autoAway, overrides);
   return { homeUid, homeUid2, awayUid, awayUid2 };
+}
+
+/** Anzeigename je Slot: bei Doppel die zwei Nachnamen aus "Nachname1 & Nachname2",
+ *  bei Einzel der volle Name ohne "(username)"-Zusatz (in beiden Slots gleich,
+ *  Slot 1 bleibt bei Einzel ungenutzt - siehe resolveTeams). */
+function displayNamePart(full: string, isDouble: boolean): [string, string] {
+  if (isDouble) {
+    const parts = full.split("&").map((s) => s.trim());
+    return [parts[0] || full, parts[1] || full];
+  }
+  const clean = parseSingleDisplayName(full).fullName;
+  return [clean, clean];
+}
+
+/** Eindeutige Spielerliste über alle Paarungen einer Runde, für die
+ *  Anwesenheitsliste in der Turnier-Lobby. Dedupliziert über uid, bei
+ *  unaufgelösten Spielern über den Rohnamen. */
+class ParticipantCollector {
+  private byKey = new Map<string, TournamentParticipant>();
+  add(uid: string | null, name: string): void {
+    const key = uid ?? "raw:" + name;
+    if (!this.byKey.has(key)) this.byKey.set(key, { uid, name });
+  }
+  list(): TournamentParticipant[] {
+    return [...this.byKey.values()];
+  }
 }
 
 const FILE = resolve(process.env.TOURNAMENTS_FILE ?? "data/tournaments.json");
@@ -215,11 +247,13 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
       published: rec.published ?? true,
       profile: rec.profile,
       rounds: [],
+      participants: [],
     };
   }
   const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
   const members = await getMemberDirectory();
   const overrides = rec.overrides ?? {};
+  const participants = new ParticipantCollector();
 
   const outRounds: { name: string; pairings: TournamentPairing[] }[] = [];
   for (const round of rounds) {
@@ -232,6 +266,14 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
         members,
         overrides,
       );
+      const [homeName1, homeName2] = displayNamePart(m.participantHomeName, isDouble);
+      const [awayName1, awayName2] = displayNamePart(m.participantAwayName, isDouble);
+      participants.add(homeUid, homeName1);
+      participants.add(awayUid, awayName1);
+      if (isDouble) {
+        participants.add(homeUid2, homeName2);
+        participants.add(awayUid2, awayName2);
+      }
       const iAmHome = myUid !== null && (myUid === homeUid || myUid === homeUid2);
       const isMine = iAmHome || (myUid !== null && (myUid === awayUid || myUid === awayUid2));
       const resolved = isDouble
@@ -266,6 +308,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
     published: rec.published ?? true,
     profile: rec.profile,
     rounds: outRounds,
+    participants: participants.list(),
   };
 }
 

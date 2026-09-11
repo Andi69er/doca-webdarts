@@ -290,6 +290,19 @@ body:not(.webdarts-embedded) #webdarts-root {
 .match-layout { display: grid; grid-template-columns: 1fr 390px; gap: 18px; align-items: start; }
 @media (max-width: 1100px) { .match-layout { grid-template-columns: 1fr; } }
 
+/* ---------- Turnier-Lobby: Paarungen | Chat | Anwesenheit ---------- */
+.tournament-layout {
+  display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 240px; gap: 16px; align-items: start;
+}
+@media (max-width: 1100px) { .tournament-layout { grid-template-columns: 1fr; } }
+.presence-list { display: flex; flex-direction: column; gap: 8px; }
+.presence-row { display: flex; align-items: center; gap: 8px; }
+.presence-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--muted);
+}
+.presence-dot.online { background: var(--accent); }
+.presence-row.offline { opacity: 0.55; }
+
 .video-stage {
   background: #000; border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
   aspect-ratio: 16 / 10; display: grid;

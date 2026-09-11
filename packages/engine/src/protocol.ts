@@ -205,9 +205,21 @@ export interface TournamentPairing {
   iAmHome: boolean;
 }
 
+/** Ein einzelner Spieler des Turniers (bei Doppel: aus dem Team-Namen aufgelöst,
+ *  nicht das Team selbst) – für die Anwesenheitsliste in der Turnier-Lobby. */
+export interface TournamentParticipant {
+  /** Aufgelöste Webdarts-Identität, oder null wenn (noch) nicht automatisch/manuell
+   *  zuordenbar – dann nur Anzeige, kein Online-Status möglich. */
+  uid: string | null;
+  name: string;
+}
+
 export interface TournamentDetail extends TournamentSummary {
   profile: MatchConfig | null;
   rounds: { name: string; pairings: TournamentPairing[] }[];
+  /** Eindeutige Spielerliste über alle Paarungen (dedupliziert) - Online-Status
+   *  wird clientseitig gegen HubState.users abgeglichen, kein eigener Live-Push nötig. */
+  participants: TournamentParticipant[];
 }
 
 // ---------------------------------------------------------------------------

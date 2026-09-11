@@ -110,6 +110,18 @@ export function useApp(): AppApi {
   useEffect(() => {
     const s = getSocket();
 
+    // Nach (Re-)Connect steht man zwar wieder im Hub, war aber ggf. gerade in
+    // einer Turnier-Lobby - der Socket ist deren Chat-Kanal nicht mehr
+    // beigetreten (das ist Socket-lokal, überlebt einen Reconnect nicht).
+    // Sonst bekäme man nach einem kurzen Verbindungsabbruch leise keine
+    // Turnier-Chat-/Anwesenheits-Updates mehr, bis man neu lädt.
+    const rejoinTournamentLobby = () => {
+      const tid = currentTournamentLobbyId.current;
+      if (!tid) return;
+      emitAck("tournament:enterLobby", { id: tid })
+        .then(({ chat: c }) => setTournamentChat(c))
+        .catch(() => {});
+    };
     const rejoin = () => {
       setConnected(true);
       setMyId(clientId());
@@ -118,11 +130,15 @@ export function useApp(): AppApi {
           name: embed.user.name,
           cid: clientId(),
           token: embed.token,
-        }).catch(() => {});
+        })
+          .then(rejoinTournamentLobby)
+          .catch(() => {});
         return;
       }
       const stored = localStorage.getItem(NAME_KEY);
-      if (stored) emitAck("hub:join", { name: stored, cid: clientId() }).catch(() => {});
+      if (stored) {
+        emitAck("hub:join", { name: stored, cid: clientId() }).then(rejoinTournamentLobby).catch(() => {});
+      }
     };
     const onDisconnect = () => setConnected(false);
     const onHub = (state: HubState) => setHub(state);

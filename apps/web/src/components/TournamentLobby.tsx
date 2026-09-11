@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { TournamentDetail, TournamentPairing } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { LobbyAudio } from "./LobbyAudio";
+import { Avatar } from "./Avatar";
+import { embed } from "../embed";
 
 /**
  * Turnier-Lobby: der Einstieg fürs "Turnier beitreten" (DL-Copilot-Stil) – links die
@@ -99,6 +101,18 @@ export function TournamentLobby({
     .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name })))
     .filter((p) => p.isMine && p.status === "open");
 
+  // Online-Status kommt rein clientseitig aus dem ohnehin schon live gepushten
+  // Hub-Zustand (app.hub.users) - kein eigener Live-Push für Anwesenheit nötig.
+  const onlineIds = new Set((app.hub?.users ?? []).map((u) => u.id));
+  const members = embed?.members ?? [];
+  const presence = detail.participants
+    .map((p) => ({
+      ...p,
+      online: p.uid !== null && onlineIds.has(p.uid),
+      image: p.uid ? (members.find((m) => m.id === p.uid)?.image ?? null) : null,
+    }))
+    .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+
   const renderPairing = (p: TournamentPairing) => {
     const unresolved = !p.resolved;
     const canStart = detail.hasProfile && p.isMine && p.status === "open" && !unresolved;
@@ -177,7 +191,7 @@ export function TournamentLobby({
 
       {error && <div className="hint">{error}</div>}
 
-      <div className="match-layout">
+      <div className="tournament-layout">
         <div className="stack">
           {!detail.hasProfile && (
             <div className="card hint">
@@ -253,6 +267,20 @@ export function TournamentLobby({
             <button className="primary" onClick={send}>
               Senden
             </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="section-title">Anwesenheit ({presence.filter((p) => p.online).length}/{presence.length})</h3>
+          <div className="presence-list">
+            {presence.length === 0 && <div className="hint">Noch keine Spieler zugeordnet.</div>}
+            {presence.map((p) => (
+              <div key={p.uid ?? p.name} className={`presence-row ${p.online ? "" : "offline"}`}>
+                <span className={`presence-dot ${p.online ? "online" : ""}`} aria-hidden="true" />
+                <Avatar src={p.image} name={p.name} size={22} />
+                <span>{p.name}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
