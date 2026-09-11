@@ -84,7 +84,9 @@ function MicBar({ hub, canPublish }: { hub: boolean; canPublish: boolean }) {
 
   // Mikro gleich beim Verbinden aktiv schalten – überall wo geredet werden darf
   // (Hub, Raum-Lobby, Match als Spieler). Zuschauer im Match (canPublish=false)
-  // bleiben stumm, da senden ohnehin serverseitig blockiert ist.
+  // bleiben stumm, da senden ohnehin serverseitig blockiert ist. Fällt still auf
+  // das Standardmikro zurück, falls das gemerkte Gerät (z.B. altes Headset) nicht
+  // mehr existiert – sonst bleibt man stumm, ohne dass irgendwas darauf hinweist.
   useEffect(() => {
     if (!canPublish || micInit.current) return;
     if (connState === ConnectionState.Connected) {
@@ -92,17 +94,20 @@ function MicBar({ hub, canPublish }: { hub: boolean; canPublish: boolean }) {
       const mic = getMicDeviceId();
       void localParticipant
         .setMicrophoneEnabled(true, mic ? { deviceId: mic } : undefined)
-        .catch(() => {});
+        .catch(() => {
+          if (mic) void localParticipant.setMicrophoneEnabled(true).catch(() => {});
+        });
     }
   }, [canPublish, connState, localParticipant]);
 
   const toggleMic = () => {
     if (!canPublish) return;
     const mic = getMicDeviceId();
-    void localParticipant.setMicrophoneEnabled(
-      !isMicrophoneEnabled,
-      mic ? { deviceId: mic } : undefined,
-    );
+    void localParticipant
+      .setMicrophoneEnabled(!isMicrophoneEnabled, mic ? { deviceId: mic } : undefined)
+      .catch(() => {
+        if (mic) void localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled).catch(() => {});
+      });
   };
 
   return (

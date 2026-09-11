@@ -30,6 +30,11 @@ export function Hub({
   const hub = app.hub;
   const [text, setText] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  /** Nur automatisch runterscrollen, wenn man ohnehin schon unten war – sonst
+   *  reißt jede neue Nachricht (auch System-Meldungen wie "X ist online")
+   *  aus dem Lesen weiter oben. */
+  const nearBottomRef = useRef(true);
 
   const [roomName, setRoomName] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
@@ -58,8 +63,14 @@ export function Hub({
   }, [voiceToast]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ block: "end" });
+    if (nearBottomRef.current) chatEndRef.current?.scrollIntoView({ block: "end" });
   }, [hub?.chat.length]);
+
+  const onChatScroll = () => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  };
 
   useEffect(() => {
     if (!embed || !hub) return;
@@ -243,7 +254,14 @@ export function Hub({
         ) : (
           <div className="hint">🎙 Sprachchat pausiert ({onlineCount} online, Limit {HUB_VOICE_MAX}).</div>
         )}
-        <div className="chat-scroll" role="log" aria-live="polite" aria-label="Lobby-Chat-Verlauf">
+        <div
+          ref={chatScrollRef}
+          onScroll={onChatScroll}
+          className="chat-scroll"
+          role="log"
+          aria-live="polite"
+          aria-label="Lobby-Chat-Verlauf"
+        >
           {hub.chat.length === 0 && <div className="hint">Noch nichts gesagt. Frag doch nach einem Spiel!</div>}
           {hub.chat.map((m) =>
             m.kind === "system" ? (
