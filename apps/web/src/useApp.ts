@@ -58,6 +58,12 @@ export interface AppApi {
   addTournament: (threeKEventId: number, name?: string) => Promise<TournamentSummary>;
   setTournamentProfile: (id: string, profile: MatchConfig) => Promise<void>;
   startTournamentMatch: (id: string, matchId: number) => Promise<void>;
+  setTournamentPlayerOverride: (
+    id: string,
+    participantName: string,
+    slot: 0 | 1,
+    uid: string | null,
+  ) => Promise<void>;
 }
 
 const NAME_KEY = "wd:name";
@@ -225,6 +231,10 @@ export function useApp(): AppApi {
         emitAck("tournament:startMatch", { id, matchId }).then(({ roomId }) => {
           currentRoomId.current = roomId;
         }),
+      ),
+    setTournamentPlayerOverride: (id, participantName, slot, uid) =>
+      guard(
+        emitAck("tournament:setPlayerOverride", { id, participantName, slot, uid }).then(() => undefined),
       ),
   };
 }

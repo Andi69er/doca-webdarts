@@ -30,23 +30,37 @@ interface ResolvedTeams {
  * webdarts-3k-tournament-integration.md). 0 oder >1 Treffer pro Nachname
  * bleibt null, ist dann von einem Admin manuell zu klären.
  */
+/** uid je Slot (0/1) pro rohem 3K-Anzeigenamen; vom Admin manuell gesetzt als
+ *  Fallback, wenn matchDoubleTeam/matchSingle 0 oder >1 Treffer ergaben. Ein
+ *  gesetzter Slot ersetzt nur diesen einen Slot, der andere bleibt automatisch. */
+type OverrideMap = Record<string, [string | null, string | null]>;
+
+function applyOverride(
+  name: string,
+  auto: [string | null, string | null],
+  overrides: OverrideMap,
+): [string | null, string | null] {
+  const o = overrides[name];
+  if (!o) return auto;
+  return [o[0] ?? auto[0], o[1] ?? auto[1]];
+}
+
 function resolveTeams(
   homeName: string,
   awayName: string,
   isDouble: boolean,
   members: DirectoryMember[],
+  overrides: OverrideMap,
 ): ResolvedTeams {
-  if (isDouble) {
-    const [homeUid, homeUid2] = matchDoubleTeam(homeName, members);
-    const [awayUid, awayUid2] = matchDoubleTeam(awayName, members);
-    return { homeUid, homeUid2, awayUid, awayUid2 };
-  }
-  return {
-    homeUid: matchSingle(homeName, members),
-    homeUid2: null,
-    awayUid: matchSingle(awayName, members),
-    awayUid2: null,
-  };
+  const autoHome: [string | null, string | null] = isDouble
+    ? matchDoubleTeam(homeName, members)
+    : [matchSingle(homeName, members), null];
+  const autoAway: [string | null, string | null] = isDouble
+    ? matchDoubleTeam(awayName, members)
+    : [matchSingle(awayName, members), null];
+  const [homeUid, homeUid2] = applyOverride(homeName, autoHome, overrides);
+  const [awayUid, awayUid2] = applyOverride(awayName, autoAway, overrides);
+  return { homeUid, homeUid2, awayUid, awayUid2 };
 }
 
 const FILE = resolve(process.env.TOURNAMENTS_FILE ?? "data/tournaments.json");
@@ -58,6 +72,9 @@ interface TournamentRecord {
   threeKEventId: number;
   isDouble: boolean;
   profile: MatchConfig | null;
+  /** Manuelle Spieler-Zuordnungen (Admin), keyed by rohem 3K-Anzeigenamen. Fehlt bei
+   *  Turnieren, die vor diesem Feld angelegt wurden - immer mit `?? {}` lesen. */
+  overrides?: OverrideMap;
   createdBy: string;
   createdAt: number;
 }
@@ -130,6 +147,25 @@ export async function setTournamentProfile(id: string, profile: MatchConfig): Pr
   await persist();
 }
 
+/** Admin ordnet einem 3K-Namen (Team oder Einzel) manuell ein DOCA-Mitglied zu –
+ *  Fallback für Namen, die matchSingle/matchDoubleTeam nicht eindeutig auflösen konnten.
+ *  uid = null setzt den Slot zurück auf automatische Zuordnung. */
+export async function setPlayerOverride(
+  id: string,
+  participantName: string,
+  slot: 0 | 1,
+  uid: string | null,
+): Promise<void> {
+  await load();
+  const rec = records.find((r) => r.id === id);
+  if (!rec) throw new Error("Turnier nicht gefunden.");
+  if (!rec.overrides) rec.overrides = {};
+  const cur = rec.overrides[participantName] ?? [null, null];
+  cur[slot] = uid;
+  rec.overrides[participantName] = cur;
+  await persist();
+}
+
 async function getRecord(id: string): Promise<TournamentRecord> {
   await load();
   const rec = records.find((r) => r.id === id);
@@ -160,6 +196,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
   }
   const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
   const members = await getMemberDirectory();
+  const overrides = rec.overrides ?? {};
 
   const outRounds: { name: string; pairings: TournamentPairing[] }[] = [];
   for (const round of rounds) {
@@ -170,6 +207,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
         m.participantAwayName,
         isDouble,
         members,
+        overrides,
       );
       const iAmHome = myUid !== null && (myUid === homeUid || myUid === homeUid2);
       const isMine = iAmHome || (myUid !== null && (myUid === awayUid || myUid === awayUid2));
@@ -228,6 +266,7 @@ export async function resolvePairing(
   if (!phase) return null;
   const isDouble = info.eventKindCd === "DOUBLE";
   const members = await getMemberDirectory();
+  const overrides = rec.overrides ?? {};
   const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
   for (const round of rounds) {
     const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
@@ -238,6 +277,7 @@ export async function resolvePairing(
       hit.participantAwayName,
       isDouble,
       members,
+      overrides,
     );
     return {
       profile: rec.profile,

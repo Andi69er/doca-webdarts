@@ -24,6 +24,7 @@ import {
   listTournaments,
   resolvePairing,
   setMatchRoom,
+  setPlayerOverride,
   setTournamentProfile,
 } from "./tournaments.js";
 import { parseSingleDisplayName } from "./nameMatch.js";
@@ -633,6 +634,24 @@ io.on("connection", (socket) => {
     }
     try {
       await setTournamentProfile(String(id), sanitizeConfig(profile));
+      ack({ ok: true, data: null });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:setPlayerOverride", async ({ id, participantName, slot, uid }, ack) => {
+    if (tooMany(ack, "toverride", 20)) return;
+    const member = hub.get(me());
+    if (!member || member.name !== TOURNAMENT_ADMIN) {
+      return ack({ ok: false, error: "Nur der Admin darf Spieler manuell zuordnen." });
+    }
+    const name = cleanText(String(participantName ?? ""), MAX_ROOM_NAME);
+    if (!name) return ack({ ok: false, error: "Ungültiger Name." });
+    const s: 0 | 1 = slot === 1 ? 1 : 0;
+    const cleanUid = typeof uid === "string" && /^u:\d+$/.test(uid) ? uid : null;
+    try {
+      await setPlayerOverride(String(id), name, s, cleanUid);
       ack({ ok: true, data: null });
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });

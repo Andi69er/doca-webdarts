@@ -328,6 +328,14 @@ export interface ClientToServerEvents {
     payload: { id: string; matchId: number },
     ack: (res: AckResult<{ roomId: string }>) => void,
   ) => void;
+  /** Manuelle Zuordnung eines 3K-Namens zu einem DOCA-Mitglied (nur Admin) – Fallback,
+   *  wenn der automatische Nachnamen-Abgleich 0 oder >1 Treffer ergab. `participantName`
+   *  ist der rohe 3K-Anzeigename (Team oder Einzel), `slot` 0/1 bei Doppel (Reihenfolge
+   *  wie im Namen), bei Einzel immer 0. `uid` = null setzt zurück auf automatisch. */
+  "tournament:setPlayerOverride": (
+    payload: { id: string; participantName: string; slot: 0 | 1; uid: string | null },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
 }
 
 // ---------------------------------------------------------------------------

@@ -3,8 +3,47 @@ import type { TournamentDetail } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { Modal } from "./Modal";
 import { TournamentProfileForm } from "./TournamentProfileForm";
+import { embed } from "../embed";
 
 const ADMIN_NAME = "Andi69er";
+
+/** Bei Doppel: welcher der beiden Nachnamen aus "Nachname1 & Nachname2" steckt in diesem Slot. */
+function namePart(full: string, slot: 0 | 1, isDouble: boolean): string {
+  if (!isDouble) return full;
+  const parts = full.split("&").map((s) => s.trim());
+  return parts[slot] || full;
+}
+
+/** Admin-Picker: DOCA-Mitglied per Namenseingabe (Datalist) auswählen und zuordnen. */
+function PlayerPicker({ label, onAssign }: { label: string; onAssign: (uid: string) => void }) {
+  const [txt, setTxt] = useState("");
+  const members = embed?.members ?? [];
+  const commit = () => {
+    const v = txt.trim();
+    if (!v) return;
+    const m = members.find((x) => x.name.toLowerCase() === v.toLowerCase());
+    if (m) {
+      onAssign(m.id);
+      setTxt("");
+    }
+  };
+  return (
+    <div className="row" style={{ gap: 6, alignItems: "center" }}>
+      <span className="hint" style={{ minWidth: 100 }}>
+        {label}:
+      </span>
+      <input
+        list="wd-tournament-members"
+        placeholder="DOCA-Mitglied wählen"
+        value={txt}
+        onChange={(e) => setTxt(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && commit()}
+        style={{ minWidth: 0, flex: 1 }}
+      />
+    </div>
+  );
+}
 
 /**
  * "Zum Turnier"-Seite: DL-Copilot-Ersatz. Zeigt den 3K-Spielplan, meine
@@ -47,6 +86,13 @@ export function TournamentPage({
       .finally(() => setBusy(null));
   };
 
+  const assignOverride = (participantName: string, slot: 0 | 1, uid: string) => {
+    app
+      .setTournamentPlayerOverride(tournamentId, participantName, slot, uid)
+      .then(load)
+      .catch((e) => setError((e as Error).message));
+  };
+
   if (!detail) {
     return (
       <div className="card stack">
@@ -58,8 +104,17 @@ export function TournamentPage({
     );
   }
 
+  const members = embed?.members ?? [];
+
   return (
     <div className="stack">
+      {isAdmin && members.length > 0 && (
+        <datalist id="wd-tournament-members">
+          {members.map((m) => (
+            <option key={m.id} value={m.name} />
+          ))}
+        </datalist>
+      )}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <button className="ghost" onClick={onBack}>
           ← Zurück zur Lobby
@@ -115,6 +170,34 @@ export function TournamentPage({
                   {unresolved && (
                     <div className="hint">
                       Nicht automatisch zuordenbar (Namen mehrdeutig oder unbekannt) – bitte manuell spielen.
+                    </div>
+                  )}
+                  {unresolved && isAdmin && (
+                    <div className="stack" style={{ gap: 6, marginTop: 4 }}>
+                      {!p.homeUid && (
+                        <PlayerPicker
+                          label={namePart(p.homeName, 0, detail.isDouble)}
+                          onAssign={(uid) => assignOverride(p.homeName, 0, uid)}
+                        />
+                      )}
+                      {detail.isDouble && !p.homeUid2 && (
+                        <PlayerPicker
+                          label={namePart(p.homeName, 1, detail.isDouble)}
+                          onAssign={(uid) => assignOverride(p.homeName, 1, uid)}
+                        />
+                      )}
+                      {!p.awayUid && (
+                        <PlayerPicker
+                          label={namePart(p.awayName, 0, detail.isDouble)}
+                          onAssign={(uid) => assignOverride(p.awayName, 0, uid)}
+                        />
+                      )}
+                      {detail.isDouble && !p.awayUid2 && (
+                        <PlayerPicker
+                          label={namePart(p.awayName, 1, detail.isDouble)}
+                          onAssign={(uid) => assignOverride(p.awayName, 1, uid)}
+                        />
+                      )}
                     </div>
                   )}
                   {canStart && (
