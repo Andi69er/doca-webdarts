@@ -13,6 +13,7 @@ import { RematchPanel } from "./RematchPanel";
 import { PauseBanner } from "./PauseBanner";
 import { GameRecorder } from "./GameRecorder";
 import { VideoStage } from "./VideoStage";
+import { LobbyAudio } from "./LobbyAudio";
 import { useTurnAlert } from "../useTurnAlert";
 
 export function MatchView({ app }: { app: AppApi }) {
@@ -55,6 +56,7 @@ export function MatchView({ app }: { app: AppApi }) {
       <div className="match-layout">
         <div className="stack">
           <VideoStage room={state} />
+          {state.videoEnabled && <LobbyAudio roomId={state.roomId} canPublish={!amSpectator} />}
           {amSpectator && <div className="hint">Zuschauer-Ansicht – du wertest nicht mit.</div>}
           {match.phase !== "bulloff" && match.config.mode === "cricket" && (
             <CricketBoard match={match} />

@@ -16,7 +16,16 @@ import { AutoStartAudio } from "./AutoStartAudio";
  * er (spart LiveKit-Kontingent, kein Ton-Symbol wenn man nicht will). Im Raum
  * verbindet er automatisch (da will man mit dem Gegner reden).
  */
-export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boolean }) {
+export function LobbyAudio({
+  roomId,
+  hub = false,
+  canPublish = true,
+}: {
+  roomId?: string;
+  hub?: boolean;
+  /** Darf ich in diesem Kanal reden? false = Zuschauer im laufenden Match, nur zuhören. */
+  canPublish?: boolean;
+}) {
   const [joined, setJoined] = useState(!hub);
   const [conn, setConn] = useState<
     { status: "idle" } | { status: "loading" } | { status: "off" } | { status: "ready"; token: string; url: string }
@@ -79,12 +88,20 @@ export function LobbyAudio({ roomId, hub = false }: { roomId?: string; hub?: boo
     <LiveKitRoom serverUrl={conn.url} token={conn.token} connect audio={false} video={false}>
       <RoomAudioRenderer />
       <AutoStartAudio />
-      <MicBar hub={hub} onLeave={hub ? () => setJoined(false) : undefined} />
+      <MicBar hub={hub} canPublish={canPublish} onLeave={hub ? () => setJoined(false) : undefined} />
     </LiveKitRoom>
   );
 }
 
-function MicBar({ hub, onLeave }: { hub: boolean; onLeave?: () => void }) {
+function MicBar({
+  hub,
+  canPublish,
+  onLeave,
+}: {
+  hub: boolean;
+  canPublish: boolean;
+  onLeave?: () => void;
+}) {
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const connState = useConnectionState();
   const micInit = useRef(false);
@@ -102,6 +119,7 @@ function MicBar({ hub, onLeave }: { hub: boolean; onLeave?: () => void }) {
   }, [hub, connState, localParticipant]);
 
   const toggleMic = () => {
+    if (!canPublish) return;
     const mic = getMicDeviceId();
     void localParticipant.setMicrophoneEnabled(
       !isMicrophoneEnabled,
@@ -112,9 +130,13 @@ function MicBar({ hub, onLeave }: { hub: boolean; onLeave?: () => void }) {
   return (
     <div className="lobby-audio">
       <span className="lbl">🎙 Sprachchat{hub ? " (alle Online)" : ""}</span>
-      <button className={isMicrophoneEnabled ? "primary" : "ghost"} onClick={toggleMic}>
-        {isMicrophoneEnabled ? "🎤 Mikro an" : "🔇 Mikro aus"}
-      </button>
+      {canPublish ? (
+        <button className={isMicrophoneEnabled ? "primary" : "ghost"} onClick={toggleMic}>
+          {isMicrophoneEnabled ? "🎤 Mikro an" : "🔇 Mikro aus"}
+        </button>
+      ) : (
+        <span className="hint">🔇 Nur zuhören (Zuschauer)</span>
+      )}
       {onLeave && (
         <button className="ghost" onClick={onLeave}>
           Verlassen
