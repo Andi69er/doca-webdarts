@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BotConfig, HubState, MatchAction, MatchConfig, RoomState } from "@webdarts/engine";
+import type {
+  BotConfig,
+  HubState,
+  MatchAction,
+  MatchConfig,
+  RoomState,
+  TournamentDetail,
+  TournamentSummary,
+} from "@webdarts/engine";
 import { emitAck, getSocket } from "./net";
 import { embed } from "./embed";
 
@@ -44,6 +52,12 @@ export interface AppApi {
   respondRematch: (accept: boolean) => Promise<void>;
   dispatch: (action: MatchAction) => Promise<void>;
   undo: () => Promise<void>;
+
+  listTournaments: () => Promise<TournamentSummary[]>;
+  tournamentDetail: (id: string) => Promise<TournamentDetail>;
+  addTournament: (threeKEventId: number, name?: string) => Promise<TournamentSummary>;
+  setTournamentProfile: (id: string, profile: MatchConfig) => Promise<void>;
+  startTournamentMatch: (id: string, matchId: number) => Promise<void>;
 }
 
 const NAME_KEY = "wd:name";
@@ -200,5 +214,17 @@ export function useApp(): AppApi {
     dispatch: (action) =>
       guard(emitAck("match:action", { roomId: rid(), kind: "dispatch", action }).then(() => undefined)),
     undo: () => guard(emitAck("match:action", { roomId: rid(), kind: "undo" }).then(() => undefined)),
+
+    listTournaments: () => guard(emitAck("tournaments:list", {})),
+    tournamentDetail: (id) => guard(emitAck("tournament:detail", { id })),
+    addTournament: (threeKEventId, name) => guard(emitAck("tournament:add", { threeKEventId, name })),
+    setTournamentProfile: (id, profile) =>
+      guard(emitAck("tournament:setProfile", { id, profile }).then(() => undefined)),
+    startTournamentMatch: (id, matchId) =>
+      guard(
+        emitAck("tournament:startMatch", { id, matchId }).then(({ roomId }) => {
+          currentRoomId.current = roomId;
+        }),
+      ),
   };
 }
