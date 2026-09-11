@@ -18,6 +18,8 @@ services:
         value: https://www.doca.at
       - key: WEBDARTS_SECRET
         sync: false
+      - key: WEBDARTS_MEMBERS_URL
+        value: https://www.doca.at/webspiele/webdarts/members.php
       - key: LIVEKIT_URL
         sync: false
       - key: LIVEKIT_API_KEY

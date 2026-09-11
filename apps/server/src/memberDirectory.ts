@@ -12,8 +12,19 @@ const TTL = 10 * 60_000;
 
 let cache: { ts: number; data: DirectoryMember[] } | null = null;
 
+let warnedMissingConfig = false;
+
 export async function getMemberDirectory(): Promise<DirectoryMember[]> {
-  if (!URL_ || !SECRET) return [];
+  if (!URL_ || !SECRET) {
+    if (!warnedMissingConfig) {
+      warnedMissingConfig = true;
+      console.warn(
+        "[memberDirectory] WEBDARTS_MEMBERS_URL oder WEBDARTS_SECRET nicht gesetzt – " +
+          "3K-Namenszuordnung liefert bis das behoben ist immer leer.",
+      );
+    }
+    return [];
+  }
   if (cache && Date.now() - cache.ts < TTL) return cache.data;
   try {
     const ac = new AbortController();
