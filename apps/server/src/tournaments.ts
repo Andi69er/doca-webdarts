@@ -137,7 +137,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
 
   const outRounds: { name: string; pairings: TournamentPairing[] }[] = [];
   for (const round of rounds) {
-    const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.index);
+    const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
     const pairings: TournamentPairing[] = matches.map((m) => {
       const [homeUid, awayUid] = resolveHomeAway(m.participantHomeName, m.participantAwayName, isDouble, members);
       const iAmHome = myUid !== null && myUid === homeUid;
@@ -189,7 +189,7 @@ export async function resolvePairing(
   const members = await getMemberDirectory();
   const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
   for (const round of rounds) {
-    const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.index);
+    const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
     const hit = matches.find((m) => m.id === matchId);
     if (!hit) continue;
     const [homeUid, awayUid] = resolveHomeAway(hit.participantHomeName, hit.participantAwayName, isDouble, members);

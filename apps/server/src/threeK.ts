@@ -93,12 +93,17 @@ export interface ThreeKMatch {
   legsAway: number | null;
 }
 
+/** roundId muss die `id` aus fetchPhaseRounds sein, NICHT der `index` – der
+ * Endpoint indiziert nicht nach Reihenfolge, sondern nach Round-Id (bei
+ * GROUP-Phasen ist jede Gruppe eine eigene "round"). Mit dem index landen
+ * z.B. bei einer 2-Gruppen-Phase alle Spiele unter "round/0" und
+ * "round/1" liefert leer. */
 export async function fetchRoundMatches(
   eventId: number,
   phaseId: number,
-  roundIndex: number,
+  roundId: number,
 ): Promise<ThreeKMatch[]> {
-  const data = (await get(`event/${eventId}/phase/${phaseId}/round/${roundIndex}`)) as {
+  const data = (await get(`event/${eventId}/phase/${phaseId}/round/${roundId}`)) as {
     matches: {
       id: number;
       gameNr: number;
