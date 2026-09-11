@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TournamentDetail, TournamentPairing } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { LobbyAudio } from "./LobbyAudio";
 
 /**
- * Turnier-Lobby: der Einstieg fürs "Turnier beitreten" (DL-Copilot-Stil) – zeigt zuerst
- * die eigenen offenen Paarungen klickbar oben, darunter zur Übersicht den kompletten
- * Spielplan. Getrennt von der Admin-Seite (TournamentPage: Matchprofil/Zuordnung/
- * Freigabe) – bewusst keine Admin-Funktionen hier, nur die Spieler-Sicht. Eigener
- * Sprachkanal pro Turnier (getrennt von Hub und Match-Räumen).
+ * Turnier-Lobby: der Einstieg fürs "Turnier beitreten" (DL-Copilot-Stil) – links die
+ * eigenen offenen Paarungen klickbar oben, darunter zur Übersicht der komplette
+ * Spielplan; rechts ein eigener Chat + Sprachchat, wie in der Hauptlobby. Getrennt
+ * von der Admin-Seite (TournamentPage: Matchprofil/Zuordnung/Freigabe) – bewusst
+ * keine Admin-Funktionen hier, nur die Spieler-Sicht. Chat/Sprachkanal sind eigene,
+ * pro Turnier getrennte Kanäle (nicht Hub, nicht Match-Räume).
  */
 export function TournamentLobby({
   app,
@@ -22,6 +23,11 @@ export function TournamentLobby({
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
+  const [text, setText] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const chat = app.tournamentChat;
 
   const load = useCallback(() => {
     app
@@ -36,6 +42,30 @@ export function TournamentLobby({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    app.enterTournamentLobby(tournamentId).catch(() => {});
+    return () => {
+      void app.leaveTournamentLobby(tournamentId);
+    };
+  }, [app, tournamentId]);
+
+  useEffect(() => {
+    if (nearBottomRef.current) chatEndRef.current?.scrollIntoView({ block: "end" });
+  }, [chat.length]);
+
+  const onChatScroll = () => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  };
+
+  const send = async () => {
+    const t = text.trim();
+    if (!t) return;
+    setText("");
+    await app.sendTournamentChat(tournamentId, t);
+  };
 
   const start = (matchId: number) => {
     setBusy(matchId);
@@ -138,39 +168,85 @@ export function TournamentLobby({
 
       {error && <div className="hint">{error}</div>}
 
-      <div className="card">
-        <LobbyAudio tournamentId={tournamentId} />
-      </div>
-
-      {!detail.hasProfile && (
-        <div className="card hint">Für dieses Turnier ist noch kein Matchprofil festgelegt. Bitte kurz warten.</div>
-      )}
-
-      <div className="card stack">
-        <h3 className="section-title">Deine nächsten Matches</h3>
-        {myOpenPairings.length === 0 ? (
-          <div className="hint">Aktuell kein offenes Match für dich.</div>
-        ) : (
-          <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
-            {myOpenPairings.map(renderPairing)}
-          </div>
-        )}
-      </div>
-
-      {detail.rounds.every((round) => round.pairings.length === 0) && (
-        <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>
-      )}
-
-      {detail.rounds
-        .filter((round) => round.pairings.length > 0)
-        .map((round) => (
-          <div key={round.name} className="card stack">
-            <h3 className="section-title">{round.name}</h3>
-            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {round.pairings.map(renderPairing)}
+      <div className="match-layout">
+        <div className="stack">
+          {!detail.hasProfile && (
+            <div className="card hint">
+              Für dieses Turnier ist noch kein Matchprofil festgelegt. Bitte kurz warten.
             </div>
+          )}
+
+          <div className="card stack">
+            <h3 className="section-title">Deine nächsten Matches</h3>
+            {myOpenPairings.length === 0 ? (
+              <div className="hint">Aktuell kein offenes Match für dich.</div>
+            ) : (
+              <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                {myOpenPairings.map(renderPairing)}
+              </div>
+            )}
           </div>
-        ))}
+
+          {detail.rounds.every((round) => round.pairings.length === 0) && (
+            <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>
+          )}
+
+          {detail.rounds
+            .filter((round) => round.pairings.length > 0)
+            .map((round) => (
+              <div key={round.name} className="card stack">
+                <h3 className="section-title">{round.name}</h3>
+                <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {round.pairings.map(renderPairing)}
+                </div>
+              </div>
+            ))}
+        </div>
+
+        <div className="card stack chat-card">
+          <h3 className="section-title">Turnier-Chat</h3>
+          <LobbyAudio tournamentId={tournamentId} />
+          <div
+            ref={chatScrollRef}
+            onScroll={onChatScroll}
+            className="chat-scroll"
+            role="log"
+            aria-live="polite"
+            aria-label="Turnier-Chat-Verlauf"
+          >
+            {chat.length === 0 && <div className="hint">Noch nichts gesagt.</div>}
+            {chat.map((m) =>
+              m.kind === "system" ? (
+                <div key={m.id} className="chat-sys">
+                  — {m.text} —
+                </div>
+              ) : (
+                <div key={m.id} className="chat-msg">
+                  <span className="cm-name">{m.name}</span>
+                  <span className="cm-time">
+                    {new Date(m.ts).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <div className="cm-text">{m.text}</div>
+                </div>
+              ),
+            )}
+            <div ref={chatEndRef} />
+          </div>
+          <div className="row">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+              placeholder="Nachricht ans Turnier…"
+              aria-label="Chat-Nachricht"
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <button className="primary" onClick={send}>
+              Senden
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

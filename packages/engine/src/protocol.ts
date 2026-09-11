@@ -350,6 +350,19 @@ export interface ClientToServerEvents {
     payload: { id: string; participantName: string; slot: 0 | 1; uid: string | null },
     ack: (res: AckResult<null>) => void,
   ) => void;
+  /** In den Chat-Kanal der Turnier-Lobby wechseln (löst automatisch aus dem
+   *  vorherigen, falls man in einem anderen Turnier war) – nötig, um
+   *  tournament:chatState-Updates zu bekommen; schickt die Historie sofort zurück. */
+  "tournament:enterLobby": (
+    payload: { id: string },
+    ack: (res: AckResult<{ chat: ChatMessage[] }>) => void,
+  ) => void;
+  /** Turnier-Lobby-Chat-Kanal verlassen (beim Zurück-Navigieren). */
+  "tournament:leaveLobby": (payload: { id: string }, ack: (res: AckResult<null>) => void) => void;
+  "tournament:chat": (
+    payload: { id: string; text: string },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -361,6 +374,8 @@ export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
   "room:closed": (payload: { reason: string }) => void;
   "server:error": (payload: { message: string }) => void;
+  /** Neuer Chat-Stand der Turnier-Lobby, an alle, die dort gerade eingecheckt sind. */
+  "tournament:chatState": (payload: { id: string; chat: ChatMessage[] }) => void;
 }
 
 // ---------------------------------------------------------------------------

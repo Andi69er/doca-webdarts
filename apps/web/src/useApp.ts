@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BotConfig,
+  ChatMessage,
   HubState,
   MatchAction,
   MatchConfig,
@@ -65,6 +66,12 @@ export interface AppApi {
     uid: string | null,
   ) => Promise<void>;
   setTournamentPublished: (id: string, published: boolean) => Promise<void>;
+
+  /** Chat der aktuell betretenen Turnier-Lobby, eigener Kanal getrennt von Hub/Raum. */
+  tournamentChat: ChatMessage[];
+  enterTournamentLobby: (id: string) => Promise<ChatMessage[]>;
+  leaveTournamentLobby: (id: string) => Promise<void>;
+  sendTournamentChat: (id: string, text: string) => Promise<void>;
 }
 
 const NAME_KEY = "wd:name";
@@ -96,7 +103,9 @@ export function useApp(): AppApi {
   const [hub, setHub] = useState<HubState | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tournamentChat, setTournamentChat] = useState<ChatMessage[]>([]);
   const currentRoomId = useRef<string | null>(null);
+  const currentTournamentLobbyId = useRef<string | null>(null);
 
   useEffect(() => {
     const s = getSocket();
@@ -121,6 +130,9 @@ export function useApp(): AppApi {
       currentRoomId.current = state.roomId;
       setRoom(state);
     };
+    const onTournamentChat = (p: { id: string; chat: ChatMessage[] }) => {
+      if (p.id === currentTournamentLobbyId.current) setTournamentChat(p.chat);
+    };
     const onErr = (p: { message: string }) => setError(p.message);
     const onClosed = (p: { reason: string }) => {
       currentRoomId.current = null;
@@ -132,6 +144,7 @@ export function useApp(): AppApi {
     s.on("disconnect", onDisconnect);
     s.on("hub:state", onHub);
     s.on("room:state", onRoom);
+    s.on("tournament:chatState", onTournamentChat);
     s.on("server:error", onErr);
     s.on("room:closed", onClosed);
     if (s.connected) rejoin();
@@ -141,6 +154,7 @@ export function useApp(): AppApi {
       s.off("disconnect", onDisconnect);
       s.off("hub:state", onHub);
       s.off("room:state", onRoom);
+      s.off("tournament:chatState", onTournamentChat);
       s.off("server:error", onErr);
       s.off("room:closed", onClosed);
     };
@@ -239,5 +253,24 @@ export function useApp(): AppApi {
       ),
     setTournamentPublished: (id, published) =>
       guard(emitAck("tournament:setPublished", { id, published }).then(() => undefined)),
+
+    tournamentChat,
+    enterTournamentLobby: (id) =>
+      guard(
+        emitAck("tournament:enterLobby", { id }).then(({ chat: c }) => {
+          currentTournamentLobbyId.current = id;
+          setTournamentChat(c);
+          return c;
+        }),
+      ),
+    leaveTournamentLobby: (id) =>
+      guard(
+        emitAck("tournament:leaveLobby", { id }).then(() => {
+          if (currentTournamentLobbyId.current === id) currentTournamentLobbyId.current = null;
+          setTournamentChat([]);
+        }),
+      ),
+    sendTournamentChat: (id, text) =>
+      guard(emitAck("tournament:chat", { id, text }).then(() => undefined)),
   };
 }

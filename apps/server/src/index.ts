@@ -159,6 +159,19 @@ const hub = new Map<string, HubMember>();
 const chat: ChatMessage[] = [];
 const CHAT_LIMIT = 60;
 
+/** Chat je Turnier-Lobby, komplett getrennt vom Hub- und Raum-Chat. */
+const tournamentChats = new Map<string, ChatMessage[]>();
+const tournamentChatRoom = (id: string) => "tournament-chat:" + id;
+function pushTournamentChat(id: string, msg: Omit<ChatMessage, "id" | "ts">) {
+  const list = tournamentChats.get(id) ?? [];
+  list.push({ ...msg, id: genId(), ts: Date.now() });
+  if (list.length > CHAT_LIMIT) list.splice(0, list.length - CHAT_LIMIT);
+  tournamentChats.set(id, list);
+}
+function broadcastTournamentChat(id: string) {
+  io.to(tournamentChatRoom(id)).emit("tournament:chatState", { id, chat: tournamentChats.get(id) ?? [] });
+}
+
 /** Live-Momentaufnahme für das Admin-Dashboard (per x-webdarts-key geschützt). */
 const USAGE_KEY = process.env.WEBDARTS_SECRET ?? "";
 app.get("/usage", (req, res) => {
@@ -696,6 +709,36 @@ io.on("connection", (socket) => {
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });
     }
+  });
+
+  socket.on("tournament:enterLobby", ({ id }, ack) => {
+    if (tooMany(ack, "tenter", 30)) return;
+    if (!hub.get(me())) return ack({ ok: false, error: "Bitte zuerst Namen setzen." });
+    const tid = String(id);
+    const prev = socket.data.tournamentLobbyId as string | undefined;
+    if (prev && prev !== tid) socket.leave(tournamentChatRoom(prev));
+    socket.join(tournamentChatRoom(tid));
+    socket.data.tournamentLobbyId = tid;
+    ack({ ok: true, data: { chat: tournamentChats.get(tid) ?? [] } });
+  });
+
+  socket.on("tournament:leaveLobby", ({ id }, ack) => {
+    const tid = String(id);
+    socket.leave(tournamentChatRoom(tid));
+    if (socket.data.tournamentLobbyId === tid) socket.data.tournamentLobbyId = undefined;
+    ack({ ok: true, data: null });
+  });
+
+  socket.on("tournament:chat", ({ id, text }, ack) => {
+    if (tooMany(ack, "chat", 25)) return;
+    const member = hub.get(me());
+    if (!member) return ack({ ok: false, error: "Nicht in der Lobby." });
+    const clean = cleanText(text, MAX_CHAT);
+    if (!clean) return ack({ ok: false, error: "Leere Nachricht." });
+    const tid = String(id);
+    pushTournamentChat(tid, { name: member.name, text: clean, kind: "user" });
+    ack({ ok: true, data: null });
+    broadcastTournamentChat(tid);
   });
 
   socket.on("tournament:detail", async ({ id }, ack) => {
