@@ -67,7 +67,14 @@ export function TournamentLobby({
       <div
         key={p.matchId}
         className="room-card"
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          gap: 16,
+          alignSelf: "flex-start",
+          width: "auto",
+        }}
       >
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 700 }}>{p.homeName}</div>
