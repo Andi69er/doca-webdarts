@@ -75,6 +75,11 @@ interface TournamentRecord {
   /** Manuelle Spieler-Zuordnungen (Admin), keyed by rohem 3K-Anzeigenamen. Fehlt bei
    *  Turnieren, die vor diesem Feld angelegt wurden - immer mit `?? {}` lesen. */
   overrides?: OverrideMap;
+  /** Solange false: nur der Admin sieht/öffnet das Turnier. Fehlt bei Turnieren von vor
+   *  diesem Feld - immer mit `?? true` lesen, sonst würden bereits laufende, für alle
+   *  sichtbare Turniere durch dieses Feature plötzlich verschwinden. Neue Turniere
+   *  setzen es in addTournament() explizit auf false. */
+  published?: boolean;
   createdBy: string;
   createdAt: number;
 }
@@ -111,6 +116,7 @@ export async function listTournaments(): Promise<TournamentSummary[]> {
     threeKEventId: r.threeKEventId,
     hasProfile: r.profile !== null,
     isDouble: r.isDouble ?? false,
+    published: r.published ?? true,
   }));
 }
 
@@ -131,12 +137,20 @@ export async function addTournament(
     threeKEventId,
     isDouble,
     profile: null,
+    published: false,
     createdBy,
     createdAt: Date.now(),
   };
   records.push(rec);
   await persist();
-  return { id: rec.id, name: rec.name, threeKEventId: rec.threeKEventId, hasProfile: false, isDouble };
+  return {
+    id: rec.id,
+    name: rec.name,
+    threeKEventId: rec.threeKEventId,
+    hasProfile: false,
+    isDouble,
+    published: false,
+  };
 }
 
 export async function setTournamentProfile(id: string, profile: MatchConfig): Promise<void> {
@@ -144,6 +158,14 @@ export async function setTournamentProfile(id: string, profile: MatchConfig): Pr
   const rec = records.find((r) => r.id === id);
   if (!rec) throw new Error("Turnier nicht gefunden.");
   rec.profile = profile;
+  await persist();
+}
+
+export async function setTournamentPublished(id: string, published: boolean): Promise<void> {
+  await load();
+  const rec = records.find((r) => r.id === id);
+  if (!rec) throw new Error("Turnier nicht gefunden.");
+  rec.published = published;
   await persist();
 }
 
@@ -190,6 +212,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
       threeKEventId: rec.threeKEventId,
       hasProfile: rec.profile !== null,
       isDouble,
+      published: rec.published ?? true,
       profile: rec.profile,
       rounds: [],
     };
@@ -240,6 +263,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
     threeKEventId: rec.threeKEventId,
     hasProfile: rec.profile !== null,
     isDouble,
+    published: rec.published ?? true,
     profile: rec.profile,
     rounds: outRounds,
   };
@@ -252,6 +276,7 @@ export async function resolvePairing(
 ): Promise<{
   profile: MatchConfig;
   isDouble: boolean;
+  published: boolean;
   homeUid: string | null;
   homeUid2: string | null;
   awayUid: string | null;
@@ -282,6 +307,7 @@ export async function resolvePairing(
     return {
       profile: rec.profile,
       isDouble,
+      published: rec.published ?? true,
       homeUid,
       homeUid2,
       awayUid,

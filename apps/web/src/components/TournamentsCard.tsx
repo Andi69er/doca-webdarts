@@ -74,7 +74,10 @@ export function TournamentsCard({ app, onOpen }: { app: AppApi; onOpen: (id: str
         {list?.map((t) => (
           <div key={t.id} className="room-card">
             <strong>{t.name}</strong>
-            <div className="hint">{t.hasProfile ? "Matchprofil festgelegt" : "Matchprofil fehlt noch"}</div>
+            <div className="hint">
+              {t.hasProfile ? "Matchprofil festgelegt" : "Matchprofil fehlt noch"}
+              {!t.published && " · Entwurf (nur für dich sichtbar)"}
+            </div>
             <button onClick={() => onOpen(t.id)}>Öffnen</button>
           </div>
         ))}

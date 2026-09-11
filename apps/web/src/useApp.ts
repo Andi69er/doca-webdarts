@@ -64,6 +64,7 @@ export interface AppApi {
     slot: 0 | 1,
     uid: string | null,
   ) => Promise<void>;
+  setTournamentPublished: (id: string, published: boolean) => Promise<void>;
 }
 
 const NAME_KEY = "wd:name";
@@ -236,5 +237,7 @@ export function useApp(): AppApi {
       guard(
         emitAck("tournament:setPlayerOverride", { id, participantName, slot, uid }).then(() => undefined),
       ),
+    setTournamentPublished: (id, published) =>
+      guard(emitAck("tournament:setPublished", { id, published }).then(() => undefined)),
   };
 }

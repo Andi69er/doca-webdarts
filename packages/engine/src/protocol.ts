@@ -177,6 +177,9 @@ export interface TournamentSummary {
   hasProfile: boolean;
   /** 3K eventKindCd === "DOUBLE" – bestimmt teamSize im Matchprofil und Spieler-Auflösung. */
   isDouble: boolean;
+  /** Solange false (Standard beim Anlegen): nur der Admin sieht/öffnet das Turnier,
+   *  Mitglieder sehen es nicht in der Liste und können es nicht direkt aufrufen. */
+  published: boolean;
 }
 
 /** Eine einzelne Paarung aus dem 3K-Spielplan, aus Sicht des anfragenden Mitglieds. */
@@ -320,6 +323,11 @@ export interface ClientToServerEvents {
   /** Match-Profil (Format) für ein Turnier festlegen (nur Admin). */
   "tournament:setProfile": (
     payload: { id: string; profile: MatchConfig },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  /** Turnier für Teilnehmer sichtbar/aufrufbar machen oder wieder zurückziehen (nur Admin). */
+  "tournament:setPublished": (
+    payload: { id: string; published: boolean },
     ack: (res: AckResult<null>) => void,
   ) => void;
   /** Paarung starten: legt bei Bedarf einen vorbefüllten Raum an (oder tritt dem schon

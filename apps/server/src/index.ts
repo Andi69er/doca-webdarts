@@ -26,6 +26,7 @@ import {
   setMatchRoom,
   setPlayerOverride,
   setTournamentProfile,
+  setTournamentPublished,
 } from "./tournaments.js";
 import { parseSingleDisplayName } from "./nameMatch.js";
 
@@ -603,8 +604,11 @@ io.on("connection", (socket) => {
 
   socket.on("tournaments:list", async (_payload, ack) => {
     if (tooMany(ack, "tlist", 30)) return;
+    const member = hub.get(me());
+    const isAdmin = member?.name === TOURNAMENT_ADMIN;
     try {
-      ack({ ok: true, data: await listTournaments() });
+      const list = await listTournaments();
+      ack({ ok: true, data: isAdmin ? list : list.filter((t) => t.published) });
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });
     }
@@ -640,6 +644,20 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("tournament:setPublished", async ({ id, published }, ack) => {
+    if (tooMany(ack, "tpublish", 20)) return;
+    const member = hub.get(me());
+    if (!member || member.name !== TOURNAMENT_ADMIN) {
+      return ack({ ok: false, error: "Nur der Admin darf das Turnier veröffentlichen." });
+    }
+    try {
+      await setTournamentPublished(String(id), Boolean(published));
+      ack({ ok: true, data: null });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
   socket.on("tournament:setPlayerOverride", async ({ id, participantName, slot, uid }, ack) => {
     if (tooMany(ack, "toverride", 20)) return;
     const member = hub.get(me());
@@ -660,9 +678,13 @@ io.on("connection", (socket) => {
 
   socket.on("tournament:detail", async ({ id }, ack) => {
     if (tooMany(ack, "tdetail", 30)) return;
-    if (!hub.get(me())) return ack({ ok: false, error: "Bitte zuerst Namen setzen." });
+    const member = hub.get(me());
+    if (!member) return ack({ ok: false, error: "Bitte zuerst Namen setzen." });
     try {
       const detail = await getTournamentDetail(String(id), me() || null);
+      if (!detail.published && member.name !== TOURNAMENT_ADMIN) {
+        return ack({ ok: false, error: "Turnier nicht gefunden." });
+      }
       ack({ ok: true, data: detail });
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });
@@ -697,6 +719,9 @@ io.on("connection", (socket) => {
     try {
       const pairing = await resolvePairing(tid, mid);
       if (!pairing) return ack({ ok: false, error: "Paarung nicht gefunden." });
+      if (!pairing.published && member.name !== TOURNAMENT_ADMIN) {
+        return ack({ ok: false, error: "Paarung nicht gefunden." });
+      }
       const homeIds = pairing.isDouble ? [pairing.homeUid, pairing.homeUid2] : [pairing.homeUid];
       const awayIds = pairing.isDouble ? [pairing.awayUid, pairing.awayUid2] : [pairing.awayUid];
       if (homeIds.some((u) => !u) || awayIds.some((u) => !u)) {

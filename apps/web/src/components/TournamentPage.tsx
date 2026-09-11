@@ -93,6 +93,14 @@ export function TournamentPage({
       .catch((e) => setError((e as Error).message));
   };
 
+  const togglePublished = () => {
+    if (!detail) return;
+    app
+      .setTournamentPublished(tournamentId, !detail.published)
+      .then(load)
+      .catch((e) => setError((e as Error).message));
+  };
+
   if (!detail) {
     return (
       <div className="card stack">
@@ -126,6 +134,11 @@ export function TournamentPage({
               Matchprofil festlegen
             </button>
           )}
+          {isAdmin && (
+            <button className={detail.published ? "ghost" : "primary"} onClick={togglePublished}>
+              {detail.published ? "Zurückziehen" : "Für Teilnehmer freigeben"}
+            </button>
+          )}
           <button className="ghost" onClick={load}>
             ↻ Aktualisieren
           </button>
@@ -133,6 +146,13 @@ export function TournamentPage({
       </div>
 
       {error && <div className="hint">{error}</div>}
+
+      {isAdmin && !detail.published && (
+        <div className="card hint">
+          Entwurf – nur du siehst dieses Turnier. Teilnehmer sehen es erst, sobald du auf
+          "Für Teilnehmer freigeben" klickst.
+        </div>
+      )}
 
       {!detail.hasProfile && (
         <div className="card hint">
