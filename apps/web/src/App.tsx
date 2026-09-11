@@ -20,7 +20,17 @@ export function App() {
   else if (app.room && app.room.phase === "lobby") view = <RoomLobby app={app} />;
   else if (app.room) view = <MatchView app={app} />;
   else if (tournamentId)
-    view = <TournamentPage app={app} tournamentId={tournamentId} onBack={() => setTournamentId(null)} />;
+    view = (
+      <TournamentPage
+        app={app}
+        tournamentId={tournamentId}
+        onBack={() => setTournamentId(null)}
+        onOpenLobby={(id) => {
+          setTournamentId(null);
+          setTournamentLobbyId(id);
+        }}
+      />
+    );
   else if (tournamentLobbyId)
     view = (
       <TournamentLobby app={app} tournamentId={tournamentLobbyId} onBack={() => setTournamentLobbyId(null)} />

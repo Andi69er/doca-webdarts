@@ -53,10 +53,13 @@ export function TournamentPage({
   app,
   tournamentId,
   onBack,
+  onOpenLobby,
 }: {
   app: AppApi;
   tournamentId: string;
   onBack: () => void;
+  /** Zur Turnier-Lobby (Spieler-Sicht) wechseln, z.B. um das Ergebnis zu prüfen. */
+  onOpenLobby: (id: string) => void;
 }) {
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +142,9 @@ export function TournamentPage({
               {detail.published ? "Zurückziehen" : "Für Teilnehmer freigeben"}
             </button>
           )}
+          <button className="ghost" onClick={() => onOpenLobby(tournamentId)}>
+            Zur Turnierlobby
+          </button>
           <button className="ghost" onClick={load}>
             ↻ Aktualisieren
           </button>

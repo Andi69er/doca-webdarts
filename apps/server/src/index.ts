@@ -580,6 +580,28 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("livekit:tournamentToken", async ({ tournamentId }, ack) => {
+    if (tooMany(ack, "token", 20)) return;
+    if (!hub.get(me())) return ack({ ok: false, error: "Nicht in der Lobby." });
+    if (!videoEnabled) return ack({ ok: true, data: { disabled: true } });
+    const tid = cleanText(String(tournamentId ?? ""), MAX_ROOM_NAME);
+    if (!tid) return ack({ ok: false, error: "Ungültiges Turnier." });
+    try {
+      const token = await createLivekitToken({
+        room: "webdarts-tournament-" + tid,
+        identity: me(),
+        name: displayName(),
+        // Eigener Kanal pro Turnier, getrennt von Hub und Raum-Kanälen. Feinere
+        // Rechte (Zuschauer vs. Spieler) kommen erst mit der Anwesenheits-/
+        // Copilot-Ausbaustufe - bis dahin dürfen alle in der Turnier-Lobby reden.
+        canPublish: true,
+      });
+      ack({ ok: true, data: { token, url: livekitUrl() } });
+    } catch (err) {
+      ack({ ok: false, error: "Token-Fehler: " + (err as Error).message });
+    }
+  });
+
   socket.on("livekit:token", async ({ roomId }, ack) => {
     if (tooMany(ack, "token", 20)) return;
     const room = manager.get(roomId);

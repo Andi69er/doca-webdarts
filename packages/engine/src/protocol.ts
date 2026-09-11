@@ -233,6 +233,12 @@ export interface ClientToServerEvents {
     payload: Record<string, never>,
     ack: (res: AckResult<{ token: string; url: string } | { disabled: true }>) => void,
   ) => void;
+  /** LiveKit-Token für den Sprachkanal einer Turnier-Lobby – eigener Kanal pro
+   *  Turnier, getrennt vom Hub- und von Raum-Kanälen. */
+  "livekit:tournamentToken": (
+    payload: { tournamentId: string },
+    ack: (res: AckResult<{ token: string; url: string } | { disabled: true }>) => void,
+  ) => void;
 
   "room:create": (
     payload: {

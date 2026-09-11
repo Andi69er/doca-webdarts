@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TournamentDetail, TournamentPairing } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
+import { LobbyAudio } from "./LobbyAudio";
 
 /**
- * Turnier-Lobby: der Einstieg fürs "Turnier betreten" (DL-Copilot-Stil) – zeigt zuerst
+ * Turnier-Lobby: der Einstieg fürs "Turnier beitreten" (DL-Copilot-Stil) – zeigt zuerst
  * die eigenen offenen Paarungen klickbar oben, darunter zur Übersicht den kompletten
  * Spielplan. Getrennt von der Admin-Seite (TournamentPage: Matchprofil/Zuordnung/
- * Freigabe) – bewusst keine Admin-Funktionen hier, nur die Spieler-Sicht.
+ * Freigabe) – bewusst keine Admin-Funktionen hier, nur die Spieler-Sicht. Eigener
+ * Sprachkanal pro Turnier (getrennt von Hub und Match-Räumen).
  */
 export function TournamentLobby({
   app,
@@ -104,6 +106,10 @@ export function TournamentLobby({
       </div>
 
       {error && <div className="hint">{error}</div>}
+
+      <div className="card">
+        <LobbyAudio tournamentId={tournamentId} />
+      </div>
 
       {!detail.hasProfile && (
         <div className="card hint">Für dieses Turnier ist noch kein Matchprofil festgelegt. Bitte kurz warten.</div>

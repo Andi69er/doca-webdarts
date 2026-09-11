@@ -84,12 +84,14 @@ export function TournamentsCard({
         {list?.map((t) => (
           <div key={t.id} className="room-card">
             <strong>{t.name}</strong>
-            <div className="hint">
-              {t.hasProfile ? "Matchprofil festgelegt" : "Matchprofil fehlt noch"}
-              {!t.published && " · Entwurf (nur für dich sichtbar)"}
-            </div>
+            {isAdmin && (
+              <div className="hint">
+                {t.hasProfile ? "Matchprofil festgelegt" : "Matchprofil fehlt noch"}
+                {!t.published && " · Entwurf (nur für dich sichtbar)"}
+              </div>
+            )}
             <div className="row" style={{ gap: 6 }}>
-              <button onClick={() => onEnter(t.id)}>Turnier betreten</button>
+              <button onClick={() => onEnter(t.id)}>Turnier beitreten</button>
               {isAdmin && (
                 <button className="ghost" onClick={() => onOpen(t.id)}>
                   Verwalten
