@@ -7,6 +7,22 @@ import { LobbyAudio } from "./LobbyAudio";
 import { Avatar } from "./Avatar";
 import { embed, type EmbedMember } from "../embed";
 
+const OUT_LABEL: Record<string, string> = { double: "Double Out", master: "Master Out", straight: "Straight Out" };
+
+/** Kurze Textzusammenfassung des Matchprofils für gesperrte Turnier-Räume (kein Bearbeiten nötig/erlaubt). */
+function formatSummary(cfg: MatchConfig): string {
+  const mode =
+    cfg.mode === "x01"
+      ? `X01 ${cfg.x01!.startScore} (${OUT_LABEL[cfg.x01!.out] ?? cfg.x01!.out})`
+      : `Cricket (${cfg.cricket!.variant === "cutthroat" ? "Cut-Throat" : "Standard"})`;
+  const team = cfg.teamSize === 2 ? "Doppel (2v2)" : "Einzel (1v1)";
+  const length =
+    cfg.setsToWin > 1
+      ? `First to ${cfg.setsToWin} Sätze, je ${cfg.legsToWinSet} Legs`
+      : `First to ${cfg.legsToWinSet} Legs`;
+  return `${mode} · ${team} · ${length}`;
+}
+
 /**
  * Zahlenfeld, das sich frei mit der Tastatur bearbeiten lässt (Feld darf beim
  * Tippen kurz leer sein) und erst bei Verlassen / Enter clampt & meldet.
@@ -200,7 +216,11 @@ export function RoomLobby({ app }: { app: AppApi }) {
 
       <div className="lobby-head">
         <h2 className="room-title">{state.name || "Neues Match"}</h2>
-        <p className="hint">Stelle dein Spiel zusammen.</p>
+        <p className="hint">
+          {state.tournamentLocked
+            ? `Turnier-Matchprofil: ${formatSummary(cfg)} · vom Admin festgelegt, nicht änderbar.`
+            : "Stelle dein Spiel zusammen."}
+        </p>
       </div>
 
       {state.bot && (
@@ -210,6 +230,8 @@ export function RoomLobby({ app }: { app: AppApi }) {
         </div>
       )}
 
+      {!state.tournamentLocked && (
+      <>
       {/* ── 1) Spielmodus ─────────────────────────────────────────────── */}
       <div className="card stack lobby-block">
         <div className="lobby-block-head">
@@ -446,6 +468,8 @@ export function RoomLobby({ app }: { app: AppApi }) {
         </div>
       </div>
       </div>
+      </>
+      )}
 
       {/* ── 4) Gegner & Verbindung ───────────────────────────────────── */}
       <div className="card stack lobby-block">
