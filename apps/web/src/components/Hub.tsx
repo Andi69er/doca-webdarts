@@ -6,6 +6,7 @@ import { Avatar } from "./Avatar";
 import { BotPicker } from "./BotPicker";
 import { HelpModal } from "./HelpModal";
 import { LobbyAudio } from "./LobbyAudio";
+import { TournamentsCard } from "./TournamentsCard";
 import { fetchPortalStats, type PortalStats } from "../portalStats";
 
 const BOT_PRESETS: { key: string; label: string; average: number }[] = [
@@ -15,7 +16,7 @@ const BOT_PRESETS: { key: string; label: string; average: number }[] = [
   { key: "preset:85", label: "Profi (Ø 85)", average: 85 },
 ];
 
-export function Hub({ app }: { app: AppApi }) {
+export function Hub({ app, onOpenTournament }: { app: AppApi; onOpenTournament: (id: string) => void }) {
   const hub = app.hub;
   const [text, setText] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -265,7 +266,8 @@ export function Hub({ app }: { app: AppApi }) {
         </div>
       </div>
 
-      {/* Räume */}
+      {/* Räume + Turniere */}
+      <div className="stack">
       <div className="card stack">
         <h3 className="section-title">Räume</h3>
 
@@ -326,6 +328,9 @@ export function Hub({ app }: { app: AppApi }) {
             </div>
           ))}
         </div>
+      </div>
+
+      <TournamentsCard app={app} onOpen={onOpenTournament} />
       </div>
       </div>
     </>

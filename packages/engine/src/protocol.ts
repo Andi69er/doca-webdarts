@@ -162,6 +162,42 @@ export interface RoomState {
 }
 
 // ---------------------------------------------------------------------------
+// Turniere (3K-Anbindung, „DL-Copilot"-Ersatz)
+// ---------------------------------------------------------------------------
+
+/** Ein an Webdarts angebundenes 3K-Turnier/Liga. */
+export interface TournamentSummary {
+  id: string;
+  name: string;
+  threeKEventId: number;
+  /** Match-Format, das beim Start einer Paarung vorbefüllt wird. Noch nicht gesetzt = null. */
+  hasProfile: boolean;
+}
+
+/** Eine einzelne Paarung aus dem 3K-Spielplan, aus Sicht des anfragenden Mitglieds. */
+export interface TournamentPairing {
+  matchId: number;
+  roundName: string;
+  homeName: string;
+  awayName: string;
+  /** Aufgelöste Webdarts-Identität ("u:<uid>") oder null, wenn (noch) nicht zuordenbar. */
+  homeUid: string | null;
+  awayUid: string | null;
+  status: "open" | "finished";
+  legsHome: number | null;
+  legsAway: number | null;
+  /** Bin ich (Heim oder Gast) an dieser Paarung beteiligt? */
+  isMine: boolean;
+  /** Bin ich der Heimspieler? Nur der darf die Paarung starten (Hin-/Rückspiel-Zuordnung bei 3K). */
+  iAmHome: boolean;
+}
+
+export interface TournamentDetail extends TournamentSummary {
+  profile: MatchConfig | null;
+  rounds: { name: string; pairings: TournamentPairing[] }[];
+}
+
+// ---------------------------------------------------------------------------
 // Client -> Server
 // ---------------------------------------------------------------------------
 
@@ -254,6 +290,33 @@ export interface ClientToServerEvents {
   "livekit:token": (
     payload: { roomId: string },
     ack: (res: AckResult<{ token: string; url: string } | { disabled: true }>) => void,
+  ) => void;
+
+  /** Liste aller angebundenen Turniere (für alle sichtbar). */
+  "tournaments:list": (
+    payload: Record<string, never>,
+    ack: (res: AckResult<TournamentSummary[]>) => void,
+  ) => void;
+  /** Turnier + Spielplan + eigene Paarungen. */
+  "tournament:detail": (
+    payload: { id: string },
+    ack: (res: AckResult<TournamentDetail>) => void,
+  ) => void;
+  /** Neues 3K-Turnier verknüpfen (nur Admin). */
+  "tournament:add": (
+    payload: { threeKEventId: number; name?: string },
+    ack: (res: AckResult<TournamentSummary>) => void,
+  ) => void;
+  /** Match-Profil (Format) für ein Turnier festlegen (nur Admin). */
+  "tournament:setProfile": (
+    payload: { id: string; profile: MatchConfig },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  /** Paarung starten: legt bei Bedarf einen vorbefüllten Raum an (oder tritt dem schon
+   *  laufenden bei) und setzt mich auf meinen Platz (Heim/Gast). */
+  "tournament:startMatch": (
+    payload: { id: string; matchId: number },
+    ack: (res: AckResult<{ roomId: string }>) => void,
   ) => void;
 }
 

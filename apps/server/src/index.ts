@@ -17,6 +17,19 @@ import { appendResult, recentResults } from "./results.js";
 import { careerFor, loadCareer, recordCareer } from "./stats.js";
 import { sendSession, sendUsage } from "./ingest.js";
 import { authRequired, verifyTicket } from "./auth.js";
+import {
+  addTournament,
+  getMatchRoom,
+  getTournamentDetail,
+  listTournaments,
+  resolvePairing,
+  setMatchRoom,
+  setTournamentProfile,
+} from "./tournaments.js";
+import { parseSingleDisplayName } from "./nameMatch.js";
+
+/** DOCA-Login, der Turniere verknüpfen und deren Matchprofil festlegen darf. */
+const TOURNAMENT_ADMIN = "Andi69er";
 
 const PORT = Number(process.env.PORT ?? 8787);
 /** Erlaubte Web-Origins (Komma-Liste), z.B. "https://www.doca.at,http://localhost:5173". */
@@ -582,6 +595,123 @@ io.on("connection", (socket) => {
       ack({ ok: true, data: { token, url: livekitUrl() } });
     } catch (err) {
       ack({ ok: false, error: "Token-Fehler: " + (err as Error).message });
+    }
+  });
+
+  // --- Turniere (3K-Anbindung) --------------------------------------------
+
+  socket.on("tournaments:list", async (_payload, ack) => {
+    if (tooMany(ack, "tlist", 30)) return;
+    try {
+      ack({ ok: true, data: await listTournaments() });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:add", async ({ threeKEventId, name }, ack) => {
+    if (tooMany(ack, "tadd", 10)) return;
+    const member = hub.get(me());
+    if (!member || member.name !== TOURNAMENT_ADMIN) {
+      return ack({ ok: false, error: "Nur der Admin darf Turniere verknüpfen." });
+    }
+    const evId = Number(threeKEventId);
+    if (!Number.isInteger(evId) || evId <= 0) return ack({ ok: false, error: "Ungültige 3K-Event-ID." });
+    try {
+      const t = await addTournament(evId, typeof name === "string" ? cleanText(name, MAX_ROOM_NAME) : undefined, member.cid);
+      ack({ ok: true, data: t });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:setProfile", async ({ id, profile }, ack) => {
+    if (tooMany(ack, "tprofile", 20)) return;
+    const member = hub.get(me());
+    if (!member || member.name !== TOURNAMENT_ADMIN) {
+      return ack({ ok: false, error: "Nur der Admin darf das Matchprofil festlegen." });
+    }
+    try {
+      await setTournamentProfile(String(id), sanitizeConfig(profile));
+      ack({ ok: true, data: null });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:detail", async ({ id }, ack) => {
+    if (tooMany(ack, "tdetail", 30)) return;
+    if (!hub.get(me())) return ack({ ok: false, error: "Bitte zuerst Namen setzen." });
+    try {
+      const detail = await getTournamentDetail(String(id), me() || null);
+      ack({ ok: true, data: detail });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:startMatch", async ({ id, matchId }, ack) => {
+    if (tooMany(ack, "tstart", 15)) return;
+    const member = hub.get(me());
+    if (!member) return ack({ ok: false, error: "Bitte zuerst Namen setzen." });
+    const tid = String(id);
+    const mid = Number(matchId);
+
+    // Für diese Paarung existiert schon ein Raum (der Heim-Spieler hat ihn eröffnet)?
+    // Dann rein statt einen zweiten anzulegen; eigenen Platz nehmen, falls vorgesehen und frei.
+    const existing = getMatchRoom(tid, mid);
+    if (existing && manager.get(existing.roomId)) {
+      const room = manager.get(existing.roomId)!;
+      room.addMember(member.cid, member.name, member.image);
+      member.roomId = existing.roomId;
+      socket.join(existing.roomId);
+      if (me() === existing.awayUid) room.takeSeat(member.cid, "t1p0");
+      else if (me() === existing.homeUid) room.takeSeat(member.cid, "t0p0");
+      ack({ ok: true, data: { roomId: existing.roomId } });
+      void broadcastRoom(existing.roomId);
+      broadcastHub();
+      return;
+    }
+
+    try {
+      const pairing = await resolvePairing(tid, mid);
+      if (!pairing) return ack({ ok: false, error: "Paarung nicht gefunden." });
+      if (!pairing.homeUid || !pairing.awayUid) {
+        return ack({
+          ok: false,
+          error: "Diese Paarung konnte nicht automatisch zugeordnet werden (Doppel wird hier noch nicht unterstützt).",
+        });
+      }
+      if (me() !== pairing.homeUid && me() !== pairing.awayUid) {
+        return ack({ ok: false, error: "Du bist nicht Teil dieser Paarung." });
+      }
+      if (me() !== pairing.homeUid) {
+        const homeFirst = parseSingleDisplayName(pairing.homeName).fullName;
+        return ack({ ok: false, error: `Nur ${homeFirst} (Heim) kann dieses Match eröffnen – bitte kurz warten.` });
+      }
+      if (manager.count() >= MAX_ROOMS) return ack({ ok: false, error: "Server ausgelastet – zu viele Räume." });
+
+      const homeName = parseSingleDisplayName(pairing.homeName).fullName;
+      const awayName = parseSingleDisplayName(pairing.awayName).fullName;
+      const room = manager.create(
+        member.cid,
+        member.name,
+        sanitizeConfig(pairing.profile),
+        [homeName, awayName],
+        `Turnier: ${homeName} vs. ${awayName}`,
+        null,
+        member.image,
+      );
+      room.takeSeat(member.cid, "t0p0");
+      setMatchRoom(tid, mid, { roomId: room.roomId, homeUid: pairing.homeUid, awayUid: pairing.awayUid });
+      member.roomId = room.roomId;
+      socket.join(room.roomId);
+      pushChat({ name: "", text: `${member.name} hat ein Turnier-Match eröffnet`, kind: "system" });
+      ack({ ok: true, data: { roomId: room.roomId } });
+      void broadcastRoom(room.roomId);
+      broadcastHub();
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
     }
   });
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useApp } from "./useApp";
 import { isEmbedded } from "./embed";
 import { ParticlesBackground } from "./components/ParticlesBackground";
@@ -5,16 +6,20 @@ import { NameGate } from "./components/NameGate";
 import { Hub } from "./components/Hub";
 import { RoomLobby } from "./components/RoomLobby";
 import { MatchView } from "./components/MatchView";
+import { TournamentPage } from "./components/TournamentPage";
 import { SponsorStrip } from "./components/SponsorStrip";
 
 export function App() {
   const app = useApp();
+  const [tournamentId, setTournamentId] = useState<string | null>(null);
 
   let view: JSX.Element;
   if (!app.name) view = <NameGate app={app} />;
-  else if (!app.room) view = <Hub app={app} />;
-  else if (app.room.phase === "lobby") view = <RoomLobby app={app} />;
-  else view = <MatchView app={app} />;
+  else if (app.room && app.room.phase === "lobby") view = <RoomLobby app={app} />;
+  else if (app.room) view = <MatchView app={app} />;
+  else if (tournamentId)
+    view = <TournamentPage app={app} tournamentId={tournamentId} onBack={() => setTournamentId(null)} />;
+  else view = <Hub app={app} onOpenTournament={setTournamentId} />;
 
   const content = (
     <>
