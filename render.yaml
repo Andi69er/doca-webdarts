@@ -26,4 +26,15 @@ services:
         sync: false
       - key: LIVEKIT_API_SECRET
         sync: false
+      # 3K-Write-back (Ergebnis-Rückschreibung) - echtes Vereinskonto mit
+      # Schreibrechten, siehe Memory webdarts-3k-tournament-integration.md.
+      # Ohne diese vier ist der Write-back deaktiviert (nur lesen geht weiter).
+      - key: THREEK_USERNAME
+        sync: false
+      - key: THREEK_PASSWORD
+        sync: false
+      - key: THREEK_MANDANT_KEY
+        value: "168"
+      - key: THREEK_MANDANT_DATABASE
+        value: PROD_3
       # PORT wird von Render automatisch gesetzt.

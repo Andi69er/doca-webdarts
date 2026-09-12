@@ -29,6 +29,7 @@ import {
   setTournamentPublished,
 } from "./tournaments.js";
 import { parseSingleDisplayName } from "./nameMatch.js";
+import { threeKWriteEnabled, writeThreeKResult } from "./threeKWrite.js";
 
 /** DOCA-Login, der Turniere verknüpfen und deren Matchprofil festlegen darf. */
 const TOURNAMENT_ADMIN = "Andi69er";
@@ -185,6 +186,34 @@ app.get("/usage", (req, res) => {
     rooms: rooms.length,
     playing: rooms.filter((r) => r.summary().phase === "match").length,
   });
+});
+
+/**
+ * TEMPORÄR: manueller Test für die 3K-Ergebnis-Rückschreibung, per
+ * x-webdarts-key geschützt (gleiches Secret wie /usage). Bewusst nicht an
+ * den Match-Ende-Ablauf gehängt - nur zum gezielten Ausprobieren am
+ * "Dummy TEST"-Turnier, danach wieder entfernen. Siehe Memory
+ * webdarts-3k-tournament-integration.md.
+ */
+app.post("/admin/threek-test-write", express.json(), async (req, res) => {
+  if (!USAGE_KEY || req.get("x-webdarts-key") !== USAGE_KEY) {
+    return res.status(403).json({ error: "auth" });
+  }
+  if (!threeKWriteEnabled) {
+    return res.status(503).json({ error: "not-configured" });
+  }
+  const matchId = Number(req.body?.matchId);
+  const legsHome = Number(req.body?.legsHome);
+  const legsAway = Number(req.body?.legsAway);
+  if (!Number.isInteger(matchId) || !Number.isInteger(legsHome) || !Number.isInteger(legsAway)) {
+    return res.status(400).json({ error: "bad-input" });
+  }
+  try {
+    await writeThreeKResult(matchId, legsHome, legsAway);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
 });
 
 /** Zuletzt gemeldete Login-Sitzung je Mitglied (entprellt das Ingest bei Reconnects). */
