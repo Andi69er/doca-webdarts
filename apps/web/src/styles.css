@@ -579,6 +579,7 @@ body:not(.webdarts-embedded) #webdarts-root {
   border-radius: 14px;
   padding: 22px;
   width: 100%; max-width: 380px;
+  max-height: calc(100vh - 40px); overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
