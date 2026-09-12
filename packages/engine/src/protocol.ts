@@ -180,6 +180,9 @@ export interface TournamentSummary {
   /** Solange false (Standard beim Anlegen): nur der Admin sieht/öffnet das Turnier,
    *  Mitglieder sehen es nicht in der Liste und können es nicht direkt aufrufen. */
   published: boolean;
+  /** Anzahl offener, mir zugeordneter Paarungen – Hinweis-Badge im Hub, damit man
+   *  nicht vergisst, dass man dran wäre. */
+  openForMe: number;
 }
 
 /** Eine einzelne Paarung aus dem 3K-Spielplan, aus Sicht des anfragenden Mitglieds. */

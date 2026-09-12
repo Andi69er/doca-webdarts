@@ -203,6 +203,31 @@ export function TournamentPage({
         </div>
       )}
 
+      {isAdmin &&
+        (() => {
+          const missing = detail.rounds.filter((r) => r.pairings.length > 0 && r.profile === null);
+          if (missing.length === 0) return null;
+          return (
+            <div className="card stack">
+              <div className="hint">
+                ⚠️ {missing.length} von {detail.rounds.filter((r) => r.pairings.length > 0).length} Runden haben noch
+                kein Matchprofil (weder eigenes noch Standard):
+              </div>
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                {missing.map((r) => (
+                  <button
+                    key={r.roundId}
+                    className="ghost"
+                    onClick={() => setEditing({ roundId: r.roundId, initial: null })}
+                  >
+                    {r.phaseName} · {r.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
       {detail.rounds.every((round) => round.pairings.length === 0) && (
         <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>
       )}

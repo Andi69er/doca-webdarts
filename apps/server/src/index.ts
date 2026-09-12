@@ -699,7 +699,7 @@ io.on("connection", (socket) => {
     const member = hub.get(me());
     const isAdmin = member?.name === TOURNAMENT_ADMIN;
     try {
-      const list = await listTournaments();
+      const list = await listTournaments(me() || null);
       ack({ ok: true, data: isAdmin ? list : list.filter((t) => t.published) });
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });

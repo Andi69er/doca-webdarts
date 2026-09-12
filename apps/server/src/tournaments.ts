@@ -181,16 +181,29 @@ async function persist(): Promise<void> {
   }
 }
 
-export async function listTournaments(): Promise<TournamentSummary[]> {
+export async function listTournaments(myUid: string | null): Promise<TournamentSummary[]> {
   await load();
-  return records.map((r) => ({
-    id: r.id,
-    name: r.name,
-    threeKEventId: r.threeKEventId,
-    hasProfile: r.profile !== null,
-    isDouble: r.isDouble ?? false,
-    published: r.published ?? true,
-  }));
+  const out: TournamentSummary[] = [];
+  for (const r of records) {
+    let openForMe = 0;
+    if (myUid) {
+      try {
+        openForMe = (await getTournamentDetail(r.id, myUid)).openForMe;
+      } catch {
+        openForMe = 0; // z.B. 3K gerade nicht erreichbar - Liste trotzdem zeigen, nur ohne Zahl
+      }
+    }
+    out.push({
+      id: r.id,
+      name: r.name,
+      threeKEventId: r.threeKEventId,
+      hasProfile: r.profile !== null,
+      isDouble: r.isDouble ?? false,
+      published: r.published ?? true,
+      openForMe,
+    });
+  }
+  return out;
 }
 
 export async function addTournament(
@@ -223,6 +236,7 @@ export async function addTournament(
     hasProfile: false,
     isDouble,
     published: false,
+    openForMe: 0,
   };
 }
 
@@ -380,6 +394,10 @@ export async function getTournamentDetail(
     }
   }
 
+  const openForMe = outRounds
+    .flatMap((r) => r.pairings)
+    .filter((p) => p.isMine && p.status === "open").length;
+
   return {
     id: rec.id,
     name: rec.name,
@@ -387,6 +405,7 @@ export async function getTournamentDetail(
     hasProfile: rec.profile !== null,
     isDouble,
     published: rec.published ?? true,
+    openForMe,
     profile: rec.profile,
     rounds: outRounds,
     participants: participants.list(),

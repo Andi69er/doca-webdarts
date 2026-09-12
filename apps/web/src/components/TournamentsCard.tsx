@@ -90,7 +90,14 @@ export function TournamentsCard({
         {list && list.length === 0 && <div className="hint">Noch kein Turnier verknüpft.</div>}
         {list?.map((t) => (
           <div key={t.id} className="room-card">
-            <strong>{t.name}</strong>
+            <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+              <strong>{t.name}</strong>
+              {t.openForMe > 0 && (
+                <span className="badge live" title="Offene Paarungen, bei denen du dran wärst">
+                  {t.openForMe} offen für dich
+                </span>
+              )}
+            </div>
             {isAdmin && (
               <div className="hint">
                 {t.hasProfile ? "Matchprofil festgelegt" : "Matchprofil fehlt noch"}
