@@ -687,7 +687,10 @@ body.webdarts-embedded #webdarts-root { font-size: 16px; }
 body.webdarts-embedded #webdarts-root .hub-grid {
   grid-template-columns: 300px 1fr 360px;
   min-height: calc(100vh - 210px);
-  align-items: stretch;
+  /* NICHT stretch: sonst zieht die (variabel hohe) Räume+Turniere-Spalte den
+     Chat-Karten auf ihre Höhe und reißt eine leere Lücke zwischen Sprachchat-
+     Leiste und Chat-Fenster auf, statt dass beide direkt aneinander sitzen. */
+  align-items: start;
 }
 body.webdarts-embedded #webdarts-root .card { padding: 24px; }
 body.webdarts-embedded #webdarts-root .section-title { font-size: 17px; }
