@@ -387,10 +387,17 @@ interface MatchRoomEntry {
   awayUid2: string | null;
 }
 const matchRoom = new Map<string, MatchRoomEntry>(); // "tournamentId:matchId" -> ...
+/** Rückrichtung fürs Ergebnis-Zurückschreiben: roomId -> 3K-matchId. */
+const roomToMatchId = new Map<string, number>();
 
 export function getMatchRoom(tournamentId: string, matchId: number): MatchRoomEntry | undefined {
   return matchRoom.get(`${tournamentId}:${matchId}`);
 }
 export function setMatchRoom(tournamentId: string, matchId: number, entry: MatchRoomEntry): void {
   matchRoom.set(`${tournamentId}:${matchId}`, entry);
+  roomToMatchId.set(entry.roomId, matchId);
+}
+/** Ist dieser Raum ein Turnier-Match? Wenn ja: die 3K-matchId dazu. */
+export function getMatchIdForRoom(roomId: string): number | undefined {
+  return roomToMatchId.get(roomId);
 }

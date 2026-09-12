@@ -19,6 +19,7 @@ import { sendSession, sendUsage } from "./ingest.js";
 import { authRequired, verifyTicket } from "./auth.js";
 import {
   addTournament,
+  getMatchIdForRoom,
   getMatchRoom,
   getTournamentDetail,
   listTournaments,
@@ -188,34 +189,6 @@ app.get("/usage", (req, res) => {
   });
 });
 
-/**
- * TEMPORÄR: manueller Test für die 3K-Ergebnis-Rückschreibung, per
- * x-webdarts-key geschützt (gleiches Secret wie /usage). Bewusst nicht an
- * den Match-Ende-Ablauf gehängt - nur zum gezielten Ausprobieren am
- * "Dummy TEST"-Turnier, danach wieder entfernen. Siehe Memory
- * webdarts-3k-tournament-integration.md.
- */
-app.post("/admin/threek-test-write", express.json(), async (req, res) => {
-  if (!USAGE_KEY || req.get("x-webdarts-key") !== USAGE_KEY) {
-    return res.status(403).json({ error: "auth" });
-  }
-  if (!threeKWriteEnabled) {
-    return res.status(503).json({ error: "not-configured" });
-  }
-  const matchId = Number(req.body?.matchId);
-  const legsHome = Number(req.body?.legsHome);
-  const legsAway = Number(req.body?.legsAway);
-  if (!Number.isInteger(matchId) || !Number.isInteger(legsHome) || !Number.isInteger(legsAway)) {
-    return res.status(400).json({ error: "bad-input" });
-  }
-  try {
-    await writeThreeKResult(matchId, legsHome, legsAway);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
-  }
-});
-
 /** Zuletzt gemeldete Login-Sitzung je Mitglied (entprellt das Ingest bei Reconnects). */
 const lastSessionSent = new Map<string, number>();
 const SESSION_MIN_GAP_MS = 10 * 60_000;
@@ -278,6 +251,29 @@ function broadcastHub() {
   io.to("hub").emit("hub:state", hubState());
 }
 
+/**
+ * Ist dieser Raum ein Turnier-Match (siehe tournament:startMatch), das
+ * gerade zu Ende ging? Dann das Endergebnis automatisch an 3K melden.
+ * Bewusst fehlertolerant (nur geloggt, kein Absturz/Retry) - 3K bleibt bei
+ * einem Fehler einfach unverändert, das Ergebnis ist ja trotzdem lokal
+ * gespeichert (appendResult/sendUsage) und lässt sich notfalls manuell
+ * nachtragen.
+ */
+async function reportTournamentResult(roomId: string, record: Record<string, unknown>): Promise<void> {
+  const matchId = getMatchIdForRoom(roomId);
+  if (matchId === undefined || !threeKWriteEnabled) return;
+  const teams = record.teams as { legsWon: number }[] | undefined;
+  const legsHome = teams?.[0]?.legsWon;
+  const legsAway = teams?.[1]?.legsWon;
+  if (typeof legsHome !== "number" || typeof legsAway !== "number") return;
+  try {
+    await writeThreeKResult(matchId, legsHome, legsAway);
+    console.log(`[3K] Ergebnis gemeldet: Match ${matchId} -> ${legsHome}:${legsAway}`);
+  } catch (err) {
+    console.warn(`[3K] Ergebnis-Meldung fehlgeschlagen (Match ${matchId}):`, (err as Error).message);
+  }
+}
+
 async function broadcastRoom(roomId: string) {
   const room = manager.get(roomId);
   if (!room) return;
@@ -287,6 +283,7 @@ async function broadcastRoom(roomId: string) {
     await appendResult(finished.record);
     recordCareer(finished.players);
     void sendUsage(finished.record); // dauerhaft in die doca.at-DB
+    void reportTournamentResult(roomId, finished.record); // ggf. Turnier-Ergebnis an 3K
     broadcastHub(); // frische Karriere-Werte in die Online-Liste
   }
   scheduleBot(roomId);
