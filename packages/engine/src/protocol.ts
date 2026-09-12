@@ -348,6 +348,11 @@ export interface ClientToServerEvents {
     payload: { id: string; published: boolean },
     ack: (res: AckResult<null>) => void,
   ) => void;
+  /** Verknüpfung wieder entfernen (nur Admin) – nur lokal bei uns, rührt 3K nicht an. */
+  "tournament:remove": (
+    payload: { id: string },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
   /** Paarung starten: legt bei Bedarf einen vorbefüllten Raum an (oder tritt dem schon
    *  laufenden bei) und setzt mich auf meinen Platz (Heim/Gast). */
   "tournament:startMatch": (

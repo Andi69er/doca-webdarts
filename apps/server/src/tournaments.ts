@@ -222,6 +222,16 @@ export async function addTournament(
   };
 }
 
+/** Entfernt die Verknüpfung wieder - rein lokal bei uns, rührt 3K nicht an
+ *  (wir haben da nie etwas angelegt, nur gelesen/verlinkt). */
+export async function removeTournament(id: string): Promise<void> {
+  await load();
+  const before = records.length;
+  records = records.filter((r) => r.id !== id);
+  if (records.length === before) throw new Error("Turnier nicht gefunden.");
+  await persist();
+}
+
 export async function setTournamentProfile(id: string, profile: MatchConfig): Promise<void> {
   await load();
   const rec = records.find((r) => r.id === id);

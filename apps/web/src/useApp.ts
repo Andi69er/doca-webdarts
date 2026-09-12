@@ -66,6 +66,7 @@ export interface AppApi {
     uid: string | null,
   ) => Promise<void>;
   setTournamentPublished: (id: string, published: boolean) => Promise<void>;
+  removeTournament: (id: string) => Promise<void>;
 
   /** Chat der aktuell betretenen Turnier-Lobby, eigener Kanal getrennt von Hub/Raum. */
   tournamentChat: ChatMessage[];
@@ -269,6 +270,7 @@ export function useApp(): AppApi {
       ),
     setTournamentPublished: (id, published) =>
       guard(emitAck("tournament:setPublished", { id, published }).then(() => undefined)),
+    removeTournament: (id) => guard(emitAck("tournament:remove", { id }).then(() => undefined)),
 
     tournamentChat,
     enterTournamentLobby: (id) =>

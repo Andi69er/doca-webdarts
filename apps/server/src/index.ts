@@ -23,6 +23,7 @@ import {
   getMatchRoom,
   getTournamentDetail,
   listTournaments,
+  removeTournament,
   resolvePairing,
   setMatchRoom,
   setPlayerOverride,
@@ -719,6 +720,20 @@ io.on("connection", (socket) => {
     }
     try {
       await setTournamentPublished(String(id), Boolean(published));
+      ack({ ok: true, data: null });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:remove", async ({ id }, ack) => {
+    if (tooMany(ack, "tremove", 10)) return;
+    const member = hub.get(me());
+    if (!member || member.name !== TOURNAMENT_ADMIN) {
+      return ack({ ok: false, error: "Nur der Admin darf ein Turnier entfernen." });
+    }
+    try {
+      await removeTournament(String(id));
       ack({ ok: true, data: null });
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });

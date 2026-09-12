@@ -122,6 +122,11 @@ export function TournamentPage({
       .catch((e) => setError((e as Error).message));
   };
 
+  const remove = () => {
+    // Nur unsere eigene Verknüpfung, rührt 3K nicht an.
+    app.removeTournament(tournamentId).then(onBack).catch((e) => setError((e as Error).message));
+  };
+
   if (!detail) {
     return (
       <div className="card stack">
@@ -166,6 +171,11 @@ export function TournamentPage({
           <button className="ghost" onClick={load}>
             ↻ Aktualisieren
           </button>
+          {isAdmin && (
+            <button className="danger ghost" onClick={remove} title="Nur bei uns entfernen, betrifft 3K nicht">
+              Turnier entfernen
+            </button>
+          )}
         </div>
       </div>
 
