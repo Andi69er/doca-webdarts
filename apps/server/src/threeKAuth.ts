@@ -50,11 +50,27 @@ const TOKEN_TTL_MS = 30 * 60_000;
 const TOKEN_FIELD_CANDIDATES = ["accessToken", "access_token", "token", "jwt"];
 
 async function login(): Promise<string> {
-  const res = await fetch(LOGIN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ username: USERNAME, password: PASSWORD, noDartsScorerInfos: true }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(LOGIN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        Origin: "https://portal.3k-darts.com",
+        Referer: "https://portal.3k-darts.com/",
+      },
+      body: JSON.stringify({ username: USERNAME, password: PASSWORD, noDartsScorerInfos: true }),
+    });
+  } catch (err) {
+    // Node/undici verschluckt bei einem reinen Netzwerkfehler die eigentliche
+    // Ursache hinter `err.cause` (z.B. ENOTFOUND/ECONNREFUSED/Zertifikat) -
+    // "fetch failed" allein sagt nichts. Die mitgeben, ohne Secrets zu loggen.
+    const cause = (err as { cause?: unknown })?.cause;
+    throw new Error(`3K-Login: Netzwerkfehler beim Verbinden zu ${LOGIN_URL} – ${String(cause ?? err)}`);
+  }
   if (!res.ok) {
     throw new Error(`3K-Login fehlgeschlagen: HTTP ${res.status}`);
   }
