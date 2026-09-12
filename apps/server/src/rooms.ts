@@ -434,6 +434,17 @@ export class Room {
     return { players, teams };
   }
 
+  private doStart(): void {
+    const { players, teams } = this.lineup();
+    this.controller = new MatchController(createMatch(this.config, players, teams));
+    this.rematch = null;
+    this.manualPause = null;
+    this.offlineSeats.clear();
+    this.lastSeat.clear();
+    this.resultWritten = false;
+    this.phase = "match";
+  }
+
   startMatch(memberId: string): { ok: true } | { ok: false; error: string } {
     if (memberId !== this.hostId) return { ok: false, error: "Nur der Host darf starten." };
     if (this.buildSeats().some((s) => !s.occupantId)) {
@@ -448,15 +459,24 @@ export class Room {
         error: `${offline.playerName ?? "Ein Spieler"} ist gerade offline – bitte warten, bis alle wieder da sind.`,
       };
     }
-    const { players, teams } = this.lineup();
-    this.controller = new MatchController(createMatch(this.config, players, teams));
-    this.rematch = null;
-    this.manualPause = null;
-    this.offlineSeats.clear();
-    this.lastSeat.clear();
-    this.resultWritten = false;
-    this.phase = "match";
+    this.doStart();
     return { ok: true };
+  }
+
+  /**
+   * Turnier-Räume: startet automatisch, sobald alle Plätze besetzt und
+   * verbunden sind – kein "Match starten"-Klick nötig, der Ersteller
+   * (Heim) muss nicht extra warten und bestätigen. Kein Effekt außerhalb
+   * von Turnier-Räumen oder wenn schon gestartet. Gibt zurück, ob's
+   * losging (der Aufrufer soll dann neu broadcasten).
+   */
+  maybeAutoStart(): boolean {
+    if (!this.tournamentLocked || this.phase !== "lobby") return false;
+    const seats = this.buildSeats();
+    if (seats.some((s) => !s.occupantId)) return false;
+    if (seats.some((s) => s.occupantId !== BOT_ID && !s.connected)) return false;
+    this.doStart();
+    return true;
   }
 
   resetMatch(memberId: string): { ok: true } | { ok: false; error: string } {

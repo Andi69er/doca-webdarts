@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { MatchState } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { Scoreboard } from "./Scoreboard";
@@ -14,12 +15,15 @@ import { PauseBanner } from "./PauseBanner";
 import { GameRecorder } from "./GameRecorder";
 import { VideoStage } from "./VideoStage";
 import { LobbyAudio } from "./LobbyAudio";
+import { CameraCheck } from "./CameraCheck";
+import { Modal } from "./Modal";
 import { useTurnAlert } from "../useTurnAlert";
 
 export function MatchView({ app }: { app: AppApi }) {
   const state = app.room!;
   const match = state.match as MatchState;
   const isHost = app.myId === state.hostId;
+  const [camTestOpen, setCamTestOpen] = useState(false);
 
   const mySeat = state.seats.find((s) => s.occupantId === app.myId) ?? null;
   const myTeamIndex = mySeat ? mySeat.teamIndex : null;
@@ -40,6 +44,11 @@ export function MatchView({ app }: { app: AppApi }) {
           {!amSpectator && inPlay && !state.pause?.manual && (
             <button className="ghost" onClick={app.pauseMatch}>
               ⏸ Pause
+            </button>
+          )}
+          {!amSpectator && (
+            <button className="ghost" onClick={() => setCamTestOpen(true)}>
+              🎥 Kamera-Test
             </button>
           )}
           {!amSpectator && <GameRecorder finished={match.phase === "finished"} />}
@@ -87,6 +96,12 @@ export function MatchView({ app }: { app: AppApi }) {
 
       <WinnerCelebration match={match} />
       <BustFlash match={match} />
+
+      {camTestOpen && (
+        <Modal title="Kamera-Test" wide onClose={() => setCamTestOpen(false)}>
+          <CameraCheck />
+        </Modal>
+      )}
     </div>
   );
 }

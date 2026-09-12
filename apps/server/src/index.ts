@@ -448,6 +448,7 @@ io.on("connection", (socket) => {
     if (!room || !room.hasMember(me())) return ack({ ok: false, error: "Nicht im Raum." });
     const res = room.takeSeat(me(), typeof seatKey === "string" ? seatKey : null);
     if (!res.ok) return ack(res);
+    room.maybeAutoStart(); // Turnier-Raum: startet von selbst, sobald alle Plätze besetzt sind
     ack({ ok: true, data: null });
     void broadcastRoom(roomId);
     broadcastHub();
@@ -806,6 +807,7 @@ io.on("connection", (socket) => {
       else if (existing.homeUid2 !== null && me() === existing.homeUid2) room.takeSeat(member.cid, "t0p1");
       else if (me() === existing.awayUid) room.takeSeat(member.cid, "t1p0");
       else if (existing.awayUid2 !== null && me() === existing.awayUid2) room.takeSeat(member.cid, "t1p1");
+      room.maybeAutoStart(); // beide Plätze besetzt? Dann direkt los, kein Warten auf den Host-Klick
       ack({ ok: true, data: { roomId: existing.roomId } });
       void broadcastRoom(existing.roomId);
       broadcastHub();
