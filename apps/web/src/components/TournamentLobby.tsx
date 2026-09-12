@@ -4,8 +4,17 @@ import type { AppApi } from "../useApp";
 import { LobbyAudio } from "./LobbyAudio";
 import { Avatar } from "./Avatar";
 import { Modal } from "./Modal";
-import { TournamentBracket } from "./TournamentBracket";
+import { TournamentBracket, slotLabel } from "./TournamentBracket";
 import { embed } from "../embed";
+
+/** Anzeigename einer Paarungsseite - "Freilos" statt rohem "?" bei einem Bye,
+ *  sonst wie von 3K geliefert (siehe slotLabel in TournamentBracket.tsx). */
+function pairingHome(p: TournamentPairing): string {
+  return slotLabel(p.homeName, p.byeHome, p.homeSourceGameNr, p.homeSourceWinner, p.homeSourceName);
+}
+function pairingAway(p: TournamentPairing): string {
+  return slotLabel(p.awayName, p.byeAway, p.awaySourceGameNr, p.awaySourceWinner, p.awaySourceName);
+}
 
 /**
  * Turnier-Lobby: der Einstieg fürs "Turnier beitreten" (DL-Copilot-Stil) – links die
@@ -127,8 +136,11 @@ export function TournamentLobby({
     .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
 
   const renderPairing = (p: TournamentPairing, roundProfile: MatchConfig | null) => {
-    const unresolved = !p.resolved;
-    const canStart = roundProfile !== null && p.isMine && p.status === "open" && !unresolved;
+    // Ein Freilos-Slot ("?" ohne Gegner) ist kein Namens-Zuordnungsproblem,
+    // sondern von 3K automatisch entschieden - kein Zuordnen/Spielen nötig.
+    const bye = p.byeHome || p.byeAway;
+    const unresolved = !p.resolved && !bye;
+    const canStart = roundProfile !== null && p.isMine && p.status === "open" && !unresolved && !bye;
     return (
       <div
         key={p.matchId}
@@ -144,11 +156,11 @@ export function TournamentLobby({
         }}
       >
         <div style={{ minWidth: 0, lineHeight: 1.25 }}>
-          <div style={{ fontWeight: 700 }}>{p.homeName}</div>
+          <div style={{ fontWeight: 700 }}>{pairingHome(p)}</div>
           <div className="hint" style={{ margin: 0 }}>
             vs.
           </div>
-          <div style={{ fontWeight: 700 }}>{p.awayName}</div>
+          <div style={{ fontWeight: 700 }}>{pairingAway(p)}</div>
           {unresolved && (
             <div className="hint" style={{ marginTop: 4 }}>
               Nicht automatisch zuordenbar (Namen mehrdeutig oder unbekannt) – bitte manuell spielen.
@@ -201,11 +213,11 @@ export function TournamentLobby({
       }}
     >
       <div style={{ minWidth: 0, lineHeight: 1.25 }}>
-        <div style={{ fontWeight: 700 }}>{p.homeName}</div>
+        <div style={{ fontWeight: 700 }}>{pairingHome(p)}</div>
         <div className="hint" style={{ margin: 0 }}>
           vs.
         </div>
-        <div style={{ fontWeight: 700 }}>{p.awayName}</div>
+        <div style={{ fontWeight: 700 }}>{pairingAway(p)}</div>
       </div>
       <button
         className="ghost"
@@ -233,9 +245,9 @@ export function TournamentLobby({
   const renderResult = (p: TournamentPairing) => (
     <div key={p.matchId} className="room-card result-card">
       <div className="result-names">
-        <div className="result-name">{p.homeName}</div>
+        <div className="result-name">{pairingHome(p)}</div>
         <div className="result-vs">vs.</div>
-        <div className="result-name">{p.awayName}</div>
+        <div className="result-name">{pairingAway(p)}</div>
       </div>
       <div className="result-scores">
         <div className="result-score">{p.legsHome ?? "?"}</div>

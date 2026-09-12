@@ -3,10 +3,14 @@ import type { TournamentDetail, TournamentPairing } from "@webdarts/engine";
 type Round = TournamentDetail["rounds"][number];
 
 /** Anzeigetext für eine Baum-Seite, solange der Teilnehmer noch nicht
- *  feststeht: Sieger/Verlierer eines Vorgänger-Spiels (KO->KO, aus
- *  homeSourceGameNr/-Winner) oder ein Klartext-Platz aus der Gruppenphase
- *  (GROUP->KO, aus homeSourceName wie "1. Gruppe 1"). */
-function slotLabel(
+ *  feststeht: "Freilos" bei einem Bye, sonst Sieger/Verlierer eines
+ *  Vorgänger-Spiels (KO->KO, aus homeSourceGameNr/-Winner) oder ein
+ *  Klartext-Platz aus der Gruppenphase (GROUP->KO, aus homeSourceName wie
+ *  "1. Gruppe 1"). Auch für die normale Paarungsliste außerhalb des Baums
+ *  verwendet (TournamentLobby/TournamentPage) - 3K liefert für einen
+ *  unaufgelösten Slot nur ein rohes "?", ohne dabei zwischen "echtes Freilos"
+ *  und "wartet auf Vorrunde" zu unterscheiden; das übernehmen wir hier. */
+export function slotLabel(
   name: string,
   bye: boolean,
   sourceGameNr: number | null,

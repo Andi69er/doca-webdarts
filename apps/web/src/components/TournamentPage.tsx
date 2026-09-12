@@ -3,7 +3,7 @@ import type { MatchConfig, TournamentDetail } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { Modal } from "./Modal";
 import { TournamentProfileForm } from "./TournamentProfileForm";
-import { TournamentBracket } from "./TournamentBracket";
+import { TournamentBracket, slotLabel } from "./TournamentBracket";
 import { formatSummary } from "./RoomLobby";
 import { embed } from "../embed";
 
@@ -291,13 +291,17 @@ export function TournamentPage({
           </div>
           <div className="room-list">
             {round.pairings.map((p) => {
-              const unresolved = !p.resolved;
-              const canStart = round.profile !== null && p.isMine && p.status === "open" && !unresolved;
+              // Ein Freilos-Slot ("?" ohne Gegner) ist kein Namens-Zuordnungsproblem,
+              // sondern von 3K automatisch entschieden - kein Zuordnen/Spielen nötig.
+              const bye = p.byeHome || p.byeAway;
+              const unresolved = !p.resolved && !bye;
+              const canStart = round.profile !== null && p.isMine && p.status === "open" && !unresolved && !bye;
               return (
                 <div key={p.matchId} className="room-card">
                   <div className="row" style={{ justifyContent: "space-between" }}>
                     <strong>
-                      {p.homeName} vs. {p.awayName}
+                      {slotLabel(p.homeName, p.byeHome, p.homeSourceGameNr, p.homeSourceWinner, p.homeSourceName)} vs.{" "}
+                      {slotLabel(p.awayName, p.byeAway, p.awaySourceGameNr, p.awaySourceWinner, p.awaySourceName)}
                     </strong>
                     <span className={`badge ${p.status === "open" ? "" : "live"}`}>
                       {p.status === "open"
