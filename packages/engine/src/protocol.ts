@@ -411,6 +411,7 @@ export function defaultConfig(): MatchConfig {
     bullOff: true,
     twoClearLegs: false,
     legBulloffRounds: 0,
+    legsCap: 0,
     teamSize: 2,
   };
 }

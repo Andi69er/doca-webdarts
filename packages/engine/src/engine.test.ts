@@ -517,3 +517,58 @@ describe("Match-Statistik", () => {
     expect(st.teams[0]!.shortestLegDarts).toBe(4); // 3 + 1 Darts
   });
 });
+
+describe("Unentschieden per legsCap (Liga-Format \"Best of 14\")", () => {
+  const singlePlayers: Player[] = [
+    { id: "a1", name: "Andi" },
+    { id: "b1", name: "Chris" },
+  ];
+  const singleTeams: Team[] = [
+    { id: "A", name: "Team A", playerIds: ["a1"] },
+    { id: "B", name: "Team B", playerIds: ["b1"] },
+  ];
+  const capConfig: MatchConfig = {
+    mode: "x01",
+    x01: { startScore: 40, out: "double", in: "straight" },
+    legsToWinSet: 8,
+    setsToWin: 1,
+    bullOff: false,
+    legsCap: 14,
+    teamSize: 1,
+  };
+
+  /** Lässt `target` das laufende Leg gewinnen (Gegner wirft daneben, bis er dran ist). */
+  function winLegFor(m: ReturnType<typeof createMatch>, target: number) {
+    while (currentThrower(m)!.teamIndex !== target) {
+      m = reduceMatch(m, { type: "RECORD_VISIT", darts: [S(0)] });
+    }
+    return reduceMatch(m, { type: "RECORD_VISIT", darts: [D20] });
+  }
+
+  it("7:7 bei Deckel 14 endet unentschieden, kein Sieger", () => {
+    let m = createMatch(capConfig, singlePlayers, singleTeams);
+    for (let i = 0; i < 7; i++) m = winLegFor(m, 0);
+    for (let i = 0; i < 6; i++) m = winLegFor(m, 1);
+    expect(m.phase).toBe("playing"); // 7:6, erst 13 Legs gespielt - Deckel noch nicht erreicht
+    m = winLegFor(m, 1); // 7:7, 14 Legs gespielt
+    expect(m.phase).toBe("finished");
+    expect(m.matchWinnerTeamIndex).toBeNull();
+    expect(m.legsWonInSet).toEqual([7, 7]);
+  });
+
+  it("Deckel greift nicht, wenn legsToWinSet vorher erreicht wird", () => {
+    let m = createMatch(capConfig, singlePlayers, singleTeams);
+    for (let i = 0; i < 8; i++) m = winLegFor(m, 0);
+    expect(m.phase).toBe("finished");
+    expect(m.matchWinnerTeamIndex).toBe(0);
+    expect(m.legsWonInSet[0]).toBe(8);
+  });
+
+  it("ohne Deckel (legsCap 0) läuft ein 7:7 einfach weiter", () => {
+    let m = createMatch({ ...capConfig, legsCap: 0 }, singlePlayers, singleTeams);
+    for (let i = 0; i < 7; i++) m = winLegFor(m, 0);
+    for (let i = 0; i < 7; i++) m = winLegFor(m, 1);
+    expect(m.phase).toBe("playing");
+    expect(m.legsWonInSet).toEqual([7, 7]);
+  });
+});

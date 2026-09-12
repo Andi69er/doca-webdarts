@@ -15,8 +15,10 @@ export function RematchPanel({ app }: { app: AppApi }) {
   return (
     <div className="card stack">
       <h3 className="section-title">Match beendet</h3>
-      {winner && (
+      {winner ? (
         <div className="rematch-winner">🏆 {winner}</div>
+      ) : (
+        <div className="rematch-winner">🤝 Unentschieden</div>
       )}
 
       {!rematch ? (

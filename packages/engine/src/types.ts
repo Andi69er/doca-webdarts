@@ -115,6 +115,14 @@ export interface MatchConfig {
    * Entscheidungssatz.
    */
   twoClearLegs?: boolean;
+  /**
+   * Deckelt die Gesamt-Legs OHNE Sätze (z.B. Liga-Format "Best of 14": erst
+   * zu `legsToWinSet` Legs gewinnt normal, wird dieser Deckel erreicht, ohne
+   * dass eine Seite `legsToWinSet` erreicht hat, endet das Match unentschieden
+   * (`matchWinnerTeamIndex: null`). 0/undefined = kein Deckel, es wird bis zum
+   * Sieg gespielt wie bisher. Wirkungslos, sobald Sätze verwendet werden.
+   */
+  legsCap?: number;
   /** Spieler pro Team: 2 = Doppel (Standard), 1 = Einzel. Bestimmt die Sitzplätze. */
   teamSize: 1 | 2;
 }
@@ -270,7 +278,11 @@ export interface MatchState {
    */
   legBullOff?: LegBullOffState | null;
 
-  /** Gewinner-Team-Index, sobald `phase === "finished"`. */
+  /**
+   * Gewinner-Team-Index, sobald `phase === "finished"`. Bleibt `null`, wenn das
+   * Match (nur möglich mit `config.legsCap`) unentschieden endete - dort also
+   * NICHT gleichbedeutend mit "noch nicht beendet"; das prüft man über `phase`.
+   */
   matchWinnerTeamIndex: number | null;
 }
 

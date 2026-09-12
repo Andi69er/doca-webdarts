@@ -8,9 +8,11 @@ export function Scoreboard({ match }: { match: MatchState }) {
 
   return (
     <div className="stack" style={{ gap: 10 }}>
-      {sb.matchWinnerTeamIndex !== null && (
+      {sb.phase === "finished" && (
         <div className="winner-banner">
-          🏆 {sb.teams[sb.matchWinnerTeamIndex]!.name} gewinnt das Match!
+          {sb.matchWinnerTeamIndex !== null
+            ? `🏆 ${sb.teams[sb.matchWinnerTeamIndex]!.name} gewinnt das Match!`
+            : "🤝 Unentschieden!"}
         </div>
       )}
 

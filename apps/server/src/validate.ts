@@ -30,6 +30,7 @@ export function sanitizeConfig(raw: unknown): MatchConfig {
     bullOff: Boolean(r.bullOff),
     twoClearLegs: Boolean(r.twoClearLegs),
     legBulloffRounds: clampInt(r.legBulloffRounds, 0, 40, 0),
+    legsCap: clampInt(r.legsCap, 0, 41, 0),
     teamSize: r.teamSize === 1 ? 1 : 2,
   };
 }

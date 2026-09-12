@@ -23,6 +23,7 @@ export function TournamentProfileForm({
   const [legsToWinSet, setLegsToWinSet] = useState(initial?.legsToWinSet ?? 3);
   const [setsToWin, setSetsToWin] = useState(initial?.setsToWin ?? 1);
   const [bullOff, setBullOff] = useState(initial?.bullOff ?? true);
+  const [legsCap, setLegsCap] = useState(initial?.legsCap ?? 0);
 
   // Anzeige-/Eingabehilfe für die Spiellänge: "First to N" oder "Best of N"
   // (wie im normalen Raum-Setup) - gespeichert wird immer die Siegzahl.
@@ -46,6 +47,7 @@ export function TournamentProfileForm({
       bullOff,
       twoClearLegs: false,
       legBulloffRounds: 0,
+      legsCap: usesSets ? 0 : Math.max(0, Math.round(legsCap)),
       teamSize: isDouble ? 2 : 1,
     };
     onSave(config);
@@ -140,6 +142,26 @@ export function TournamentProfileForm({
         </div>
       </div>
 
+      {!usesSets && (
+        <div className="field">
+          <span className="lbl">Gesamt-Legs-Deckel (0 = kein Limit)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={41}
+            value={legsCap}
+            onChange={(e) => setLegsCap(Number(e.target.value))}
+            style={{ width: 80 }}
+          />
+          <span className="hint">
+            Für Liga-Formate wie „Best of 14": {legsToWinSet} Legs gewinnt normal das Match, wird der Deckel
+            erreicht ohne dass eine Seite {legsToWinSet} geschafft hat (z.B. {legsToWinSet - 1}:{legsToWinSet - 1}),
+            endet es unentschieden.
+          </span>
+        </div>
+      )}
+
       <div className="hint">
         {usesSets ? (
           <>
@@ -147,7 +169,14 @@ export function TournamentProfileForm({
           </>
         ) : (
           <>
-            First to <strong>{legsToWinSet}</strong> Legs (= Best of {legsToWinSet * 2 - 1}).
+            First to <strong>{legsToWinSet}</strong> Legs (= Best of {legsToWinSet * 2 - 1})
+            {legsCap > 0 && (
+              <>
+                {" "}
+                · max. <strong>{legsCap}</strong> Legs gesamt, bei Gleichstand Unentschieden
+              </>
+            )}
+            .
           </>
         )}
       </div>

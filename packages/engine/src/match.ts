@@ -265,6 +265,20 @@ function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState
         matchWinnerTeamIndex: winnerTeamIndex,
       };
     }
+  } else if (!usesSets && !!state.config.legsCap && wLegs + lLegs >= state.config.legsCap) {
+    // Liga-Format wie "Best of 14": Deckel erreicht, ohne dass jemand
+    // `legsToWinSet` geschafft hat (z.B. 7:7 bei Deckel 14) -> Unentschieden.
+    return {
+      ...state,
+      history,
+      legsWonInSet,
+      setsWon,
+      setIndex,
+      legIndexInSet,
+      legBullOff: null,
+      phase: "finished",
+      matchWinnerTeamIndex: null,
+    };
   }
 
   const nextStarter = 1 - state.legStarterTeamIndex;
