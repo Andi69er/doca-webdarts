@@ -24,6 +24,18 @@ export function TournamentProfileForm({
   const [setsToWin, setSetsToWin] = useState(initial?.setsToWin ?? 1);
   const [bullOff, setBullOff] = useState(initial?.bullOff ?? true);
 
+  // Anzeige-/Eingabehilfe für die Spiellänge: "First to N" oder "Best of N"
+  // (wie im normalen Raum-Setup) - gespeichert wird immer die Siegzahl.
+  const [legFmt, setLegFmt] = useState<"firstto" | "bestof">("firstto");
+  const [setFmt, setSetFmt] = useState<"firstto" | "bestof">("firstto");
+  const toWins = (fmt: "firstto" | "bestof", n: number, cap: number) => {
+    const raw = fmt === "bestof" ? Math.ceil((Number(n) || 1) / 2) : Number(n) || 1;
+    return Math.min(cap, Math.max(1, raw));
+  };
+  const fromWins = (fmt: "firstto" | "bestof", w: number) =>
+    fmt === "bestof" ? Math.max(1, w) * 2 - 1 : Math.max(1, w);
+  const usesSets = setsToWin > 1;
+
   const save = () => {
     const config: MatchConfig = {
       mode,
@@ -80,25 +92,66 @@ export function TournamentProfileForm({
       )}
 
       <div className="field">
-        <span className="lbl">Legs pro Satz (Best of)</span>
-        <input
-          type="number"
-          min={1}
-          max={40}
-          value={legsToWinSet}
-          onChange={(e) => setLegsToWinSet(Number(e.target.value))}
-        />
+        <span className="lbl">Sätze (0 = ohne)</span>
+        <div className="row" style={{ gap: 6 }}>
+          <select
+            value={setFmt}
+            onChange={(e) => setSetFmt(e.target.value as "firstto" | "bestof")}
+            style={{ flex: "0 0 auto" }}
+          >
+            <option value="firstto">First to</option>
+            <option value="bestof">Best of</option>
+          </select>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={setFmt === "bestof" ? 25 : 13}
+            value={usesSets ? fromWins(setFmt, setsToWin) : 0}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              setSetsToWin(n <= 0 ? 1 : toWins(setFmt, n, 13));
+            }}
+            style={{ width: 64 }}
+          />
+        </div>
       </div>
+
       <div className="field">
-        <span className="lbl">Sätze (1 = keine Sätze, nur Legs)</span>
-        <input
-          type="number"
-          min={1}
-          max={20}
-          value={setsToWin}
-          onChange={(e) => setSetsToWin(Number(e.target.value))}
-        />
+        <span className="lbl">{usesSets ? "Legs pro Satz" : "Legs"}</span>
+        <div className="row" style={{ gap: 6 }}>
+          <select
+            value={legFmt}
+            onChange={(e) => setLegFmt(e.target.value as "firstto" | "bestof")}
+            style={{ flex: "0 0 auto" }}
+          >
+            <option value="firstto">First to</option>
+            <option value="bestof">Best of</option>
+          </select>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={legFmt === "bestof" ? 41 : 21}
+            value={fromWins(legFmt, legsToWinSet)}
+            onChange={(e) => setLegsToWinSet(toWins(legFmt, Number(e.target.value), 21))}
+            style={{ width: 64 }}
+          />
+        </div>
       </div>
+
+      <div className="hint">
+        {usesSets ? (
+          <>
+            First to <strong>{setsToWin}</strong> Sätze · je Satz First to <strong>{legsToWinSet}</strong> Legs.
+          </>
+        ) : (
+          <>
+            First to <strong>{legsToWinSet}</strong> Legs (= Best of {legsToWinSet * 2 - 1}).
+          </>
+        )}
+      </div>
+
       <div className="lobby-opt">
         <input
           id="tprofile-bulloff"
