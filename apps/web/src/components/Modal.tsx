@@ -13,8 +13,9 @@ export function Modal({
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** Breiterer Dialog für längere Texte (z. B. Hilfe). */
-  wide?: boolean;
+  /** Breiterer Dialog für längere Texte (z. B. Hilfe) oder "x" für sehr breite
+   *  Inhalte, die selbst horizontal scrollen (z. B. der Turnierbaum). */
+  wide?: boolean | "x";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const prevFocus = useRef<HTMLElement | null>(null);
@@ -64,7 +65,7 @@ export function Modal({
     <div className="modal-overlay" onClick={onClose}>
       <div
         ref={ref}
-        className={wide ? "modal modal-wide" : "modal"}
+        className={wide === "x" ? "modal modal-xwide" : wide ? "modal modal-wide" : "modal"}
         role="dialog"
         aria-modal="true"
         aria-label={title}

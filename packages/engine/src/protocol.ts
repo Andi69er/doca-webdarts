@@ -212,6 +212,23 @@ export interface TournamentPairing {
   isMine: boolean;
   /** Bin ich im Heim-Team? Nur das Heim-Team darf die Paarung starten (Hin-/Rückspiel-Zuordnung bei 3K). */
   iAmHome: boolean;
+  /** Fortlaufende 3K-Spielnummer über das ganze Event - Baum-Verknüpfung
+   *  (siehe homeSourceGameNr/awaySourceGameNr) zeigt darauf. */
+  gameNr: number;
+  /** true, wenn diese Seite ein Freilos hat (kein Gegner in dieser Runde). */
+  byeHome: boolean;
+  byeAway: boolean;
+  /** Solange homeUid/awayUid noch nicht feststehen (Platzhalter-Slot im
+   *  Baum): Verweis auf das Vorgänger-Spiel per gameNr + ob der/die Sieger(in)
+   *  oder Verlierer(in) davon hier einzieht (KO->KO), oder ein Klartext-Platz
+   *  aus der Gruppenphase (z.B. "1. Gruppe 1", GROUP->KO). Beides kann fehlen
+   *  (erste Runde ohne Vorgänger). */
+  homeSourceGameNr: number | null;
+  homeSourceWinner: boolean | null;
+  homeSourceName: string | null;
+  awaySourceGameNr: number | null;
+  awaySourceWinner: boolean | null;
+  awaySourceName: string | null;
 }
 
 /** Ein einzelner Spieler des Turniers (bei Doppel: aus dem Team-Namen aufgelöst,
@@ -234,6 +251,16 @@ export interface TournamentDetail extends TournamentSummary {
     profile: MatchConfig | null;
     /** true, wenn eigens für diese Runde gesetzt (nicht vom Standard geerbt). */
     hasOwnProfile: boolean;
+    /** "GROUP" (Gruppenphase) oder "KO" (Turnierbaum-Runde) - für die
+     *  Baum-Darstellung: nur KO-Runden werden dort gezeichnet. */
+    typeCd: string;
+    /** Nur bei KO: "WINNER_BRACKET"/"LOSER_BRACKET" (Doppel-K.O., zwei
+     *  Baumhälften) oder null (einfacher K.O., eine Hälfte / Platzierungsspiel
+     *  wie "Spiel um Platz 3"). */
+    groupCd: string | null;
+    /** Reihenfolge innerhalb der Phase (0-basiert) - für die Baum-Spalten,
+     *  falls Runden aus mehreren Baumhälften nicht schon sortiert ankommen. */
+    index: number;
     pairings: TournamentPairing[];
   }[];
   /** Eindeutige Spielerliste über alle Paarungen (dedupliziert) - Online-Status

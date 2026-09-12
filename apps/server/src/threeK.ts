@@ -74,13 +74,24 @@ export interface ThreeKRoundRef {
   id: number;
   index: number;
   name: string;
+  /** "GROUP" (Gruppenphase) oder "KO" (Turnierbaum-Runde). */
+  typeCd: string;
+  /** Nur bei KO: "WINNER_BRACKET" oder "LOSER_BRACKET" (Doppel-K.O.) – bei
+   *  einfachem K.O./Gruppen null. Für die Baum-Darstellung: welche Seite. */
+  groupCd: string | null;
 }
 
 export async function fetchPhaseRounds(eventId: number, phaseId: number): Promise<ThreeKRoundRef[]> {
   const data = (await get(`event/${eventId}/phase/${phaseId}`)) as {
-    rounds: { id: number; index: number; name: string }[];
+    rounds: { id: number; index: number; name: string; typeCd?: string; groupCd?: string }[];
   };
-  return data.rounds.map((r) => ({ id: r.id, index: r.index, name: r.name }));
+  return data.rounds.map((r) => ({
+    id: r.id,
+    index: r.index,
+    name: r.name,
+    typeCd: r.typeCd ?? "GROUP",
+    groupCd: r.groupCd ?? null,
+  }));
 }
 
 export interface ThreeKMatch {
@@ -95,6 +106,17 @@ export interface ThreeKMatch {
   participantAwayId: number | null;
   legsHome: number | null;
   legsAway: number | null;
+  byeHome: boolean;
+  byeAway: boolean;
+  /** Baum-Verknüpfung, solange der Teilnehmer noch nicht feststeht (kein
+   *  participantHome/Guest): "Sieger/Verlierer von Spiel X" (KO->KO) oder ein
+   *  Platz aus der Gruppenphase (sourceNameHome/Guest, z.B. "1. Gruppe 1"). */
+  homeSourceGameNr: number | null;
+  homeSourceWinner: boolean | null;
+  homeSourceName: string | null;
+  awaySourceGameNr: number | null;
+  awaySourceWinner: boolean | null;
+  awaySourceName: string | null;
 }
 
 /** roundId muss die `id` aus fetchPhaseRounds sein, NICHT der `index` – der
@@ -116,6 +138,14 @@ export async function fetchRoundMatches(
       participantGuest?: { id: number; displayName: string };
       legsHome?: number;
       legsAway?: number;
+      byeHome?: boolean;
+      byeAway?: boolean;
+      playerHomeSourceGameNr?: number;
+      playerHomeSourceWinner?: boolean;
+      sourceNameHome?: string;
+      playerGuestSourceGameNr?: number;
+      playerGuestSourceWinner?: boolean;
+      sourceNameGuest?: string;
     }[];
   };
   return data.matches.map((m) => ({
@@ -128,5 +158,13 @@ export async function fetchRoundMatches(
     participantAwayId: m.participantGuest?.id ?? null,
     legsHome: typeof m.legsHome === "number" ? m.legsHome : null,
     legsAway: typeof m.legsAway === "number" ? m.legsAway : null,
+    byeHome: Boolean(m.byeHome),
+    byeAway: Boolean(m.byeAway),
+    homeSourceGameNr: typeof m.playerHomeSourceGameNr === "number" ? m.playerHomeSourceGameNr : null,
+    homeSourceWinner: typeof m.playerHomeSourceWinner === "boolean" ? m.playerHomeSourceWinner : null,
+    homeSourceName: m.sourceNameHome ?? null,
+    awaySourceGameNr: typeof m.playerGuestSourceGameNr === "number" ? m.playerGuestSourceGameNr : null,
+    awaySourceWinner: typeof m.playerGuestSourceWinner === "boolean" ? m.playerGuestSourceWinner : null,
+    awaySourceName: m.sourceNameGuest ?? null,
   }));
 }

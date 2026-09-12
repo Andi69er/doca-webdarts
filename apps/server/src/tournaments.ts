@@ -333,6 +333,9 @@ export async function getTournamentDetail(
     phaseName: string;
     profile: MatchConfig | null;
     hasOwnProfile: boolean;
+    typeCd: string;
+    groupCd: string | null;
+    index: number;
     pairings: TournamentPairing[];
   }[] = [];
   // ALLE Phasen durchgehen, nicht nur die erste - ein Turnier mit Gruppenphase
@@ -380,6 +383,15 @@ export async function getTournamentDetail(
           legsAway: m.legsAway,
           isMine,
           iAmHome,
+          gameNr: m.gameNr,
+          byeHome: m.byeHome,
+          byeAway: m.byeAway,
+          homeSourceGameNr: m.homeSourceGameNr,
+          homeSourceWinner: m.homeSourceWinner,
+          homeSourceName: m.homeSourceName,
+          awaySourceGameNr: m.awaySourceGameNr,
+          awaySourceWinner: m.awaySourceWinner,
+          awaySourceName: m.awaySourceName,
         };
       });
       const ownProfile = roundProfiles[String(round.id)] ?? null;
@@ -389,6 +401,9 @@ export async function getTournamentDetail(
         phaseName: phase.name,
         profile: ownProfile ?? rec.profile,
         hasOwnProfile: ownProfile !== null,
+        typeCd: round.typeCd,
+        groupCd: round.groupCd,
+        index: round.index,
         pairings,
       });
     }

@@ -3,6 +3,8 @@ import type { MatchConfig, TournamentDetail, TournamentPairing } from "@webdarts
 import type { AppApi } from "../useApp";
 import { LobbyAudio } from "./LobbyAudio";
 import { Avatar } from "./Avatar";
+import { Modal } from "./Modal";
+import { TournamentBracket } from "./TournamentBracket";
 import { embed } from "../embed";
 
 /**
@@ -26,6 +28,7 @@ export function TournamentLobby({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [text, setText] = useState("");
+  const [showBracket, setShowBracket] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
@@ -251,12 +254,25 @@ export function TournamentLobby({
           <div className="tourn-kicker">🏆 Turnier-Lobby 🏆</div>
           <h2>{detail.name}</h2>
         </div>
-        <button className="ghost" onClick={load}>
-          ↻ Aktualisieren
-        </button>
+        <div className="row">
+          {detail.rounds.some((r) => r.typeCd === "KO" && r.pairings.length > 0) && (
+            <button className="ghost" onClick={() => setShowBracket(true)}>
+              🌳 Turnierbaum
+            </button>
+          )}
+          <button className="ghost" onClick={load}>
+            ↻ Aktualisieren
+          </button>
+        </div>
       </div>
 
       {error && <div className="hint">{error}</div>}
+
+      {showBracket && (
+        <Modal title="Turnierbaum" onClose={() => setShowBracket(false)} wide="x">
+          <TournamentBracket rounds={detail.rounds} />
+        </Modal>
+      )}
 
       <div className="tournament-layout">
         <div className="stack">
