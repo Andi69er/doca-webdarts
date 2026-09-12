@@ -7,12 +7,18 @@ import type { GameMode, InOutMode, MatchConfig } from "@webdarts/engine";
 export function TournamentProfileForm({
   initial,
   isDouble,
+  saving,
+  error,
   onSave,
   onCancel,
 }: {
   initial: MatchConfig | null;
   /** 3K eventKindCd === "DOUBLE" – bestimmt teamSize, keine Wahl fürs Admin-Formular. */
   isDouble: boolean;
+  /** true, während onSave noch läuft – sperrt den Speichern-Button gegen Doppelklicks. */
+  saving?: boolean;
+  /** Fehlermeldung vom letzten Speicherversuch, direkt im Formular sichtbar. */
+  error?: string | null;
   onSave: (config: MatchConfig) => void;
   onCancel: () => void;
 }) {
@@ -193,12 +199,18 @@ export function TournamentProfileForm({
         </label>
       </div>
 
+      {error && (
+        <div className="hint" style={{ color: "#ff8a8a" }}>
+          ⚠️ {error}
+        </div>
+      )}
+
       <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
-        <button className="ghost" onClick={onCancel}>
+        <button className="ghost" disabled={saving} onClick={onCancel}>
           Abbrechen
         </button>
-        <button className="primary" onClick={save}>
-          Speichern
+        <button className="primary" disabled={saving} onClick={save}>
+          {saving ? "Speichert…" : "Speichern"}
         </button>
       </div>
     </div>

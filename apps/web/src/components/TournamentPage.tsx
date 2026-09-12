@@ -65,6 +65,9 @@ export function TournamentPage({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
   const isAdmin = app.name === ADMIN_NAME;
   // useApp() liefert bei jedem Render ein neues Objekt - load() darf deshalb nicht
   // von `app` selbst abhängen, sonst laedt die Seite bei jeder Hub-Aenderung
@@ -89,6 +92,12 @@ export function TournamentPage({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!profileSaved) return;
+    const t = setTimeout(() => setProfileSaved(false), 4000);
+    return () => clearTimeout(t);
+  }, [profileSaved]);
 
   const start = (matchId: number) => {
     setBusy(matchId);
@@ -161,6 +170,11 @@ export function TournamentPage({
       </div>
 
       {error && <div className="hint">{error}</div>}
+      {profileSaved && (
+        <div className="wd-toast" role="status" onClick={() => setProfileSaved(false)}>
+          ✅ Matchprofil gespeichert.
+        </div>
+      )}
 
       {isAdmin && !detail.published && (
         <div className="card hint">
@@ -254,19 +268,34 @@ export function TournamentPage({
       ))}
 
       {profileOpen && (
-        <Modal title="Matchprofil festlegen" onClose={() => setProfileOpen(false)}>
+        <Modal
+          title="Matchprofil festlegen"
+          onClose={() => {
+            setProfileOpen(false);
+            setProfileError(null);
+          }}
+        >
           <TournamentProfileForm
             initial={detail.profile}
             isDouble={detail.isDouble}
-            onCancel={() => setProfileOpen(false)}
+            saving={profileSaving}
+            error={profileError}
+            onCancel={() => {
+              setProfileOpen(false);
+              setProfileError(null);
+            }}
             onSave={(config) => {
+              setProfileError(null);
+              setProfileSaving(true);
               app
                 .setTournamentProfile(tournamentId, config)
                 .then(() => {
                   setProfileOpen(false);
+                  setProfileSaved(true);
                   load();
                 })
-                .catch((e) => setError((e as Error).message));
+                .catch((e) => setProfileError((e as Error).message))
+                .finally(() => setProfileSaving(false));
             }}
           />
         </Modal>
