@@ -1,13 +1,12 @@
 /**
  * Turnier-Verknüpfung (3K -> Webdarts), "DL-Copilot"-Ersatz, Phase 1 (lesend).
- * Persistenz als JSON-Datei, gleiches Muster wie results.ts – reicht für
- * Vereinsbetrieb, Render-Dateisystem ist flüchtig (übersteht Neustarts,
- * nicht zwingend jedes Deploy). Siehe Memory
- * webdarts-3k-tournament-integration.md für den Gesamtplan.
+ * Persistenz auf doca.at (tournaments_store.php) statt Render-Dateisystem:
+ * Render verliert seinen lokalen Speicher bei manchen Deploys (beobachtet -
+ * ein Turnier + Matchprofil verschwand nach einem Redeploy spurlos), doca.at
+ * ist dauerhaft. Gleiches Auth-Schema wie members.php/ingest.php. Siehe
+ * Memory webdarts-3k-tournament-integration.md für den Gesamtplan.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
 import { customAlphabet } from "nanoid";
 import type {
   MatchConfig,
@@ -110,7 +109,8 @@ class ParticipantCollector {
   }
 }
 
-const FILE = resolve(process.env.TOURNAMENTS_FILE ?? "data/tournaments.json");
+const STORE_URL = (process.env.WEBDARTS_TOURNAMENTS_URL ?? "").trim();
+const SECRET = process.env.WEBDARTS_SECRET ?? "";
 const genId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
 
 interface TournamentRecord {
@@ -137,21 +137,43 @@ let records: TournamentRecord[] = [];
 async function load(): Promise<void> {
   if (loaded) return;
   loaded = true;
+  if (!STORE_URL || !SECRET) {
+    console.warn(
+      "[tournaments] WEBDARTS_TOURNAMENTS_URL/WEBDARTS_SECRET nicht gesetzt - " +
+        "Turniere werden NICHT dauerhaft gespeichert (gehen beim nächsten Deploy verloren).",
+    );
+    records = [];
+    return;
+  }
   try {
-    const text = await readFile(FILE, "utf8");
-    records = JSON.parse(text);
-    if (!Array.isArray(records)) records = [];
-  } catch {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 10_000);
+    const res = await fetch(STORE_URL, { headers: { "x-webdarts-key": SECRET }, signal: ac.signal });
+    clearTimeout(t);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    records = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn("[tournaments] Laden von doca.at fehlgeschlagen, starte leer:", (err as Error).message);
     records = [];
   }
 }
 
 async function persist(): Promise<void> {
+  if (!STORE_URL || !SECRET) return;
   try {
-    await mkdir(dirname(FILE), { recursive: true });
-    await writeFile(FILE, JSON.stringify(records, null, 2), "utf8");
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 10_000);
+    const res = await fetch(STORE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-webdarts-key": SECRET },
+      body: JSON.stringify(records),
+      signal: ac.signal,
+    });
+    clearTimeout(t);
+    if (!res.ok) throw new Error("HTTP " + res.status);
   } catch (err) {
-    console.warn("[tournaments] konnte nicht speichern:", (err as Error).message);
+    console.warn("[tournaments] Speichern auf doca.at fehlgeschlagen:", (err as Error).message);
   }
 }
 
