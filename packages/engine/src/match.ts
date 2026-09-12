@@ -707,7 +707,6 @@ export interface AchievementCandidate {
  */
 export function collectAchievements(state: MatchState): AchievementCandidate[] {
   const out: AchievementCandidate[] = [];
-  const isDouble = state.config.teamSize === 2;
   for (const rec of state.history) {
     if (rec.leg.mode !== "x01") continue;
     const leg = rec.leg as X01LegState;
@@ -727,9 +726,12 @@ export function collectAchievements(state: MatchState): AchievementCandidate[] {
           performanceTypeCd: finisher.bullFinish ? "BF" : "HF",
           value: finisher.scored,
         });
-        if (isDouble) {
-          out.push({ playerId: finisher.playerId, performanceTypeCd: "SGD", value: teamDarts[wt]! });
-        }
+        // Shortgame gibt es bei 3K sowohl für Einzel ("Shortgame '9-18'") als
+        // auch Doppel ("Shortgame Doppel '3-24'") - beide Male Code "SGD",
+        // nur unterschiedliche Bandgrenzen. Deshalb hier nicht auf Doppel
+        // filtern; welche Bandgrenze zutrifft, entscheidet der Server anhand
+        // der live von 3K gemeldeten min/max für dieses Event.
+        out.push({ playerId: finisher.playerId, performanceTypeCd: "SGD", value: teamDarts[wt]! });
       }
     }
   }
