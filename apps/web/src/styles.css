@@ -308,10 +308,14 @@ body:not(.webdarts-embedded) #webdarts-root {
 }
 .tourn-head-title h2 {
   margin: 0; font-family: "Oswald", sans-serif; text-transform: uppercase; letter-spacing: 0.03em;
-  color: var(--gold); font-weight: 700; line-height: 1.1;
-  font-size: clamp(22px, 3.4vw, 32px);
-  text-shadow: 0 0 22px rgba(212, 175, 55, 0.28);
+  color: var(--gold); font-weight: 600; line-height: 1.1; font-size: 20px;
 }
+
+.result-card { padding: 10px 14px; gap: 2px; }
+.result-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.result-name { font-weight: 700; min-width: 0; }
+.result-score { font-family: "Oswald", sans-serif; color: var(--accent); font-size: 17px; font-weight: 700; flex: 0 0 auto; }
+.result-vs { text-align: center; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
 .presence-list { display: flex; flex-direction: column; gap: 8px; }
 .presence-row { display: flex; align-items: center; gap: 8px; }
 .presence-dot {

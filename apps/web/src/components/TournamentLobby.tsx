@@ -167,13 +167,29 @@ export function TournamentLobby({
             {busy === p.matchId ? "…" : "▶"}
           </button>
         ) : (
-          <span className={`badge ${p.status === "open" ? "" : "live"}`} style={{ flex: "0 0 auto" }}>
-            {p.status === "open" ? "offen" : `beendet ${p.legsHome ?? "?"}:${p.legsAway ?? "?"}`}
+          <span className="badge" style={{ flex: "0 0 auto" }}>
+            offen
           </span>
         )}
       </div>
     );
   };
+
+  /** Beendete Paarung: Ergebnis je Team direkt neben dessen Namen statt eines
+   *  einzelnen kombinierten Badges. */
+  const renderResult = (p: TournamentPairing) => (
+    <div key={p.matchId} className="room-card result-card">
+      <div className="result-row">
+        <span className="result-name">{p.homeName}</span>
+        <span className="result-score">{p.legsHome ?? "?"}</span>
+      </div>
+      <div className="result-vs">vs.</div>
+      <div className="result-row">
+        <span className="result-name">{p.awayName}</span>
+        <span className="result-score">{p.legsAway ?? "?"}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="stack">
@@ -279,7 +295,7 @@ export function TournamentLobby({
           {finishedPairings.length === 0 ? (
             <div className="hint">Noch keine beendeten Spiele.</div>
           ) : (
-            <div className="room-list">{finishedPairings.map(renderPairing)}</div>
+            <div className="room-list">{finishedPairings.map(renderResult)}</div>
           )}
         </div>
         </div>
