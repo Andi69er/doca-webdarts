@@ -269,9 +269,14 @@ async function reportTournamentResult(roomId: string, record: Record<string, unk
   try {
     await writeThreeKResult(matchId, legsHome, legsAway);
     console.log(`[3K] Ergebnis gemeldet: Match ${matchId} -> ${legsHome}:${legsAway}`);
+    manager.get(roomId)?.addSystemChat(`✅ Ergebnis ${legsHome}:${legsAway} automatisch an 3K gemeldet.`);
   } catch (err) {
     console.warn(`[3K] Ergebnis-Meldung fehlgeschlagen (Match ${matchId}):`, (err as Error).message);
+    manager
+      .get(roomId)
+      ?.addSystemChat(`⚠️ Ergebnis konnte nicht automatisch an 3K gemeldet werden – bitte manuell eintragen.`);
   }
+  void broadcastRoom(roomId); // Chat-Hinweis an alle im Raum weitergeben
 }
 
 async function broadcastRoom(roomId: string) {

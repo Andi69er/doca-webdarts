@@ -620,6 +620,12 @@ export class Room {
     if (this.chatLog.length > 60) this.chatLog.splice(0, this.chatLog.length - 60);
   }
 
+  /** Server-Hinweis im Raum-Chat, z.B. "an 3K gemeldet" – kein Absender. */
+  addSystemChat(text: string) {
+    this.chatLog.push({ id: genRoomId(), name: "", text, ts: Date.now(), kind: "system" });
+    if (this.chatLog.length > 60) this.chatLog.splice(0, this.chatLog.length - 60);
+  }
+
   // --- Bot-Steuerung ------------------------------------------------
 
   /** Ist gerade der Bot am Zug (X01/Cricket) oder mit Ausbullen dran? */

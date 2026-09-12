@@ -38,15 +38,21 @@ export function RoomChat({ app }: { app: AppApi }) {
         <>
           <div className="room-chat-scroll" role="log" aria-live="polite">
             {msgs.length === 0 && <div className="hint">Noch nichts geschrieben.</div>}
-            {msgs.map((m) => (
-              <div key={m.id} className="chat-msg">
-                <span className={`cm-name ${m.role === "spectator" ? "spec" : ""}`}>
-                  {m.name}
-                  {m.role === "spectator" ? " 👁" : ""}
-                </span>
-                <span>{m.text}</span>
-              </div>
-            ))}
+            {msgs.map((m) =>
+              m.kind === "system" ? (
+                <div key={m.id} className="chat-sys">
+                  — {m.text} —
+                </div>
+              ) : (
+                <div key={m.id} className="chat-msg">
+                  <span className={`cm-name ${m.role === "spectator" ? "spec" : ""}`}>
+                    {m.name}
+                    {m.role === "spectator" ? " 👁" : ""}
+                  </span>
+                  <span>{m.text}</span>
+                </div>
+              ),
+            )}
             <div ref={endRef} />
           </div>
           <div className="row" style={{ gap: 6 }}>
