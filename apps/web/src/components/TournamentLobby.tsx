@@ -295,7 +295,7 @@ export function TournamentLobby({
           {finishedPairings.length === 0 ? (
             <div className="hint">Noch keine beendeten Spiele.</div>
           ) : (
-            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
               {finishedPairings.map(renderResult)}
             </div>
           )}
