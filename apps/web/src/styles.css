@@ -298,7 +298,6 @@ body:not(.webdarts-embedded) #webdarts-root {
 
 .tourn-head {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
-  padding-bottom: 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft);
 }
 .tourn-head > button:first-child { justify-self: start; }
 .tourn-head > button:last-child { justify-self: end; }

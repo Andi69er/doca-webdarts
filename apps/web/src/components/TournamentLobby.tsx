@@ -177,7 +177,7 @@ export function TournamentLobby({
 
   return (
     <div className="stack">
-      <div className="tourn-head">
+      <div className="tourn-head card">
         <button className="ghost" onClick={onBack}>
           ← Zurück zur Lobby
         </button>
@@ -279,9 +279,7 @@ export function TournamentLobby({
           {finishedPairings.length === 0 ? (
             <div className="hint">Noch keine beendeten Spiele.</div>
           ) : (
-            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {finishedPairings.map(renderPairing)}
-            </div>
+            <div className="room-list">{finishedPairings.map(renderPairing)}</div>
           )}
         </div>
         </div>
