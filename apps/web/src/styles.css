@@ -311,11 +311,18 @@ body:not(.webdarts-embedded) #webdarts-root {
   color: var(--gold); font-weight: 600; line-height: 1.1; font-size: 20px;
 }
 
-.result-card { padding: 10px 14px; gap: 2px; }
-.result-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
-.result-name { font-weight: 700; min-width: 0; }
-.result-score { font-family: "Oswald", sans-serif; color: var(--accent); font-size: 17px; font-weight: 700; flex: 0 0 auto; }
+.result-card {
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: 16px; align-self: flex-start; width: auto; padding: 6px 12px;
+}
+.result-names { min-width: 0; line-height: 1.25; }
+.result-name { font-weight: 700; }
 .result-vs { text-align: center; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.result-scores {
+  display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+  gap: 4px; flex: 0 0 auto; align-self: stretch;
+}
+.result-score { font-family: "Oswald", sans-serif; color: var(--accent); font-size: 17px; font-weight: 700; }
 .presence-list { display: flex; flex-direction: column; gap: 8px; }
 .presence-row { display: flex; align-items: center; gap: 8px; }
 .presence-dot {

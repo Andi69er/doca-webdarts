@@ -175,18 +175,18 @@ export function TournamentLobby({
     );
   };
 
-  /** Beendete Paarung: Ergebnis je Team direkt neben dessen Namen statt eines
-   *  einzelnen kombinierten Badges. */
+  /** Beendete Paarung: Namen gestapelt mit "vs." mittig dazwischen (wie bei
+   *  den offenen Paarungen), daneben die zwei Ergebnisse als eigene Spalte. */
   const renderResult = (p: TournamentPairing) => (
     <div key={p.matchId} className="room-card result-card">
-      <div className="result-row">
-        <span className="result-name">{p.homeName}</span>
-        <span className="result-score">{p.legsHome ?? "?"}</span>
+      <div className="result-names">
+        <div className="result-name">{p.homeName}</div>
+        <div className="result-vs">vs.</div>
+        <div className="result-name">{p.awayName}</div>
       </div>
-      <div className="result-vs">vs.</div>
-      <div className="result-row">
-        <span className="result-name">{p.awayName}</span>
-        <span className="result-score">{p.legsAway ?? "?"}</span>
+      <div className="result-scores">
+        <div className="result-score">{p.legsHome ?? "?"}</div>
+        <div className="result-score">{p.legsAway ?? "?"}</div>
       </div>
     </div>
   );
