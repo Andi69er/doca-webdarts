@@ -279,17 +279,8 @@ export function TournamentLobby({
           {finishedPairings.length === 0 ? (
             <div className="hint">Noch keine beendeten Spiele.</div>
           ) : (
-            <div className="stack" style={{ gap: 8 }}>
-              {finishedPairings.map((p) => (
-                <div key={p.matchId} className="row" style={{ justifyContent: "space-between", gap: 12 }}>
-                  <span style={{ minWidth: 0 }}>
-                    {p.homeName} <span className="hint">vs.</span> {p.awayName}
-                  </span>
-                  <span className="badge live" style={{ flex: "0 0 auto" }}>
-                    {p.legsHome ?? "?"}:{p.legsAway ?? "?"}
-                  </span>
-                </div>
-              ))}
+            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {finishedPairings.map(renderPairing)}
             </div>
           )}
         </div>
