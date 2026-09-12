@@ -28,6 +28,7 @@ import {
   resolvePairing,
   setMatchRoom,
   setPlayerOverride,
+  setRoundProfile,
   setTournamentProfile,
   setTournamentPublished,
 } from "./tournaments.js";
@@ -729,6 +730,22 @@ io.on("connection", (socket) => {
     }
     try {
       await setTournamentProfile(String(id), sanitizeConfig(profile));
+      ack({ ok: true, data: null });
+    } catch (err) {
+      ack({ ok: false, error: (err as Error).message });
+    }
+  });
+
+  socket.on("tournament:setRoundProfile", async ({ id, roundId, profile }, ack) => {
+    if (tooMany(ack, "tprofile", 20)) return;
+    const member = hub.get(me());
+    if (!member || member.name !== TOURNAMENT_ADMIN) {
+      return ack({ ok: false, error: "Nur der Admin darf das Matchprofil festlegen." });
+    }
+    const rid = Number(roundId);
+    if (!Number.isInteger(rid)) return ack({ ok: false, error: "Ungültige Runde." });
+    try {
+      await setRoundProfile(String(id), rid, profile === null ? null : sanitizeConfig(profile));
       ack({ ok: true, data: null });
     } catch (err) {
       ack({ ok: false, error: (err as Error).message });

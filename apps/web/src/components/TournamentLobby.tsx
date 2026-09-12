@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TournamentDetail, TournamentPairing } from "@webdarts/engine";
+import type { MatchConfig, TournamentDetail, TournamentPairing } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { LobbyAudio } from "./LobbyAudio";
 import { Avatar } from "./Avatar";
@@ -98,11 +98,11 @@ export function TournamentLobby({
   }
 
   const myOpenPairings = detail.rounds
-    .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name })))
+    .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name, roundProfile: round.profile })))
     .filter((p) => p.isMine && p.status === "open");
 
   const finishedPairings = detail.rounds
-    .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name })))
+    .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name, roundProfile: round.profile })))
     .filter((p) => p.status === "finished")
     .sort((a, b) => b.matchId - a.matchId);
 
@@ -118,9 +118,9 @@ export function TournamentLobby({
     }))
     .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
 
-  const renderPairing = (p: TournamentPairing) => {
+  const renderPairing = (p: TournamentPairing, roundProfile: MatchConfig | null) => {
     const unresolved = !p.resolved;
-    const canStart = detail.hasProfile && p.isMine && p.status === "open" && !unresolved;
+    const canStart = roundProfile !== null && p.isMine && p.status === "open" && !unresolved;
     return (
       <div
         key={p.matchId}
@@ -222,7 +222,7 @@ export function TournamentLobby({
               <div className="hint">Aktuell kein offenes Match für dich.</div>
             ) : (
               <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {myOpenPairings.map(renderPairing)}
+                {myOpenPairings.map((p) => renderPairing(p, p.roundProfile))}
               </div>
             )}
           </div>
@@ -231,14 +231,19 @@ export function TournamentLobby({
             <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>
           )}
 
-          {detail.rounds.map((round) => {
+          {detail.rounds.map((round, i, arr) => {
             const open = round.pairings.filter((p) => p.status === "open");
             if (open.length === 0) return null;
+            const prevPhase = i > 0 ? arr[i - 1]!.phaseName : null;
+            const newPhase = round.phaseName !== prevPhase;
             return (
-              <div key={round.name} className="card stack">
-                <h3 className="section-title">{round.name}</h3>
-                <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                  {open.map(renderPairing)}
+              <div key={round.roundId} className="stack">
+                {newPhase && <h2 className="room-title">{round.phaseName}</h2>}
+                <div className="card stack">
+                  <h3 className="section-title">{round.name}</h3>
+                  <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                    {open.map((p) => renderPairing(p, round.profile))}
+                  </div>
                 </div>
               </div>
             );

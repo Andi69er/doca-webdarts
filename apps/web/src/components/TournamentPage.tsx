@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TournamentDetail } from "@webdarts/engine";
+import type { MatchConfig, TournamentDetail } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { Modal } from "./Modal";
 import { TournamentProfileForm } from "./TournamentProfileForm";
+import { formatSummary } from "./RoomLobby";
 import { embed } from "../embed";
 
 const ADMIN_NAME = "Andi69er";
@@ -64,7 +65,8 @@ export function TournamentPage({
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
-  const [profileOpen, setProfileOpen] = useState(false);
+  // roundId null = Turnier-Standardprofil, sonst rundenspezifisches Profil (Achtelfinale etc.).
+  const [editing, setEditing] = useState<{ roundId: number | null; initial: MatchConfig | null } | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -156,8 +158,8 @@ export function TournamentPage({
         <h2 className="room-title">{detail.name}</h2>
         <div className="row">
           {isAdmin && (
-            <button className="ghost" onClick={() => setProfileOpen(true)}>
-              Matchprofil festlegen
+            <button className="ghost" onClick={() => setEditing({ roundId: null, initial: detail.profile })}>
+              Standard-Matchprofil festlegen
             </button>
           )}
           {isAdmin && (
@@ -207,13 +209,51 @@ export function TournamentPage({
 
       {detail.rounds
         .filter((round) => round.pairings.length > 0)
-        .map((round) => (
-        <div key={round.name} className="card stack">
-          <h3 className="section-title">{round.name}</h3>
+        .map((round, i, arr) => {
+          const prevPhase = i > 0 ? arr[i - 1]!.phaseName : null;
+          const newPhase = round.phaseName !== prevPhase;
+          return (
+        <div key={round.roundId} className="stack">
+          {newPhase && <h2 className="room-title">{round.phaseName}</h2>}
+        <div className="card stack">
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h3 className="section-title">{round.name}</h3>
+              <div className="hint">
+                {round.profile
+                  ? formatSummary(round.profile)
+                  : "Kein Matchprofil (weder eigenes noch Standard)"}
+                {round.hasOwnProfile ? " · eigenes Profil" : " · Standard-Profil"}
+              </div>
+            </div>
+            {isAdmin && (
+              <div className="row" style={{ gap: 6 }}>
+                <button
+                  className="ghost"
+                  onClick={() => setEditing({ roundId: round.roundId, initial: round.profile })}
+                >
+                  Profil für diese Runde
+                </button>
+                {round.hasOwnProfile && (
+                  <button
+                    className="ghost"
+                    onClick={() =>
+                      app
+                        .setTournamentRoundProfile(tournamentId, round.roundId, null)
+                        .then(load)
+                        .catch((e) => setError((e as Error).message))
+                    }
+                  >
+                    Standard verwenden
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <div className="room-list">
             {round.pairings.map((p) => {
               const unresolved = !p.resolved;
-              const canStart = detail.hasProfile && p.isMine && p.status === "open" && !unresolved;
+              const canStart = round.profile !== null && p.isMine && p.status === "open" && !unresolved;
               return (
                 <div key={p.matchId} className="room-card">
                   <div className="row" style={{ justifyContent: "space-between" }}>
@@ -275,32 +315,37 @@ export function TournamentPage({
             })}
           </div>
         </div>
-      ))}
+        </div>
+          );
+        })}
 
-      {profileOpen && (
+      {editing && (
         <Modal
-          title="Matchprofil festlegen"
+          title={editing.roundId === null ? "Standard-Matchprofil festlegen" : "Matchprofil für diese Runde"}
           onClose={() => {
-            setProfileOpen(false);
+            setEditing(null);
             setProfileError(null);
           }}
         >
           <TournamentProfileForm
-            initial={detail.profile}
+            initial={editing.initial}
             isDouble={detail.isDouble}
             saving={profileSaving}
             error={profileError}
             onCancel={() => {
-              setProfileOpen(false);
+              setEditing(null);
               setProfileError(null);
             }}
             onSave={(config) => {
               setProfileError(null);
               setProfileSaving(true);
-              app
-                .setTournamentProfile(tournamentId, config)
+              const req =
+                editing.roundId === null
+                  ? app.setTournamentProfile(tournamentId, config)
+                  : app.setTournamentRoundProfile(tournamentId, editing.roundId, config);
+              req
                 .then(() => {
-                  setProfileOpen(false);
+                  setEditing(null);
                   setProfileSaved(true);
                   load();
                 })

@@ -58,6 +58,8 @@ export interface AppApi {
   tournamentDetail: (id: string) => Promise<TournamentDetail>;
   addTournament: (threeKEventId: number, name?: string) => Promise<TournamentSummary>;
   setTournamentProfile: (id: string, profile: MatchConfig) => Promise<void>;
+  /** Matchprofil für eine einzelne Runde (z.B. Achtelfinale) setzen; profile=null löscht die Runden-Einstellung wieder. */
+  setTournamentRoundProfile: (id: string, roundId: number, profile: MatchConfig | null) => Promise<void>;
   startTournamentMatch: (id: string, matchId: number) => Promise<void>;
   setTournamentPlayerOverride: (
     id: string,
@@ -258,6 +260,8 @@ export function useApp(): AppApi {
     addTournament: (threeKEventId, name) => guard(emitAck("tournament:add", { threeKEventId, name })),
     setTournamentProfile: (id, profile) =>
       guard(emitAck("tournament:setProfile", { id, profile }).then(() => undefined)),
+    setTournamentRoundProfile: (id, roundId, profile) =>
+      guard(emitAck("tournament:setRoundProfile", { id, roundId, profile }).then(() => undefined)),
     startTournamentMatch: (id, matchId) =>
       guard(
         emitAck("tournament:startMatch", { id, matchId }).then(({ roomId }) => {

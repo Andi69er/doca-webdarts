@@ -186,6 +186,10 @@ export interface TournamentSummary {
 export interface TournamentPairing {
   matchId: number;
   roundName: string;
+  /** 3K-Runden-ID – Schlüssel für ein rundenspezifisches Matchprofil. */
+  roundId: number;
+  /** Name der übergeordneten 3K-Phase, z.B. "Gruppe" oder "KO" (Turnierbaum). */
+  phaseName: string;
   homeName: string;
   awayName: string;
   /** Aufgelöste Webdarts-Identität ("u:<uid>") oder null, wenn (noch) nicht zuordenbar. */
@@ -215,8 +219,18 @@ export interface TournamentParticipant {
 }
 
 export interface TournamentDetail extends TournamentSummary {
+  /** Standard-Matchprofil – greift für jede Runde ohne eigenes Profil. */
   profile: MatchConfig | null;
-  rounds: { name: string; pairings: TournamentPairing[] }[];
+  rounds: {
+    name: string;
+    roundId: number;
+    phaseName: string;
+    /** Effektives Profil dieser Runde: rundenspezifisch, sonst der Standard. */
+    profile: MatchConfig | null;
+    /** true, wenn eigens für diese Runde gesetzt (nicht vom Standard geerbt). */
+    hasOwnProfile: boolean;
+    pairings: TournamentPairing[];
+  }[];
   /** Eindeutige Spielerliste über alle Paarungen (dedupliziert) - Online-Status
    *  wird clientseitig gegen HubState.users abgeglichen, kein eigener Live-Push nötig. */
   participants: TournamentParticipant[];
@@ -338,9 +352,17 @@ export interface ClientToServerEvents {
     payload: { threeKEventId: number; name?: string },
     ack: (res: AckResult<TournamentSummary>) => void,
   ) => void;
-  /** Match-Profil (Format) für ein Turnier festlegen (nur Admin). */
+  /** Standard-Match-Profil (Format) für ein Turnier festlegen (nur Admin). */
   "tournament:setProfile": (
     payload: { id: string; profile: MatchConfig },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  /** Match-Profil für eine EINZELNE Runde festlegen, z.B. Achtelfinale mit
+   *  anderer Distanz als die Gruppenphase (nur Admin). `profile: null` löscht
+   *  die rundenspezifische Einstellung wieder – die Runde nutzt dann den
+   *  Turnier-Standard. */
+  "tournament:setRoundProfile": (
+    payload: { id: string; roundId: number; profile: MatchConfig | null },
     ack: (res: AckResult<null>) => void,
   ) => void;
   /** Turnier für Teilnehmer sichtbar/aufrufbar machen oder wieder zurückziehen (nur Admin). */

@@ -10,7 +10,7 @@ import { embed, type EmbedMember } from "../embed";
 const OUT_LABEL: Record<string, string> = { double: "Double Out", master: "Master Out", straight: "Straight Out" };
 
 /** Kurze Textzusammenfassung des Matchprofils für gesperrte Turnier-Räume (kein Bearbeiten nötig/erlaubt). */
-function formatSummary(cfg: MatchConfig): string {
+export function formatSummary(cfg: MatchConfig): string {
   const mode =
     cfg.mode === "x01"
       ? `X01 ${cfg.x01!.startScore} (${OUT_LABEL[cfg.x01!.out] ?? cfg.x01!.out})`

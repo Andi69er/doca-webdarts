@@ -127,6 +127,10 @@ interface TournamentRecord {
    *  sichtbare Turniere durch dieses Feature plötzlich verschwinden. Neue Turniere
    *  setzen es in addTournament() explizit auf false. */
   published?: boolean;
+  /** Rundenspezifische Matchprofile (z.B. Achtelfinale mit anderer Distanz als
+   *  die Gruppenphase), keyed by 3K-Runden-ID als String. Fehlt eine Runde
+   *  hier, gilt `profile` (der Turnier-Standard) für sie. */
+  roundProfiles?: Record<string, MatchConfig>;
   createdBy: string;
   createdAt: number;
 }
@@ -240,6 +244,23 @@ export async function setTournamentProfile(id: string, profile: MatchConfig): Pr
   await persist();
 }
 
+/** Matchprofil für eine einzelne Runde setzen (z.B. Halbfinale mit anderer
+ *  Distanz) oder wieder löschen (`profile: null` -> Runde nutzt wieder den
+ *  Turnier-Standard). */
+export async function setRoundProfile(
+  id: string,
+  roundId: number,
+  profile: MatchConfig | null,
+): Promise<void> {
+  await load();
+  const rec = records.find((r) => r.id === id);
+  if (!rec) throw new Error("Turnier nicht gefunden.");
+  if (!rec.roundProfiles) rec.roundProfiles = {};
+  if (profile === null) delete rec.roundProfiles[String(roundId)];
+  else rec.roundProfiles[String(roundId)] = profile;
+  await persist();
+}
+
 export async function setTournamentPublished(id: string, published: boolean): Promise<void> {
   await load();
   const rec = records.find((r) => r.id === id);
@@ -283,67 +304,76 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
     rec.isDouble = isDouble; // Selbstheilung für Turniere, die vor diesem Feld angelegt wurden
     await persist();
   }
-  const phase = info.phases[0];
-  if (!phase) {
-    return {
-      id: rec.id,
-      name: rec.name,
-      threeKEventId: rec.threeKEventId,
-      hasProfile: rec.profile !== null,
-      isDouble,
-      published: rec.published ?? true,
-      profile: rec.profile,
-      rounds: [],
-      participants: [],
-    };
-  }
-  const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
   const members = await getMemberDirectory();
   const overrides = rec.overrides ?? {};
+  const roundProfiles = rec.roundProfiles ?? {};
   const participants = new ParticipantCollector();
 
-  const outRounds: { name: string; pairings: TournamentPairing[] }[] = [];
-  for (const round of rounds) {
-    const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
-    const pairings: TournamentPairing[] = matches.map((m) => {
-      const { homeUid, homeUid2, awayUid, awayUid2 } = resolveTeams(
-        m.participantHomeName,
-        m.participantAwayName,
-        isDouble,
-        members,
-        overrides,
-      );
-      const [homeName1, homeName2] = displayNamePart(m.participantHomeName, isDouble);
-      const [awayName1, awayName2] = displayNamePart(m.participantAwayName, isDouble);
-      participants.add(homeUid, homeName1, members);
-      participants.add(awayUid, awayName1, members);
-      if (isDouble) {
-        participants.add(homeUid2, homeName2, members);
-        participants.add(awayUid2, awayName2, members);
-      }
-      const iAmHome = myUid !== null && (myUid === homeUid || myUid === homeUid2);
-      const isMine = iAmHome || (myUid !== null && (myUid === awayUid || myUid === awayUid2));
-      const resolved = isDouble
-        ? Boolean(homeUid && homeUid2 && awayUid && awayUid2)
-        : Boolean(homeUid && awayUid);
-      return {
-        matchId: m.id,
-        roundName: round.name,
-        homeName: m.participantHomeName,
-        awayName: m.participantAwayName,
-        homeUid,
-        awayUid,
-        homeUid2,
-        awayUid2,
-        resolved,
-        status: m.statusCd === "FINISH" ? "finished" : "open",
-        legsHome: m.legsHome,
-        legsAway: m.legsAway,
-        isMine,
-        iAmHome,
-      };
-    });
-    outRounds.push({ name: round.name, pairings });
+  const outRounds: {
+    name: string;
+    roundId: number;
+    phaseName: string;
+    profile: MatchConfig | null;
+    hasOwnProfile: boolean;
+    pairings: TournamentPairing[];
+  }[] = [];
+  // ALLE Phasen durchgehen, nicht nur die erste - ein Turnier mit Gruppenphase
+  // + Turnierbaum (+ Trostrunde) hat mehrere Phasen hintereinander (siehe
+  // Memory webdarts-3k-tournament-integration.md).
+  for (const phase of info.phases) {
+    const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
+    for (const round of rounds) {
+      const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
+      const pairings: TournamentPairing[] = matches.map((m) => {
+        const { homeUid, homeUid2, awayUid, awayUid2 } = resolveTeams(
+          m.participantHomeName,
+          m.participantAwayName,
+          isDouble,
+          members,
+          overrides,
+        );
+        const [homeName1, homeName2] = displayNamePart(m.participantHomeName, isDouble);
+        const [awayName1, awayName2] = displayNamePart(m.participantAwayName, isDouble);
+        participants.add(homeUid, homeName1, members);
+        participants.add(awayUid, awayName1, members);
+        if (isDouble) {
+          participants.add(homeUid2, homeName2, members);
+          participants.add(awayUid2, awayName2, members);
+        }
+        const iAmHome = myUid !== null && (myUid === homeUid || myUid === homeUid2);
+        const isMine = iAmHome || (myUid !== null && (myUid === awayUid || myUid === awayUid2));
+        const resolved = isDouble
+          ? Boolean(homeUid && homeUid2 && awayUid && awayUid2)
+          : Boolean(homeUid && awayUid);
+        return {
+          matchId: m.id,
+          roundName: round.name,
+          roundId: round.id,
+          phaseName: phase.name,
+          homeName: m.participantHomeName,
+          awayName: m.participantAwayName,
+          homeUid,
+          awayUid,
+          homeUid2,
+          awayUid2,
+          resolved,
+          status: m.statusCd === "FINISH" ? "finished" : "open",
+          legsHome: m.legsHome,
+          legsAway: m.legsAway,
+          isMine,
+          iAmHome,
+        };
+      });
+      const ownProfile = roundProfiles[String(round.id)] ?? null;
+      outRounds.push({
+        name: round.name,
+        roundId: round.id,
+        phaseName: phase.name,
+        profile: ownProfile ?? rec.profile,
+        hasOwnProfile: ownProfile !== null,
+        pairings,
+      });
+    }
   }
 
   return {
@@ -379,39 +409,43 @@ export async function resolvePairing(
   awayParticipantId: number | null;
 } | null> {
   const rec = await getRecord(id);
-  if (!rec.profile) throw new Error("Für dieses Turnier ist noch kein Matchprofil festgelegt.");
   const info = await fetchEventInfo(rec.threeKEventId);
-  const phase = info.phases[0];
-  if (!phase) return null;
   const isDouble = info.eventKindCd === "DOUBLE";
   const members = await getMemberDirectory();
   const overrides = rec.overrides ?? {};
-  const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
-  for (const round of rounds) {
-    const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
-    const hit = matches.find((m) => m.id === matchId);
-    if (!hit) continue;
-    const { homeUid, homeUid2, awayUid, awayUid2 } = resolveTeams(
-      hit.participantHomeName,
-      hit.participantAwayName,
-      isDouble,
-      members,
-      overrides,
-    );
-    return {
-      profile: rec.profile,
-      isDouble,
-      published: rec.published ?? true,
-      threeKEventId: rec.threeKEventId,
-      homeUid,
-      homeUid2,
-      awayUid,
-      awayUid2,
-      homeName: hit.participantHomeName,
-      awayName: hit.participantAwayName,
-      homeParticipantId: hit.participantHomeId,
-      awayParticipantId: hit.participantAwayId,
-    };
+  const roundProfiles = rec.roundProfiles ?? {};
+  for (const phase of info.phases) {
+    const rounds = await fetchPhaseRounds(rec.threeKEventId, phase.id);
+    for (const round of rounds) {
+      const matches = await fetchRoundMatches(rec.threeKEventId, phase.id, round.id);
+      const hit = matches.find((m) => m.id === matchId);
+      if (!hit) continue;
+      const profile = roundProfiles[String(round.id)] ?? rec.profile;
+      if (!profile) {
+        throw new Error(`Für "${round.name}" ist noch kein Matchprofil festgelegt.`);
+      }
+      const { homeUid, homeUid2, awayUid, awayUid2 } = resolveTeams(
+        hit.participantHomeName,
+        hit.participantAwayName,
+        isDouble,
+        members,
+        overrides,
+      );
+      return {
+        profile,
+        isDouble,
+        published: rec.published ?? true,
+        threeKEventId: rec.threeKEventId,
+        homeUid,
+        homeUid2,
+        awayUid,
+        awayUid2,
+        homeName: hit.participantHomeName,
+        awayName: hit.participantAwayName,
+        homeParticipantId: hit.participantHomeId,
+        awayParticipantId: hit.participantAwayId,
+      };
+    }
   }
   return null;
 }
