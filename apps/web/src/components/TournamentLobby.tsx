@@ -198,7 +198,7 @@ export function TournamentLobby({
           ← Zurück zur Lobby
         </button>
         <div className="tourn-head-title">
-          <div className="tourn-kicker">🏆 Turnier-Lobby</div>
+          <div className="tourn-kicker">🏆 Turnier-Lobby 🏆</div>
           <h2>{detail.name}</h2>
         </div>
         <button className="ghost" onClick={load}>

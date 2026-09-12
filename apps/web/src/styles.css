@@ -304,7 +304,7 @@ body:not(.webdarts-embedded) #webdarts-root {
 .tourn-head-title { text-align: center; }
 .tourn-kicker {
   font-family: "Oswald", sans-serif; text-transform: uppercase; letter-spacing: 0.14em;
-  color: var(--text); font-size: 16px; font-weight: 600; margin-bottom: 3px;
+  color: var(--text); font-size: 22px; font-weight: 600; margin-bottom: 3px;
 }
 .tourn-head-title h2 {
   margin: 0; font-family: "Oswald", sans-serif; text-transform: uppercase; letter-spacing: 0.03em;
