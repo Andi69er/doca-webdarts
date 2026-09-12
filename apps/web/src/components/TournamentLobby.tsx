@@ -101,6 +101,11 @@ export function TournamentLobby({
     .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name })))
     .filter((p) => p.isMine && p.status === "open");
 
+  const finishedPairings = detail.rounds
+    .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name })))
+    .filter((p) => p.status === "finished")
+    .sort((a, b) => b.matchId - a.matchId);
+
   // Online-Status kommt rein clientseitig aus dem ohnehin schon live gepushten
   // Hub-Zustand (app.hub.users) - kein eigener Live-Push für Anwesenheit nötig.
   const onlineIds = new Set((app.hub?.users ?? []).map((u) => u.id));
@@ -172,17 +177,13 @@ export function TournamentLobby({
 
   return (
     <div className="stack">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="tourn-head">
         <button className="ghost" onClick={onBack}>
           ← Zurück zur Lobby
         </button>
-        <div style={{ textAlign: "center" }}>
-          <div className="hint" style={{ letterSpacing: "0.08em" }}>
-            TURNIER-LOBBY
-          </div>
-          <h2 className="room-title" style={{ margin: 0 }}>
-            {detail.name}
-          </h2>
+        <div className="tourn-head-title">
+          <div className="tourn-kicker">🏆 Turnier-Lobby</div>
+          <h2>{detail.name}</h2>
         </div>
         <button className="ghost" onClick={load}>
           ↻ Aktualisieren
@@ -214,18 +215,21 @@ export function TournamentLobby({
             <div className="card hint">Noch kein Spielplan bei 3K hinterlegt.</div>
           )}
 
-          {detail.rounds
-            .filter((round) => round.pairings.length > 0)
-            .map((round) => (
+          {detail.rounds.map((round) => {
+            const open = round.pairings.filter((p) => p.status === "open");
+            if (open.length === 0) return null;
+            return (
               <div key={round.name} className="card stack">
                 <h3 className="section-title">{round.name}</h3>
                 <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                  {round.pairings.map(renderPairing)}
+                  {open.map(renderPairing)}
                 </div>
               </div>
-            ))}
+            );
+          })}
         </div>
 
+        <div className="stack">
         <div className="card stack chat-card">
           <h3 className="section-title">Turnier-Chat</h3>
           <LobbyAudio tournamentId={tournamentId} />
@@ -268,6 +272,27 @@ export function TournamentLobby({
               Senden
             </button>
           </div>
+        </div>
+
+        <div className="card stack">
+          <h3 className="section-title">Ergebnisse</h3>
+          {finishedPairings.length === 0 ? (
+            <div className="hint">Noch keine beendeten Spiele.</div>
+          ) : (
+            <div className="stack" style={{ gap: 8 }}>
+              {finishedPairings.map((p) => (
+                <div key={p.matchId} className="row" style={{ justifyContent: "space-between", gap: 12 }}>
+                  <span style={{ minWidth: 0 }}>
+                    {p.homeName} <span className="hint">vs.</span> {p.awayName}
+                  </span>
+                  <span className="badge live" style={{ flex: "0 0 auto" }}>
+                    {p.legsHome ?? "?"}:{p.legsAway ?? "?"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         </div>
 
         <div className="card">
