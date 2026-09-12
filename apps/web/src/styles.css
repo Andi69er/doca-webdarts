@@ -292,7 +292,7 @@ body:not(.webdarts-embedded) #webdarts-root {
 
 /* ---------- Turnier-Lobby: Paarungen | Chat | Anwesenheit ---------- */
 .tournament-layout {
-  display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr) 240px; gap: 16px; align-items: start;
+  display: grid; grid-template-columns: minmax(0, 0.6fr) minmax(0, 1.6fr) 240px; gap: 16px; align-items: start;
 }
 @media (max-width: 1100px) { .tournament-layout { grid-template-columns: 1fr; } }
 
