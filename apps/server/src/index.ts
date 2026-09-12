@@ -5,6 +5,7 @@ import cors from "cors";
 import { Server } from "socket.io";
 import { customAlphabet } from "nanoid";
 import type {
+  AchievementCandidate,
   ChatMessage,
   ClientToServerEvents,
   HubState,
@@ -19,9 +20,9 @@ import { sendSession, sendUsage } from "./ingest.js";
 import { authRequired, verifyTicket } from "./auth.js";
 import {
   addTournament,
-  getMatchIdForRoom,
   getMatchRoom,
   getTournamentDetail,
+  getTournamentMatchForRoom,
   listTournaments,
   removeTournament,
   resolvePairing,
@@ -31,7 +32,8 @@ import {
   setTournamentPublished,
 } from "./tournaments.js";
 import { parseSingleDisplayName } from "./nameMatch.js";
-import { threeKWriteEnabled, writeThreeKResult } from "./threeKWrite.js";
+import { threeKWriteEnabled, writePerformances, writeThreeKResult } from "./threeKWrite.js";
+import { buildPerformanceEntries } from "./performances.js";
 
 /** DOCA-Login, der Turniere verknüpfen und deren Matchprofil festlegen darf. */
 const TOURNAMENT_ADMIN = "Andi69er";
@@ -260,24 +262,45 @@ function broadcastHub() {
  * gespeichert (appendResult/sendUsage) und lässt sich notfalls manuell
  * nachtragen.
  */
-async function reportTournamentResult(roomId: string, record: Record<string, unknown>): Promise<void> {
-  const matchId = getMatchIdForRoom(roomId);
-  if (matchId === undefined || !threeKWriteEnabled) return;
+async function reportTournamentResult(
+  roomId: string,
+  record: Record<string, unknown>,
+  achievements: AchievementCandidate[],
+): Promise<void> {
+  const entry = getTournamentMatchForRoom(roomId);
+  if (!entry || !threeKWriteEnabled) return;
   const teams = record.teams as { legsWon: number }[] | undefined;
   const legsHome = teams?.[0]?.legsWon;
   const legsAway = teams?.[1]?.legsWon;
-  if (typeof legsHome !== "number" || typeof legsAway !== "number") return;
+  if (typeof legsHome === "number" && typeof legsAway === "number") {
+    try {
+      await writeThreeKResult(entry.matchId, legsHome, legsAway);
+      console.log(`[3K] Ergebnis gemeldet: Match ${entry.matchId} -> ${legsHome}:${legsAway}`);
+      manager.get(roomId)?.addSystemChat(`✅ Ergebnis ${legsHome}:${legsAway} automatisch an 3K gemeldet.`);
+    } catch (err) {
+      console.warn(`[3K] Ergebnis-Meldung fehlgeschlagen (Match ${entry.matchId}):`, (err as Error).message);
+      manager
+        .get(roomId)
+        ?.addSystemChat(`⚠️ Ergebnis konnte nicht automatisch an 3K gemeldet werden – bitte manuell eintragen.`);
+    }
+  }
+
   try {
-    await writeThreeKResult(matchId, legsHome, legsAway);
-    console.log(`[3K] Ergebnis gemeldet: Match ${matchId} -> ${legsHome}:${legsAway}`);
-    manager.get(roomId)?.addSystemChat(`✅ Ergebnis ${legsHome}:${legsAway} automatisch an 3K gemeldet.`);
+    const perfEntries = await buildPerformanceEntries(achievements, entry);
+    if (perfEntries.length > 0) {
+      await writePerformances(perfEntries);
+      const names = perfEntries.map((p) => p.performance.name).join(", ");
+      console.log(`[3K] Bestleistungen gemeldet: Match ${entry.matchId} -> ${names}`);
+      manager.get(roomId)?.addSystemChat(`🏆 Bestleistung(en) automatisch an 3K gemeldet: ${names}.`);
+    }
   } catch (err) {
-    console.warn(`[3K] Ergebnis-Meldung fehlgeschlagen (Match ${matchId}):`, (err as Error).message);
+    console.warn(`[3K] Bestleistungen-Meldung fehlgeschlagen (Match ${entry.matchId}):`, (err as Error).message);
     manager
       .get(roomId)
-      ?.addSystemChat(`⚠️ Ergebnis konnte nicht automatisch an 3K gemeldet werden – bitte manuell eintragen.`);
+      ?.addSystemChat(`⚠️ Bestleistung(en) konnten nicht automatisch an 3K gemeldet werden.`);
   }
-  void broadcastRoom(roomId); // Chat-Hinweis an alle im Raum weitergeben
+
+  void broadcastRoom(roomId); // Chat-Hinweise an alle im Raum weitergeben
 }
 
 async function broadcastRoom(roomId: string) {
@@ -289,7 +312,7 @@ async function broadcastRoom(roomId: string) {
     await appendResult(finished.record);
     recordCareer(finished.players);
     void sendUsage(finished.record); // dauerhaft in die doca.at-DB
-    void reportTournamentResult(roomId, finished.record); // ggf. Turnier-Ergebnis an 3K
+    void reportTournamentResult(roomId, finished.record, finished.achievements); // ggf. Turnier-Ergebnis/Bestleistungen an 3K
     broadcastHub(); // frische Karriere-Werte in die Online-Liste
   }
   scheduleBot(roomId);
@@ -870,10 +893,14 @@ io.on("connection", (socket) => {
       room.takeSeat(member.cid, me() === pairing.homeUid ? "t0p0" : "t0p1");
       setMatchRoom(tid, mid, {
         roomId: room.roomId,
+        eventId: pairing.threeKEventId,
+        matchId: mid,
         homeUid: pairing.homeUid!,
         homeUid2: pairing.homeUid2,
         awayUid: pairing.awayUid!,
         awayUid2: pairing.awayUid2,
+        homeParticipantId: pairing.homeParticipantId,
+        awayParticipantId: pairing.awayParticipantId,
       });
       member.roomId = room.roomId;
       socket.join(room.roomId);

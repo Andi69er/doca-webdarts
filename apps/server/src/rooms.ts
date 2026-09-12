@@ -8,12 +8,14 @@ import {
   botBullOff,
   botCricketVisit,
   botX01Visit,
+  collectAchievements,
   createMatch,
   currentThrower,
   matchStats,
   playerStats,
   nextBullOffTeam,
   seatKey,
+  type AchievementCandidate,
   type BotConfig,
   type ChatMessage,
   type CricketLegState,
@@ -699,12 +701,17 @@ export class Room {
    * Liefert einmalig das Endergebnis, sobald das Match beendet ist – zum
    * Archivieren. Danach `null`, bis ein neues Match läuft.
    */
-  takeFinishedResult(): { record: Record<string, unknown>; players: FinishedPlayer[] } | null {
+  takeFinishedResult(): {
+    record: Record<string, unknown>;
+    players: FinishedPlayer[];
+    achievements: AchievementCandidate[];
+  } | null {
     const st = this.controller?.state;
     if (!st || st.phase !== "finished" || this.resultWritten) return null;
     this.resultWritten = true;
     const stats = matchStats(st);
     const pstats = playerStats(st);
+    const achievements = collectAchievements(st);
     const seats = this.buildSeats();
 
     const players: FinishedPlayer[] = seats
@@ -757,7 +764,7 @@ export class Room {
         };
       }),
     };
-    return { record, players };
+    return { record, players, achievements };
   }
 
   summary(): HubRoomSummary {

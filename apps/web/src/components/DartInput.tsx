@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  bullFinishPossible,
   findCheckout,
   scoreboard,
   type Dart,
@@ -8,6 +9,7 @@ import {
 } from "@webdarts/engine";
 import type { AppApi } from "../useApp";
 import { CheckoutDialog } from "./CheckoutDialog";
+import { BullFinishDialog } from "./BullFinishDialog";
 
 function dartLabel(d: Dart): string {
   if (d.value === 0) return "Miss";
@@ -34,6 +36,28 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
   const [checkoutScore, setCheckoutScore] = useState<number | null>(null);
   // Checkdart-Abfrage ohne Leg-Ende: Rest VOR der Aufnahme war ein mögliches Finish.
   const [attemptScore, setAttemptScore] = useState<number | null>(null);
+  // Bullfinish-Rückfrage, nachdem Darts/Doppel-Darts eines Checkouts bekannt sind.
+  const [pendingBull, setPendingBull] = useState<{ score: number; darts: number; doubleDarts: number } | null>(
+    null,
+  );
+
+  const finishRecord = useCallback(
+    async (score: number, darts: number, doubleDarts: number) => {
+      if (doubleDarts >= 1 && bullFinishPossible(score, darts)) {
+        setPendingBull({ score, darts, doubleDarts });
+        return;
+      }
+      await app.dispatch({ type: "RECORD_SCORE", score, darts, finishedOnDouble: true, doubleDarts });
+    },
+    [app],
+  );
+
+  const answerBull = async (bullFinish: boolean) => {
+    if (!pendingBull) return;
+    const { score, darts, doubleDarts } = pendingBull;
+    setPendingBull(null);
+    await app.dispatch({ type: "RECORD_SCORE", score, darts, finishedOnDouble: true, doubleDarts, bullFinish });
+  };
 
   const press = useCallback((d: string) => {
     setEntry((e) => {
@@ -52,14 +76,8 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
       // die Aufnahme eindeutig 3 Darts / 1 Dart aufs Doppel → keine Rückfrage.
       const twoDartRoute = findCheckout(score, 2, outMode);
       if (!twoDartRoute) {
-        await app.dispatch({
-          type: "RECORD_SCORE",
-          score,
-          darts: 3,
-          finishedOnDouble: true,
-          doubleDarts: outMode === "double" ? 1 : 0,
-        });
         setEntry("");
+        await finishRecord(score, 3, outMode === "double" ? 1 : 0);
         return;
       }
       // Sonst: volle Checkdart-Abfrage (Darts zum Checkout + Darts auf Doppel)
@@ -79,15 +97,10 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
 
   const confirmCheckout = async (dartsUsed: number, doubleDarts: number) => {
     if (checkoutScore === null) return;
-    await app.dispatch({
-      type: "RECORD_SCORE",
-      score: checkoutScore,
-      darts: dartsUsed,
-      finishedOnDouble: true,
-      doubleDarts,
-    });
+    const score = checkoutScore;
     setCheckoutScore(null);
     setEntry("");
+    await finishRecord(score, dartsUsed, doubleDarts);
   };
 
   const confirmAttempt = async (_dartsUsed: number, doubleDarts: number) => {
@@ -106,7 +119,7 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
   // Physische Tastatur: Ziffern, Rücktaste, Enter – nur wenn ich am Wurf bin
   // (pausiert, solange die Checkdart-Abfrage offen ist)
   useEffect(() => {
-    if (isCricket || !myTurn || checkoutScore !== null || attemptScore !== null) return;
+    if (isCricket || !myTurn || checkoutScore !== null || attemptScore !== null || pendingBull !== null) return;
     const onKey = (e: KeyboardEvent) => {
       if (finished) return;
       const el = e.target as HTMLElement | null;
@@ -124,7 +137,7 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isCricket, myTurn, finished, checkoutScore, attemptScore, press, del, book]);
+  }, [isCricket, myTurn, finished, checkoutScore, attemptScore, pendingBull, press, del, book]);
 
   // -------- Cricket: Dart für Dart --------
   const [mult, setMult] = useState<Multiplier>(1);
@@ -286,6 +299,8 @@ export function DartInput({ app, paused = false }: { app: AppApi; paused?: boole
           onConfirm={confirmAttempt}
         />
       )}
+
+      {pendingBull && <BullFinishDialog score={pendingBull.score} onAnswer={answerBull} />}
     </div>
   );
 }

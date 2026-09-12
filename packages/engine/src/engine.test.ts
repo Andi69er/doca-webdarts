@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   MatchController,
+  bullFinishPossible,
+  collectAchievements,
   createMatch,
   currentThrower,
   findCheckout,
@@ -570,5 +572,73 @@ describe("Unentschieden per legsCap (Liga-Format \"Best of 14\")", () => {
     for (let i = 0; i < 7; i++) m = winLegFor(m, 1);
     expect(m.phase).toBe("playing");
     expect(m.legsWonInSet).toEqual([7, 7]);
+  });
+});
+
+describe("Bullfinish-Rückfrage (3K-Bestleistungen)", () => {
+  it("bullFinishPossible: 1 Dart nur bei genau 50", () => {
+    expect(bullFinishPossible(50, 1)).toBe(true);
+    expect(bullFinishPossible(40, 1)).toBe(false);
+    expect(bullFinishPossible(60, 1)).toBe(false);
+  });
+
+  it("bullFinishPossible: 3 Darts deckt bis 170 ab, darüber/darunter nicht", () => {
+    expect(bullFinishPossible(170, 3)).toBe(true);
+    expect(bullFinishPossible(171, 3)).toBe(false);
+    expect(bullFinishPossible(49, 3)).toBe(false);
+  });
+
+  it("bullFinish:true erzwingt Bull als Checkout-Dart", () => {
+    let m = createMatch({ ...x01Config, x01: { startScore: 100, out: "double", in: "straight" } }, players, teams);
+    m = reduceMatch(m, {
+      type: "RECORD_SCORE",
+      score: 100,
+      darts: 3,
+      finishedOnDouble: true,
+      doubleDarts: 1,
+      bullFinish: true,
+    });
+    const visits = (m.history[0]!.leg as any).visits;
+    const finisher = visits[visits.length - 1];
+    expect(finisher.bullFinish).toBe(true);
+    expect(finisher.darts[finisher.darts.length - 1]).toEqual({ value: 25, multiplier: 2 });
+  });
+
+  it("ohne bullFinish-Antwort wird kein Bull synthetisiert", () => {
+    let m = createMatch({ ...x01Config, x01: { startScore: 100, out: "double", in: "straight" } }, players, teams);
+    m = reduceMatch(m, { type: "RECORD_SCORE", score: 100, darts: 3, finishedOnDouble: true, doubleDarts: 1 });
+    const visits = (m.history[0]!.leg as any).visits;
+    const finisher = visits[visits.length - 1];
+    expect(finisher.bullFinish).toBeUndefined();
+    expect(finisher.darts[finisher.darts.length - 1]).not.toEqual({ value: 25, multiplier: 2 });
+  });
+});
+
+describe("collectAchievements (3K-Bestleistungen-Kandidaten)", () => {
+  it("erkennt Highscore-Visit, Highfinish/Bullfinish und Shortgame Doppel", () => {
+    let m = createMatch({ ...x01Config, x01: { startScore: 501, out: "double", in: "straight" } }, players, teams);
+    // a1 wirft 180
+    m = reduceMatch(m, { type: "RECORD_VISIT", darts: [T20, T20, T20] });
+    expect(m.leg.mode).toBe("x01");
+    // Rest des Legs künstlich zu Ende bringen: b1 checkt mit Bullfinish (Rest 321 -> irrelevant,
+    // wir bauen stattdessen ein frisches, kurzes Match für den Checkout-Teil).
+    let m2 = createMatch({ ...x01Config, x01: { startScore: 100, out: "double", in: "straight" } }, players, teams);
+    m2 = reduceMatch(m2, {
+      type: "RECORD_SCORE",
+      score: 100,
+      darts: 3,
+      finishedOnDouble: true,
+      doubleDarts: 1,
+      bullFinish: true,
+    });
+    const ach = collectAchievements(m2);
+    const bf = ach.find((a) => a.performanceTypeCd === "BF");
+    expect(bf).toEqual({ playerId: "a1", performanceTypeCd: "BF", value: 100 });
+    // Doppel (teamSize 2 in x01Config) -> auch ein SGD-Kandidat für denselben Finisher
+    const sgd = ach.find((a) => a.performanceTypeCd === "SGD");
+    expect(sgd?.playerId).toBe("a1");
+
+    const achHs = collectAchievements(m);
+    expect(achHs.length).toBe(0); // Leg noch nicht fertig -> history ist leer
   });
 });

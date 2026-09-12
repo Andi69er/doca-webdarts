@@ -89,6 +89,10 @@ export interface ThreeKMatch {
   statusCd: string; // "OPEN" | "FINISH" | ...
   participantHomeName: string;
   participantAwayName: string;
+  /** 3K-participantId (Team bei Doppel, Einzelperson bei Einzel) - deckt sich
+   *  mit `players[].participantId` aus fetchPerformanceRequirements(). */
+  participantHomeId: number | null;
+  participantAwayId: number | null;
   legsHome: number | null;
   legsAway: number | null;
 }
@@ -108,8 +112,8 @@ export async function fetchRoundMatches(
       id: number;
       gameNr: number;
       statusCd: string;
-      participantHome?: { displayName: string };
-      participantGuest?: { displayName: string };
+      participantHome?: { id: number; displayName: string };
+      participantGuest?: { id: number; displayName: string };
       legsHome?: number;
       legsAway?: number;
     }[];
@@ -120,6 +124,8 @@ export async function fetchRoundMatches(
     statusCd: m.statusCd,
     participantHomeName: m.participantHome?.displayName ?? "?",
     participantAwayName: m.participantGuest?.displayName ?? "?",
+    participantHomeId: m.participantHome?.id ?? null,
+    participantAwayId: m.participantGuest?.id ?? null,
     legsHome: typeof m.legsHome === "number" ? m.legsHome : null,
     legsAway: typeof m.legsAway === "number" ? m.legsAway : null,
   }));

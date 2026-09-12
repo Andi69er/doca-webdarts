@@ -174,6 +174,10 @@ export interface X01Visit {
   /** Darts dieser Aufnahme, die auf ein Doppel gingen (fürs Checkout-%). */
   doubleAttempts: number;
   bust: boolean;
+  /** Nur bei Leg-Gewinn per Doppel relevant: war der Checkout-Dart Bull (D25)?
+   *  Kommt aus einer expliziten Rückfrage an den Spieler (aus der Endsumme
+   *  allein nicht zuverlässig ableitbar) – für die 3K-Bestleistung "Bullfinish". */
+  bullFinish?: boolean;
 }
 
 export interface X01LegState {
@@ -310,6 +314,8 @@ export type MatchAction =
       darts?: number;
       finishedOnDouble?: boolean;
       doubleDarts?: number;
+      /** Siehe X01Visit.bullFinish. */
+      bullFinish?: boolean;
     };
 
 // ---------------------------------------------------------------------------

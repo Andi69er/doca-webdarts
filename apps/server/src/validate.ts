@@ -53,6 +53,7 @@ export function validateAction(raw: unknown): MatchAction | null {
         darts,
         finishedOnDouble: Boolean(a.finishedOnDouble),
         doubleDarts,
+        bullFinish: a.bullFinish === true ? true : undefined,
       };
     }
 

@@ -367,12 +367,16 @@ export async function resolvePairing(
   profile: MatchConfig;
   isDouble: boolean;
   published: boolean;
+  threeKEventId: number;
   homeUid: string | null;
   homeUid2: string | null;
   awayUid: string | null;
   awayUid2: string | null;
   homeName: string;
   awayName: string;
+  /** 3K-participantId je Seite, fürs spätere Bestleistungen-Melden (Zuordnung player<->participant). */
+  homeParticipantId: number | null;
+  awayParticipantId: number | null;
 } | null> {
   const rec = await getRecord(id);
   if (!rec.profile) throw new Error("Für dieses Turnier ist noch kein Matchprofil festgelegt.");
@@ -398,12 +402,15 @@ export async function resolvePairing(
       profile: rec.profile,
       isDouble,
       published: rec.published ?? true,
+      threeKEventId: rec.threeKEventId,
       homeUid,
       homeUid2,
       awayUid,
       awayUid2,
       homeName: hit.participantHomeName,
       awayName: hit.participantAwayName,
+      homeParticipantId: hit.participantHomeId,
+      awayParticipantId: hit.participantAwayId,
     };
   }
   return null;
@@ -411,25 +418,30 @@ export async function resolvePairing(
 
 // --- Paarung <-> Raum (damit beide Beteiligten im selben Raum landen) -----
 
-interface MatchRoomEntry {
+export interface MatchRoomEntry {
   roomId: string;
+  eventId: number;
+  matchId: number;
   homeUid: string;
   homeUid2: string | null;
   awayUid: string;
   awayUid2: string | null;
+  /** 3K-participantId je Seite, fürs Bestleistungen-Melden (Zuordnung player<->participant). */
+  homeParticipantId: number | null;
+  awayParticipantId: number | null;
 }
 const matchRoom = new Map<string, MatchRoomEntry>(); // "tournamentId:matchId" -> ...
-/** Rückrichtung fürs Ergebnis-Zurückschreiben: roomId -> 3K-matchId. */
-const roomToMatchId = new Map<string, number>();
+/** Rückrichtung fürs Ergebnis-/Bestleistungen-Zurückschreiben: roomId -> ganzer Eintrag. */
+const roomToEntry = new Map<string, MatchRoomEntry>();
 
 export function getMatchRoom(tournamentId: string, matchId: number): MatchRoomEntry | undefined {
   return matchRoom.get(`${tournamentId}:${matchId}`);
 }
 export function setMatchRoom(tournamentId: string, matchId: number, entry: MatchRoomEntry): void {
   matchRoom.set(`${tournamentId}:${matchId}`, entry);
-  roomToMatchId.set(entry.roomId, matchId);
+  roomToEntry.set(entry.roomId, entry);
 }
-/** Ist dieser Raum ein Turnier-Match? Wenn ja: die 3K-matchId dazu. */
-export function getMatchIdForRoom(roomId: string): number | undefined {
-  return roomToMatchId.get(roomId);
+/** Ist dieser Raum ein Turnier-Match? Wenn ja: der ganze Eintrag dazu. */
+export function getTournamentMatchForRoom(roomId: string): MatchRoomEntry | undefined {
+  return roomToEntry.get(roomId);
 }

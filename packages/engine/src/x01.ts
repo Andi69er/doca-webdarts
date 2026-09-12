@@ -44,6 +44,7 @@ export function applyX01Visit(
   darts: Dart[],
   dartsUsed?: number,
   doubleAttempts = 0,
+  bullFinish?: boolean,
 ): X01VisitResult {
   const startRemaining = state.remaining[teamIndex]!;
   let rem = startRemaining;
@@ -98,6 +99,7 @@ export function applyX01Visit(
         scored,
         doubleAttempts,
         bust,
+        bullFinish: legWon ? bullFinish : undefined,
       },
     ],
     winnerTeamIndex: legWon ? teamIndex : state.winnerTeamIndex,

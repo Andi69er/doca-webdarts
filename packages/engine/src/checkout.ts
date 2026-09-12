@@ -127,4 +127,18 @@ export function isCheckoutPossible(
   return findCheckout(remaining, dartsLeft, out) !== null;
 }
 
+/**
+ * Grobe Möglichkeitsprüfung (kein Beweis): könnte dieser Checkout-Endwert mit
+ * `dartsUsed` Darts über Bull (Doppel-25 = 50) gefinished worden sein? Viele
+ * Werte in diesem Bereich gehen AUCH ohne Bull – dient nur dazu, die
+ * "War das ein Bullfinish?"-Rückfrage nicht bei offensichtlich unmöglichen
+ * Werten (z.B. 12 mit 1 Dart) zu zeigen. Bereich 50–170 deckt sich mit 3Ks
+ * eigener "Bullfinish"-Kategorie.
+ */
+export function bullFinishPossible(score: number, dartsUsed: number): boolean {
+  if (dartsUsed < 1 || score < 50 || score > 170) return false;
+  const rest = score - 50;
+  return rest <= 60 * (dartsUsed - 1);
+}
+
 export type { Multiplier };

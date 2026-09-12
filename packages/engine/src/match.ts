@@ -145,13 +145,15 @@ export function reduceMatch(state: MatchState, action: MatchAction): MatchState 
       return state.phase === "bulloff" ? { ...state, phase: "playing" } : state;
 
     case "RECORD_SCORE": {
-      const darts: Dart[] = scoreToDarts(action.score, action.finishedOnDouble ?? false);
-      return recordVisit(state, darts, action.darts ?? 3, action.doubleDarts ?? 0);
+      const darts: Dart[] = scoreToDarts(action.score, action.finishedOnDouble ?? false, action.bullFinish);
+      return recordVisit(state, darts, action.darts ?? 3, action.doubleDarts ?? 0, action.bullFinish);
     }
 
     case "RECORD_VISIT": {
       const doubles = action.darts.filter((d) => d.multiplier === 2 && d.value > 0).length;
-      return recordVisit(state, action.darts, action.darts.length, doubles);
+      const lastDart = action.darts[action.darts.length - 1];
+      const bullFinish = lastDart?.value === 25 && lastDart.multiplier === 2 ? true : undefined;
+      return recordVisit(state, action.darts, action.darts.length, doubles, bullFinish);
     }
 
     default:
@@ -164,6 +166,7 @@ function recordVisit(
   darts: Dart[],
   dartsUsed: number,
   doubleAttempts: number,
+  bullFinish?: boolean,
 ): MatchState {
   if (state.phase !== "playing") return state;
   if (state.legBullOff && !state.legBullOff.done) return state; // Leg-Ausbullen läuft
@@ -182,6 +185,7 @@ function recordVisit(
       darts,
       dartsUsed,
       doubleAttempts,
+      bullFinish,
     );
     newLeg = res.state;
     legWon = res.legWon;
@@ -301,19 +305,23 @@ function advanceAfterLeg(state: MatchState, winnerTeamIndex: number): MatchState
 // Hilfen
 // ---------------------------------------------------------------------------
 
-function scoreToDarts(score: number, finishedOnDouble: boolean): Dart[] {
+function scoreToDarts(score: number, finishedOnDouble: boolean, bullFinish?: boolean): Dart[] {
   if (score === 0) return [{ value: 0, multiplier: 1 }];
   if (finishedOnDouble) {
     // Der LETZTE Dart muss ein gültiges Doppel sein: D1..D20 (gerade 2..40)
     // oder Bull (50). Der Rest wird als ein Single-Dart davorgesetzt, sodass die
     // Punkte exakt aufgehen. Wichtig für ungerade Checkouts wie 41 (= 1 + D20).
+    // `bullFinish` kommt aus einer expliziten Rückfrage an den Spieler (siehe
+    // X01Visit.bullFinish) - ohne die raten wir hier sonst nur.
     let doubleVal: number;
-    if (score <= 50 && score % 2 === 0) {
-      doubleVal = score; // sauberes Doppel
-    } else if (score <= 51) {
-      doubleVal = score - 1; // ungerade ≤ 51 → Single 1 + gerades Doppel
+    if (bullFinish) {
+      doubleVal = 50; // vom Spieler bestätigt: Bull war der Checkout-Dart
+    } else if (score < 50 && score % 2 === 0) {
+      doubleVal = score; // sauberes, eindeutiges Doppel
+    } else if (score <= 49 && score % 2 === 1) {
+      doubleVal = score - 1; // ungerade < 50 → Single 1 + gerades Doppel
     } else {
-      doubleVal = 50; // hoher Rest → Bull-Finish
+      doubleVal = 40; // score 50/51/>51 ohne bestätigten Bullfinish → beliebiges gültiges Doppel
     }
     const rest = score - doubleVal;
     const darts: Dart[] = [];
@@ -678,6 +686,54 @@ export function playerStats(state: MatchState): PlayerStatLine[] {
     s.checkoutPct = s.doubleAttempts ? (s.checkoutHits / s.doubleAttempts) * 100 : 0;
   }
   return [...acc.values()];
+}
+
+// ---------------------------------------------------------------------------
+// 3K-Bestleistungen (Highscore/Highfinish/Shortgame Doppel/Bullfinish)
+// ---------------------------------------------------------------------------
+
+export interface AchievementCandidate {
+  playerId: string;
+  performanceTypeCd: "HS" | "HF" | "SGD" | "BF";
+  value: number;
+}
+
+/**
+ * Grobe Kandidatenliste für 3K-Bestleistungen aus einem (Turnier-)Match.
+ * Bewusst "dumm": kein Abgleich mit den echten 3K-Bandgrenzen (z.B. ob 155
+ * überhaupt eine gemeldete Highscore-Kategorie ist) – das passiert erst beim
+ * Melden selbst, wenn die aktuellen Kategorien live von 3K bekannt sind.
+ * Nur X01, nur abgeschlossene Legs (state.history).
+ */
+export function collectAchievements(state: MatchState): AchievementCandidate[] {
+  const out: AchievementCandidate[] = [];
+  const isDouble = state.config.teamSize === 2;
+  for (const rec of state.history) {
+    if (rec.leg.mode !== "x01") continue;
+    const leg = rec.leg as X01LegState;
+    const teamDarts = [0, 0];
+    for (const v of leg.visits) {
+      teamDarts[v.teamIndex] = teamDarts[v.teamIndex]! + v.dartsUsed;
+      if (!v.bust && v.scored >= 95) {
+        out.push({ playerId: v.playerId, performanceTypeCd: "HS", value: v.scored });
+      }
+    }
+    if (leg.winnerTeamIndex !== null) {
+      const wt = leg.winnerTeamIndex;
+      const finisher = [...leg.visits].reverse().find((v) => v.teamIndex === wt && !v.bust);
+      if (finisher) {
+        out.push({
+          playerId: finisher.playerId,
+          performanceTypeCd: finisher.bullFinish ? "BF" : "HF",
+          value: finisher.scored,
+        });
+        if (isDouble) {
+          out.push({ playerId: finisher.playerId, performanceTypeCd: "SGD", value: teamDarts[wt]! });
+        }
+      }
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
