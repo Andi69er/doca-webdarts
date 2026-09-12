@@ -296,7 +296,11 @@ async function getRecord(id: string): Promise<TournamentRecord> {
 }
 
 /** Alle Runden inkl. aufgelöster Paarungen laden (für die Turnier-Seite). */
-export async function getTournamentDetail(id: string, myUid: string | null): Promise<TournamentDetail> {
+export async function getTournamentDetail(
+  id: string,
+  myUid: string | null,
+  isLive?: (matchId: number) => boolean,
+): Promise<TournamentDetail> {
   const rec = await getRecord(id);
   const info = await fetchEventInfo(rec.threeKEventId);
   const isDouble = info.eventKindCd === "DOUBLE";
@@ -357,7 +361,7 @@ export async function getTournamentDetail(id: string, myUid: string | null): Pro
           homeUid2,
           awayUid2,
           resolved,
-          status: m.statusCd === "FINISH" ? "finished" : "open",
+          status: m.statusCd === "FINISH" ? "finished" : isLive?.(m.id) ? "live" : "open",
           legsHome: m.legsHome,
           legsAway: m.legsAway,
           isMine,

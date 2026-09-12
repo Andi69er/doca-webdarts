@@ -263,7 +263,9 @@ export function TournamentPage({
                     <span className={`badge ${p.status === "open" ? "" : "live"}`}>
                       {p.status === "open"
                         ? "offen"
-                        : `beendet ${p.legsHome ?? "?"}:${p.legsAway ?? "?"}`}
+                        : p.status === "live"
+                          ? "läuft gerade"
+                          : `beendet ${p.legsHome ?? "?"}:${p.legsAway ?? "?"}`}
                     </span>
                   </div>
                   {unresolved && (

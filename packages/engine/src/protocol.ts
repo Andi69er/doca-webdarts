@@ -200,7 +200,9 @@ export interface TournamentPairing {
   awayUid2: string | null;
   /** true, wenn alle für diese Paarung nötigen Spieler automatisch zugeordnet werden konnten. */
   resolved: boolean;
-  status: "open" | "finished";
+  /** "live" = wird gerade über Webdarts gespielt (eigener, nicht von 3K
+   *  gelieferter Status – erkannt an einem laufenden Match-Raum). */
+  status: "open" | "live" | "finished";
   legsHome: number | null;
   legsAway: number | null;
   /** Bin ich (Heim oder Gast, bzw. bei Doppel: Teil eines der beiden Teams) an dieser Paarung beteiligt? */

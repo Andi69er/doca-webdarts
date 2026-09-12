@@ -101,6 +101,11 @@ export function TournamentLobby({
     .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name, roundProfile: round.profile })))
     .filter((p) => p.isMine && p.status === "open");
 
+  const livePairings = detail.rounds
+    .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name, roundProfile: round.profile })))
+    .filter((p) => p.status === "live")
+    .sort((a, b) => b.matchId - a.matchId);
+
   const finishedPairings = detail.rounds
     .flatMap((round) => round.pairings.map((p) => ({ ...p, roundName: round.name, roundProfile: round.profile })))
     .filter((p) => p.status === "finished")
@@ -174,6 +179,51 @@ export function TournamentLobby({
       </div>
     );
   };
+
+  /** Paarung, die gerade über Webdarts gespielt wird - jeder kann per Klick
+   *  reinschauen (landet als Zuschauer im Raum, genau wie "Beitreten" bei
+   *  einer offenen Paarung, nur dass hier schon gespielt wird). */
+  const renderLive = (p: TournamentPairing) => (
+    <div
+      key={p.matchId}
+      className="room-card"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: 16,
+        alignSelf: "flex-start",
+        width: "auto",
+        padding: "6px 12px",
+      }}
+    >
+      <div style={{ minWidth: 0, lineHeight: 1.25 }}>
+        <div style={{ fontWeight: 700 }}>{p.homeName}</div>
+        <div className="hint" style={{ margin: 0 }}>
+          vs.
+        </div>
+        <div style={{ fontWeight: 700 }}>{p.awayName}</div>
+      </div>
+      <button
+        className="ghost"
+        aria-label="Zuschauen"
+        title="Zuschauen"
+        disabled={busy === p.matchId}
+        onClick={() => start(p.matchId)}
+        style={{
+          flex: "0 0 auto",
+          width: 40,
+          height: 40,
+          padding: 0,
+          borderRadius: "50%",
+          fontSize: 16,
+          lineHeight: 1,
+        }}
+      >
+        👁
+      </button>
+    </div>
+  );
 
   /** Beendete Paarung: Namen gestapelt mit "vs." mittig dazwischen (wie bei
    *  den offenen Paarungen), daneben die zwei Ergebnisse als eigene Spalte. */
@@ -294,6 +344,15 @@ export function TournamentLobby({
             </button>
           </div>
         </div>
+
+        {livePairings.length > 0 && (
+          <div className="card stack">
+            <h3 className="section-title">🔴 Läuft gerade</h3>
+            <div className="room-list" style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
+              {livePairings.map(renderLive)}
+            </div>
+          </div>
+        )}
 
         <div className="card stack">
           <h3 className="section-title">Ergebnisse</h3>

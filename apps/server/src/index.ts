@@ -833,7 +833,13 @@ io.on("connection", (socket) => {
     const member = hub.get(me());
     if (!member) return ack({ ok: false, error: "Bitte zuerst Namen setzen." });
     try {
-      const detail = await getTournamentDetail(String(id), me() || null);
+      const tid = String(id);
+      const isLive = (matchId: number) => {
+        const entry = getMatchRoom(tid, matchId);
+        if (!entry) return false;
+        return manager.get(entry.roomId)?.phase === "match";
+      };
+      const detail = await getTournamentDetail(tid, me() || null, isLive);
       if (!detail.published && member.name !== TOURNAMENT_ADMIN) {
         return ack({ ok: false, error: "Turnier nicht gefunden." });
       }
