@@ -854,6 +854,10 @@ body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
 #webdarts-root .wd-help-btn:focus-visible { background: var(--gold); color: #05070c; }
 
 /* ---------- Hilfe-Popup ---------- */
+.modal-close {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
+  border-radius: 50%; font-size: 14px; line-height: 1;
+}
 .modal-wide { max-width: 620px; }
 .modal-xwide { max-width: min(1400px, calc(100vw - 40px)); }
 

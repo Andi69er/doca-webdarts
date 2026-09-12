@@ -71,7 +71,14 @@ export function Modal({
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="section-title">{title}</h3>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <h3 className="section-title" style={{ margin: 0 }}>
+            {title}
+          </h3>
+          <button className="ghost modal-close" aria-label="Schließen" title="Schließen" onClick={onClose}>
+            ✕
+          </button>
+        </div>
         {children}
       </div>
     </div>

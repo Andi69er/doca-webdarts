@@ -17,7 +17,7 @@ export function slotLabel(
   sourceWinner: boolean | null,
   sourceName: string | null,
 ): string {
-  if (bye) return "spielfrei";
+  if (bye) return "Freilos";
   if (name && name !== "?") return name;
   if (sourceGameNr !== null) return `${sourceWinner === false ? "Verlierer" : "Sieger"} Spiel ${sourceGameNr}`;
   if (sourceName) return sourceName;
