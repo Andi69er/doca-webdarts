@@ -134,7 +134,7 @@ body:not(.webdarts-embedded) #webdarts-root {
   background: rgba(11, 15, 24, 0.82);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--gold);
   border-radius: 14px;
   padding: 20px;
 }
@@ -575,7 +575,7 @@ body:not(.webdarts-embedded) #webdarts-root {
 }
 .modal {
   background: #0e1320;
-  border: 1px solid var(--line);
+  border: 1px solid var(--gold);
   border-radius: 14px;
   padding: 22px;
   width: 100%; max-width: 380px;
