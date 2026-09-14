@@ -35,6 +35,7 @@ import {
 import { parseSingleDisplayName } from "./nameMatch.js";
 import { threeKWriteEnabled, writePerformances, writeThreeKResult } from "./threeKWrite.js";
 import { buildPerformanceEntries } from "./performances.js";
+import { handleLivekitWebhook } from "./livekitUsage.js";
 
 /** DOCA-Login, der Turniere verknüpfen und deren Matchprofil festlegen darf. */
 const TOURNAMENT_ADMIN = "Andi69er";
@@ -141,6 +142,19 @@ app.get(/^\/2k\/(.+)$/, async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: "upstream", detail: (e as Error).message });
   }
+});
+
+/**
+ * LiveKit Cloud ruft diese URL bei Raum-/Teilnehmer-Events auf (in LiveKit
+ * unter Settings -> Webhooks einzutragen: https://<render-url>/livekit/webhook,
+ * kein neues Secret nötig - die Signatur wird mit den ohnehin gesetzten
+ * LIVEKIT_API_KEY/SECRET geprüft). Braucht den unveränderten Rohtext des
+ * Bodies für die Signaturprüfung, deshalb express.raw() nur für diese eine
+ * Route statt eines globalen JSON-Parsers.
+ */
+app.post("/livekit/webhook", express.raw({ type: "*/*" }), (req, res) => {
+  void handleLivekitWebhook((req.body as Buffer).toString("utf8"), req.get("Authorization"));
+  res.status(200).end();
 });
 
 const httpServer = createServer(app);
