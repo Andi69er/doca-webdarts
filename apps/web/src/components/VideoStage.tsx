@@ -174,21 +174,31 @@ function Stage({ room }: { room: RoomState }) {
   // Menschen springen, während die Darts optisch noch in die (dann kleine)
   // Bot-Kachel reinfliegen. Hält den Bot deshalb clientseitig noch so lange
   // "groß", bis die Flugbahn-Animation (siehe BotDartboard) durch ist.
-  const [holdBotUntil, setHoldBotUntil] = useState(0);
+  //
+  // WICHTIG: der Haltewert wird SYNCHRON während des Renders aktualisiert
+  // (nicht erst in einem useEffect danach) - sonst gibt es genau einen
+  // Render, in dem noch der alte/schon abgelaufene Wert gilt (Effects laufen
+  // erst NACH dem Commit), die Großansicht dabei kurz zum Menschen "blitzt"
+  // und erst im nächsten Tick zurück zum Bot springt.
+  const holdUntilRef = useRef(0);
+  const lastHeldVisitKeyRef = useRef(0);
   const [, forceTick] = useState(0);
-  useEffect(() => {
-    if (botVisitKey === 0 || botDarts.length === 0) return;
+  if (botSeat && botVisitKey !== lastHeldVisitKeyRef.current && botDarts.length > 0) {
+    lastHeldVisitKeyRef.current = botVisitKey;
     // Nach einem Bust ist schon alles gesagt (BUST-Einblendung lief ja
     // bereits) - kurze Pause statt der vollen 2s, sonst wirkt's so, als würde
     // der Bot "hängen bleiben"/weiterwerfen, obwohl nur die Kachel noch groß ist.
     const tailPause = botBust ? 400 : 2000;
     const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + tailPause;
-    setHoldBotUntil(Date.now() + holdMs);
-    const t = setTimeout(() => forceTick((n) => n + 1), holdMs + 30);
+    holdUntilRef.current = Date.now() + holdMs;
+  }
+  useEffect(() => {
+    const remaining = holdUntilRef.current - Date.now();
+    if (remaining <= 0) return;
+    const t = setTimeout(() => forceTick((n) => n + 1), remaining + 30);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botVisitKey]);
-  const holdingBot = botSeat != null && Date.now() < holdBotUntil;
+  const holdingBot = botSeat != null && Date.now() < holdUntilRef.current;
   const activeId = holdingBot ? botSeat!.playerId : realActiveId;
 
   // Kamera-Track je LiveKit-Identity (= occupantId des Platzes).
