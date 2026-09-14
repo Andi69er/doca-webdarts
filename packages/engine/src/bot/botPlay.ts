@@ -55,15 +55,30 @@ function throwDart(targetBed: number, skill: number, remainingScore: number): Da
     (!!path &&
       (Array.isArray(path) ? path[0]! : path).split("-").some((seg) => seg.startsWith("D")));
 
-  const trebleChance = (s / 100) * 0.35;
-  const doubleChance = (s / 100) * 0.45;
-  const singleChance = 0.8;
-  const neighborChance = 0.15;
+  // Trefferquote AUF die Zielzahl (egal welcher Ring) skaliert nichtlinear mit
+  // dem Skill - ein schwacher Bot soll die Zahl oft KOMPLETT verfehlen, nicht
+  // nur seltener die Treble/Double treffen. Vorher war diese Basis-Trefferquote
+  // mit 0.8 fix verdrahtet, wodurch selbst ein "Amateur (Ø 40)"-Preset real
+  // einen Average von ~68 gespielt hat statt ~40 (durchsimuliert und gegen die
+  // Presets in Hub.tsx kalibriert: 40/55/70/85 -> ~43/55/68/85 tatsächlicher
+  // Average, 100 -> ~96, nah am alten Verhalten für die PDC-Star-Bots).
+  const sp = Math.pow(s / 100, 1.2);
+  const hitChance = Math.min(1, 0.15 + 0.95 * sp);
+  const trebleShare = Math.min(1, 0.3 * sp);
+  const doubleShare = Math.min(1, 0.39 * sp);
 
-  if (isDoubleAttempt && r < doubleChance) return { value: targetBed, multiplier: 2 };
-  if (r < trebleChance) return { value: targetBed, multiplier: 3 };
-  if (r < singleChance) return { value: targetBed, multiplier: 1 };
-  if (r < singleChance + neighborChance) {
+  if (r < hitChance) {
+    const rRing = rnd();
+    if (isDoubleAttempt) {
+      if (rRing < doubleShare) return { value: targetBed, multiplier: 2 };
+      return { value: targetBed, multiplier: 1 };
+    }
+    if (rRing < trebleShare) return { value: targetBed, multiplier: 3 };
+    return { value: targetBed, multiplier: 1 };
+  }
+
+  // Verfehlt die Zielzahl - meist knapp daneben (Nachbarfeld), seltener wild verstreut.
+  if (rnd() < 0.6) {
     const n = DARTBOARD_NEIGHBORS[targetBed]!;
     return { value: n[Math.floor(rnd() * 2)]!, multiplier: 1 };
   }

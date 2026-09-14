@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MatchController,
+  botX01Visit,
   bullFinishPossible,
   collectAchievements,
   createMatch,
@@ -13,7 +14,7 @@ import {
   scoreboard,
   throwOrder,
 } from "./index";
-import type { Dart, MatchConfig, Player, Team } from "./index";
+import type { Dart, MatchConfig, Player, Team, X01LegState } from "./index";
 
 const players: Player[] = [
   { id: "a1", name: "Andi" },
@@ -640,5 +641,37 @@ describe("collectAchievements (3K-Bestleistungen-Kandidaten)", () => {
 
     const achHs = collectAchievements(m);
     expect(achHs.length).toBe(0); // Leg noch nicht fertig -> history ist leer
+  });
+});
+
+describe("bot difficulty calibration", () => {
+  // Regressionstest für einen echten Bug: die Basis-Trefferquote "trifft die
+  // Zielzahl überhaupt" war früher mit 0.8 fix verdrahtet, unabhängig vom
+  // Skill - ein "Amateur (Ø 40)"-Preset hat dadurch real ~68 Average
+  // gespielt statt ~40. Simuliert viele Aufnahmen je Preset und prüft, dass
+  // der tatsächliche 3-Dart-Average nah am Preset-Wert liegt.
+  function simulateAverage(average: number, visits: number): number {
+    let totalDarts = 0;
+    let totalScore = 0;
+    for (let i = 0; i < visits; i++) {
+      const leg = { remaining: [501, 501] } as unknown as X01LegState;
+      const darts: Dart[] = botX01Visit(leg, 0, average, "double");
+      for (const d of darts) {
+        totalDarts += 1;
+        totalScore += d.value * d.multiplier;
+      }
+    }
+    return (totalScore / totalDarts) * 3;
+  }
+
+  it.each([
+    [40, 40],
+    [55, 55],
+    [70, 70],
+    [85, 85],
+  ])("Preset Ø %i spielt einen tatsächlichen Average nah an %i (±15)", (preset, target) => {
+    const avg = simulateAverage(preset, 6000);
+    expect(avg).toBeGreaterThan(target - 15);
+    expect(avg).toBeLessThan(target + 15);
   });
 });
