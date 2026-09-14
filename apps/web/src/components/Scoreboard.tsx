@@ -26,6 +26,23 @@ export function Scoreboard({ room }: { room: RoomState }) {
         </div>
       )}
 
+      <div className="sb2-vs">
+        {usesSets ? (
+          <>
+            <div className="sb2-vs-main">
+              {sb.teams[0]!.setsWon} : {sb.teams[1]!.setsWon}
+            </div>
+            <div className="sb2-vs-sub">
+              Legs {sb.teams[0]!.legsWonInSet} : {sb.teams[1]!.legsWonInSet}
+            </div>
+          </>
+        ) : (
+          <div className="sb2-vs-main">
+            {sb.teams[0]!.legsWonInSet} : {sb.teams[1]!.legsWonInSet}
+          </div>
+        )}
+      </div>
+
       <div className="sb2">
         {sb.teams.map((t, ti) => {
           const onThrow = sb.thrower?.teamIndex === ti;
@@ -38,7 +55,7 @@ export function Scoreboard({ room }: { room: RoomState }) {
               <div className="sb2-players">
                 {t.players.map((p, i) => (
                   <span key={i} className="sb2-player">
-                    <Avatar src={t.playerImages[i]} name={p} size={18} />
+                    <Avatar src={t.playerImages[i]} name={p} size={32} />
                     {p}
                   </span>
                 ))}
