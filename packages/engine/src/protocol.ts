@@ -459,7 +459,7 @@ export function seatKey(teamIndex: number, indexInTeam: number): string {
   return `t${teamIndex}p${indexInTeam}`;
 }
 
-/** Standard-Konfiguration für ein Doppel-501-Match. */
+/** Standard-Konfiguration für ein Einzel-501-Match. */
 export function defaultConfig(): MatchConfig {
   return {
     mode: "x01",
@@ -471,6 +471,6 @@ export function defaultConfig(): MatchConfig {
     twoClearLegs: false,
     legBulloffRounds: 0,
     legsCap: 0,
-    teamSize: 2,
+    teamSize: 1,
   };
 }
