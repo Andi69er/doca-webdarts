@@ -92,7 +92,7 @@ function Stage({ room }: { room: RoomState }) {
     { onlySubscribed: false },
   );
 
-  const activeId =
+  const realActiveId =
     room.match && room.phase === "match"
       ? scoreboard(room.match as MatchState).thrower?.playerId ?? null
       : null;
@@ -115,6 +115,24 @@ function Stage({ room }: { room: RoomState }) {
       }
     }
   }
+
+  // Der Server rückt den Anwurf sofort nach dem Bot-Zug weiter (RECORD_VISIT
+  // ist eine atomare Aktion) - ohne Bremse würde die Großansicht schon zum
+  // Menschen springen, während die Darts optisch noch in die (dann kleine)
+  // Bot-Kachel reinfliegen. Hält den Bot deshalb clientseitig noch so lange
+  // "groß", bis die Flugbahn-Animation (siehe BotDartboard) durch ist.
+  const [holdBotUntil, setHoldBotUntil] = useState(0);
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (botVisitKey === 0 || botDarts.length === 0) return;
+    const holdMs = botDarts.length * 260 + 500;
+    setHoldBotUntil(Date.now() + holdMs);
+    const t = setTimeout(() => forceTick((n) => n + 1), holdMs + 30);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [botVisitKey]);
+  const holdingBot = botSeat != null && Date.now() < holdBotUntil;
+  const activeId = holdingBot ? botSeat!.playerId : realActiveId;
 
   // Kamera-Track je LiveKit-Identity (= occupantId des Platzes).
   // Bei "lokal" teilen sich Platz 1 und der Partner-Platz denselben Track.
