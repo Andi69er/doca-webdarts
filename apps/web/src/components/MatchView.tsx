@@ -74,7 +74,7 @@ export function MatchView({ app }: { app: AppApi }) {
         </div>
 
         <div className="stack">
-          <Scoreboard match={match} />
+          <Scoreboard room={state} />
 
           {match.phase === "bulloff" && (
             <BullOffPanel app={app} myTeamIndex={myTeamIndex} disabled={paused} />

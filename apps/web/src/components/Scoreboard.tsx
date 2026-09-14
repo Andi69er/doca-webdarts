@@ -1,7 +1,17 @@
-import { scoreboard, type MatchState } from "@webdarts/engine";
+import { scoreboard, type RoomState } from "@webdarts/engine";
+import { useBotThrowHold } from "../useBotThrowHold";
 import { Avatar } from "./Avatar";
 
-export function Scoreboard({ match }: { match: MatchState }) {
+/**
+ * `room` statt `match`: bei einem Bot-Zug soll die Anzeige (Score/Legs/
+ * Average/Anwurf-Pfeil) synchron mit der Video-Großansicht erst NACH der
+ * Dartscheiben-Animation umspringen (siehe useBotThrowHold), nicht schon in
+ * dem Moment, in dem der Server den Zug intern schon weitergegeben hat.
+ */
+export function Scoreboard({ room }: { room: RoomState }) {
+  const { effectiveMatch } = useBotThrowHold(room);
+  if (!effectiveMatch) return null;
+  const match = effectiveMatch;
   const sb = scoreboard(match);
   const usesSets = match.config.setsToWin > 1;
   const isX01 = sb.mode === "x01";

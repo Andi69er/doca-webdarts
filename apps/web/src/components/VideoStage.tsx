@@ -8,20 +8,13 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import {
-  scoreboard,
-  type CricketLegState,
-  type Dart,
-  type MatchState,
-  type RoomState,
-  type X01LegState,
-} from "@webdarts/engine";
+import { scoreboard, type RoomState } from "@webdarts/engine";
 import { emitAck } from "../net";
 import { audioCaptureOpts, videoCaptureOpts } from "../mediaPrefs";
+import { useBotThrowHold } from "../useBotThrowHold";
 import { AutoStartAudio } from "./AutoStartAudio";
 import { Avatar } from "./Avatar";
 import { BotDartboard } from "./BotDartboard";
-import { DART_FLIGHT_MS, DART_STAGGER_MS } from "../dartboardRenderer";
 
 export function VideoStage({ room }: { room: RoomState }) {
   const [state, setState] = useState<
@@ -133,73 +126,11 @@ function Stage({ room }: { room: RoomState }) {
     { onlySubscribed: false },
   );
 
-  const realActiveId =
-    room.match && room.phase === "match"
-      ? scoreboard(room.match as MatchState).thrower?.playerId ?? null
-      : null;
-
-  // Bot-Platz: zeigt statt Kamerabild eine Mini-Dartscheibe mit den zuletzt
-  // geworfenen Darts. `visits` liegt bei X01 wie Cricket gleich (teamIndex +
-  // darts), daher hier generisch behandelt.
-  //
-  // WICHTIG: nicht nur `st.leg` (das laufende Leg) durchsuchen, sondern auch
-  // `st.history` (abgeschlossene Legs) - checkt der Bot ein Leg aus, ist mit
-  // demselben Broadcast schon ein NEUES, leeres Leg da. Ohne die History wäre
-  // der entscheidende Checkout-Dart nie sichtbar, weil `st.leg.visits` in dem
-  // Moment schon wieder bei null anfängt.
-  const botSeat = room.bot ? (room.seats.find((s) => s.key === room.bot!.seatKey) ?? null) : null;
-  let botDarts: Dart[] = [];
-  let botBust = false; // War die letzte Bot-Aufnahme ein Bust? Kürzere Pause danach (siehe unten).
-  let botVisitKey = 0; // Zählt nur Aufnahmen DES BOTS - triggert die Flugbahn nicht bei fremden Würfen neu.
-  if (botSeat && room.match && room.phase === "match") {
-    const st = room.match as MatchState;
-    const legs = [
-      ...st.history.map((r) => r.leg),
-      ...(st.phase === "playing" || st.phase === "finished" ? [st.leg] : []),
-    ];
-    for (const leg of legs) {
-      const visits = (leg as X01LegState | CricketLegState).visits;
-      for (const v of visits) {
-        if (v.teamIndex === botSeat.teamIndex) {
-          botVisitKey += 1;
-          botDarts = v.darts;
-          botBust = "bust" in v && v.bust === true;
-        }
-      }
-    }
-  }
-
-  // Der Server rückt den Anwurf sofort nach dem Bot-Zug weiter (RECORD_VISIT
-  // ist eine atomare Aktion) - ohne Bremse würde die Großansicht schon zum
-  // Menschen springen, während die Darts optisch noch in die (dann kleine)
-  // Bot-Kachel reinfliegen. Hält den Bot deshalb clientseitig noch so lange
-  // "groß", bis die Flugbahn-Animation (siehe BotDartboard) durch ist.
-  //
-  // WICHTIG: der Haltewert wird SYNCHRON während des Renders aktualisiert
-  // (nicht erst in einem useEffect danach) - sonst gibt es genau einen
-  // Render, in dem noch der alte/schon abgelaufene Wert gilt (Effects laufen
-  // erst NACH dem Commit), die Großansicht dabei kurz zum Menschen "blitzt"
-  // und erst im nächsten Tick zurück zum Bot springt.
-  const holdUntilRef = useRef(0);
-  const lastHeldVisitKeyRef = useRef(0);
-  const [, forceTick] = useState(0);
-  if (botSeat && botVisitKey !== lastHeldVisitKeyRef.current && botDarts.length > 0) {
-    lastHeldVisitKeyRef.current = botVisitKey;
-    // Nach einem Bust ist schon alles gesagt (BUST-Einblendung lief ja
-    // bereits) - kurze Pause statt der vollen 2s, sonst wirkt's so, als würde
-    // der Bot "hängen bleiben"/weiterwerfen, obwohl nur die Kachel noch groß ist.
-    const tailPause = botBust ? 400 : 2000;
-    const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + tailPause;
-    holdUntilRef.current = Date.now() + holdMs;
-  }
-  useEffect(() => {
-    const remaining = holdUntilRef.current - Date.now();
-    if (remaining <= 0) return;
-    const t = setTimeout(() => forceTick((n) => n + 1), remaining + 30);
-    return () => clearTimeout(t);
-  }, [botVisitKey]);
-  const holdingBot = botSeat != null && Date.now() < holdUntilRef.current;
-  const activeId = holdingBot ? botSeat!.playerId : realActiveId;
+  // Hält Video-Fokus UND Punktestand-Anzeige (siehe Scoreboard.tsx) auf dem
+  // Stand "vor dem Bot-Wurf" fest, bis die Flugbahn-Animation durch ist -
+  // beide Stellen nutzen denselben Hook, damit sie exakt synchron umspringen.
+  const { botSeat, effectiveMatch, botDarts, botVisitKey } = useBotThrowHold(room);
+  const activeId = effectiveMatch ? scoreboard(effectiveMatch).thrower?.playerId ?? null : null;
 
   // Kamera-Track je LiveKit-Identity (= occupantId des Platzes).
   // Bei "lokal" teilen sich Platz 1 und der Partner-Platz denselben Track.
