@@ -149,6 +149,7 @@ function Stage({ room }: { room: RoomState }) {
   // Moment schon wieder bei null anfängt.
   const botSeat = room.bot ? (room.seats.find((s) => s.key === room.bot!.seatKey) ?? null) : null;
   let botDarts: Dart[] = [];
+  let botBust = false; // War die letzte Bot-Aufnahme ein Bust? Kürzere Pause danach (siehe unten).
   let botVisitKey = 0; // Zählt nur Aufnahmen DES BOTS - triggert die Flugbahn nicht bei fremden Würfen neu.
   if (botSeat && room.match && room.phase === "match") {
     const st = room.match as MatchState;
@@ -162,6 +163,7 @@ function Stage({ room }: { room: RoomState }) {
         if (v.teamIndex === botSeat.teamIndex) {
           botVisitKey += 1;
           botDarts = v.darts;
+          botBust = "bust" in v && v.bust === true;
         }
       }
     }
@@ -176,8 +178,11 @@ function Stage({ room }: { room: RoomState }) {
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (botVisitKey === 0 || botDarts.length === 0) return;
-    // +2s Pause nach dem letzten Dart, bevor die Großansicht weiterspringt.
-    const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + 2000;
+    // Nach einem Bust ist schon alles gesagt (BUST-Einblendung lief ja
+    // bereits) - kurze Pause statt der vollen 2s, sonst wirkt's so, als würde
+    // der Bot "hängen bleiben"/weiterwerfen, obwohl nur die Kachel noch groß ist.
+    const tailPause = botBust ? 400 : 2000;
+    const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + tailPause;
     setHoldBotUntil(Date.now() + holdMs);
     const t = setTimeout(() => forceTick((n) => n + 1), holdMs + 30);
     return () => clearTimeout(t);
