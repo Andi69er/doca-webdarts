@@ -166,8 +166,8 @@ function Stage({ room }: { room: RoomState }) {
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (botVisitKey === 0 || botDarts.length === 0) return;
-    // +1,5s Pause nach dem letzten Dart, bevor die Großansicht weiterspringt.
-    const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + 1500;
+    // +2s Pause nach dem letzten Dart, bevor die Großansicht weiterspringt.
+    const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + 2000;
     setHoldBotUntil(Date.now() + holdMs);
     const t = setTimeout(() => forceTick((n) => n + 1), holdMs + 30);
     return () => clearTimeout(t);
