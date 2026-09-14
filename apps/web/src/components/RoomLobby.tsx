@@ -484,22 +484,26 @@ export function RoomLobby({ app }: { app: AppApi }) {
         <div className="seat-grid">
           {teams.map((seats, ti) => (
             <div key={ti} className={`team-col ${ti === 0 ? "a" : "b"}`}>
-              <input
-                className="team-name-input"
-                aria-label={`Name ${ti === 0 ? "Team A" : "Team B"}`}
-                disabled={!canEditTeam(ti)}
-                value={state.teamNames[ti as 0 | 1]}
-                onChange={(e) => app.setTeamName(ti, e.target.value)}
-                style={{ width: "100%", fontWeight: 700 }}
-              />
-              {canEditTeam(ti) && (
-                <button
-                  className="ghost"
-                  style={{ width: "100%", fontSize: 12, padding: "5px 8px", marginTop: 6 }}
-                  onClick={() => setNameModal(ti)}
-                >
-                  ✎ Teamname
-                </button>
+              {isDoubles && (
+                <>
+                  <input
+                    className="team-name-input"
+                    aria-label={`Name ${ti === 0 ? "Team A" : "Team B"}`}
+                    disabled={!canEditTeam(ti)}
+                    value={state.teamNames[ti as 0 | 1]}
+                    onChange={(e) => app.setTeamName(ti, e.target.value)}
+                    style={{ width: "100%", fontWeight: 700 }}
+                  />
+                  {canEditTeam(ti) && (
+                    <button
+                      className="ghost"
+                      style={{ width: "100%", fontSize: 12, padding: "5px 8px", marginTop: 6 }}
+                      onClick={() => setNameModal(ti)}
+                    >
+                      ✎ Teamname
+                    </button>
+                  )}
+                </>
               )}
               {isDoubles && (
                 <label className="row" style={{ gap: 8, margin: "8px 0 2px", fontSize: 13 }}>
