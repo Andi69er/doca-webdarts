@@ -12,8 +12,15 @@ import { CHECKOUT_PATHS, DARTBOARD_NEIGHBORS } from "./boardData";
 
 const rnd = () => Math.random();
 
+/** Welche Art Wurf ein Dart darstellt - bestimmt in `throwDart`, ob die
+ *  Doppel-spezifische Trefferlogik (inkl. Nervosität bei Matchdarts) greift.
+ *  "double" NUR beim tatsächlichen Doppel-Segment eines Checkout-Pfads oder
+ *  beim klassischen Doppel-Aus bei geradem Rest <=40 - nicht pauschal für
+ *  den ganzen mehrteiligen Pfad (siehe Bugfix unten). */
+type Aim = { target: number; isDouble: boolean };
+
 /**
- * Zielzahl (Bett) für den nächsten Bot-Dart bei X01. Ein schwächerer Bot
+ * Ziel-Bett + Wurfart für den nächsten Bot-Dart bei X01. Ein schwächerer Bot
  * plant nicht immer den exakten, lehrbuchmäßigen Mehr-Dart-Pfad durch -
  * beim "Setup-Dart" (nicht dem letzten Dart eines mehrteiligen Checkouts)
  * wirft er manchmal einfach auf eine große Zahl statt auf das geplante Feld,
@@ -21,8 +28,8 @@ const rnd = () => Math.random();
  * Bei Restwerten mit mehreren bekannten Alternativpfaden (z.B. 90, 88, 84)
  * nimmt er außerdem nicht immer den ersten (kanonisch besten) Pfad.
  */
-function getBotTarget(score: number, dartsThrownInTurn: number, skill: number): number {
-  if (score > 170) return 20;
+function getBotAim(score: number, dartsThrownInTurn: number, skill: number): Aim {
+  if (score > 170) return { target: 20, isDouble: false };
 
   const raw = CHECKOUT_PATHS[score];
   if (raw) {
@@ -36,7 +43,7 @@ function getBotTarget(score: number, dartsThrownInTurn: number, skill: number): 
     const segments = path.split("-");
     const isSetupDart = dartsThrownInTurn < segments.length - 1;
     if (isSetupDart && rnd() < weak * 0.5) {
-      return rnd() < 0.5 ? 20 : 19;
+      return { target: rnd() < 0.5 ? 20 : 19, isDouble: false };
     }
     const seg = segments[dartsThrownInTurn];
     if (seg) {
@@ -44,21 +51,26 @@ function getBotTarget(score: number, dartsThrownInTurn: number, skill: number): 
       if (seg.startsWith("T") || seg.startsWith("D")) num = parseInt(seg.substring(1), 10);
       else if (seg === "Bull") num = 25;
       else num = parseInt(seg, 10);
-      if (!Number.isNaN(num)) return num;
+      // NUR das konkrete Segment DIESES Darts entscheidet, nicht ob der Pfad
+      // irgendwo ein "D" enthält - sonst gelten z.B. bei "T20-T20-D20" auch
+      // die beiden Treble-Setup-Darts fälschlich als Doppel-Versuch.
+      if (!Number.isNaN(num)) return { target: num, isDouble: seg.startsWith("D") };
     }
   }
-  if (score > 60) return 20;
-  if (score > 40 && score % 2 === 0) return (score - 40) / 2;
-  if (score <= 40 && score % 2 === 0) return score / 2;
-  return 19;
+  if (score > 60) return { target: 20, isDouble: false };
+  if (score > 40 && score % 2 === 0) return { target: (score - 40) / 2, isDouble: true };
+  if (score <= 40 && score % 2 === 0) return { target: score / 2, isDouble: true };
+  return { target: 19, isDouble: false };
 }
 
 /**
  * Wirft einen Dart auf `targetBed` mit gegebenem Skill – liefert einen Dart.
- * `pressure`: reduziert die effektive Trefferquote auf ein Double, wenn's
- * gerade um den Matchdart geht (Nervosität) - siehe `botX01Visit`.
+ * `isDoubleAttempt`: kommt von `getBotAim` (das konkrete Segment dieses
+ * Darts, nicht der ganze Pfad). `pressure`: reduziert die effektive
+ * Trefferquote auf ein Double, wenn's gerade um den Matchdart geht
+ * (Nervosität) - siehe `botX01Visit`.
  */
-function throwDart(targetBed: number, skill: number, remainingScore: number, pressure: boolean): Dart {
+function throwDart(targetBed: number, skill: number, isDoubleAttempt: boolean, pressure: boolean): Dart {
   if (!(targetBed in DARTBOARD_NEIGHBORS)) targetBed = 20;
   const s = Math.max(1, Math.min(100, skill));
   const r = rnd();
@@ -71,12 +83,6 @@ function throwDart(targetBed: number, skill: number, remainingScore: number, pre
     const miss = [1, 5, 20, 18, 13][Math.floor(rnd() * 5)]!;
     return { value: miss, multiplier: 1 };
   }
-
-  const path = CHECKOUT_PATHS[remainingScore];
-  const isDoubleAttempt =
-    (remainingScore <= 40 && remainingScore % 2 === 0) ||
-    (!!path &&
-      (Array.isArray(path) ? path[0]! : path).split("-").some((seg) => seg.startsWith("D")));
 
   // Trefferquote AUF die Zielzahl (egal welcher Ring) skaliert nichtlinear mit
   // dem Skill - ein schwacher Bot soll die Zahl oft KOMPLETT verfehlen, nicht
@@ -132,8 +138,8 @@ export function botX01Visit(
   let rem = leg.remaining[teamIndex] ?? 0;
 
   for (let i = 0; i < 3; i++) {
-    const target = getBotTarget(rem, i, average);
-    const dart = throwDart(target, average, rem, isMatchDart);
+    const aim = getBotAim(rem, i, average);
+    const dart = throwDart(aim.target, average, aim.isDouble, isMatchDart);
     darts.push(dart);
     const next = rem - dartPoints(dart);
     if (next <= 1) break; // Bust oder Checkout -> Aufnahme endet
