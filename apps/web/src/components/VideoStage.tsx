@@ -141,13 +141,23 @@ function Stage({ room }: { room: RoomState }) {
   // Bot-Platz: zeigt statt Kamerabild eine Mini-Dartscheibe mit den zuletzt
   // geworfenen Darts. `visits` liegt bei X01 wie Cricket gleich (teamIndex +
   // darts), daher hier generisch behandelt.
+  //
+  // WICHTIG: nicht nur `st.leg` (das laufende Leg) durchsuchen, sondern auch
+  // `st.history` (abgeschlossene Legs) - checkt der Bot ein Leg aus, ist mit
+  // demselben Broadcast schon ein NEUES, leeres Leg da. Ohne die History wäre
+  // der entscheidende Checkout-Dart nie sichtbar, weil `st.leg.visits` in dem
+  // Moment schon wieder bei null anfängt.
   const botSeat = room.bot ? (room.seats.find((s) => s.key === room.bot!.seatKey) ?? null) : null;
   let botDarts: Dart[] = [];
   let botVisitKey = 0; // Zählt nur Aufnahmen DES BOTS - triggert die Flugbahn nicht bei fremden Würfen neu.
   if (botSeat && room.match && room.phase === "match") {
     const st = room.match as MatchState;
-    if (st.phase === "playing" || st.phase === "finished") {
-      const visits = (st.leg as X01LegState | CricketLegState).visits;
+    const legs = [
+      ...st.history.map((r) => r.leg),
+      ...(st.phase === "playing" || st.phase === "finished" ? [st.leg] : []),
+    ];
+    for (const leg of legs) {
+      const visits = (leg as X01LegState | CricketLegState).visits;
       for (const v of visits) {
         if (v.teamIndex === botSeat.teamIndex) {
           botVisitKey += 1;
