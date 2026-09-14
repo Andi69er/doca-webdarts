@@ -131,8 +131,12 @@ export function RoomLobby({ app }: { app: AppApi }) {
   const [nameModal, setNameModal] = useState<number | null>(null);
   const promptedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    // Bei Einzel (teamSize 1) ist "Team A/B" nur eine leere Hülle um den
+    // einen Spielernamen und wird in der Scoreboard-Anzeige gar nicht mehr
+    // gezeigt - die Umbenennen-Abfrage wäre da nur verwirrend, nur bei Doppel.
     if (
       !state.tournamentLocked &&
+      cfg.teamSize > 1 &&
       mySeatObj &&
       mySeatObj.indexInTeam === 0 &&
       !promptedRef.current.has(mySeatObj.key)
@@ -140,7 +144,7 @@ export function RoomLobby({ app }: { app: AppApi }) {
       promptedRef.current.add(mySeatObj.key);
       setNameModal(mySeatObj.teamIndex);
     }
-  }, [mySeatObj?.key, mySeatObj?.indexInTeam, mySeatObj?.teamIndex, state.tournamentLocked]);
+  }, [mySeatObj?.key, mySeatObj?.indexInTeam, mySeatObj?.teamIndex, state.tournamentLocked, cfg.teamSize]);
 
   // Anzeige-/Eingabehilfe für die Spiellänge: "First to N" oder "Best of N".
   // Gespeichert wird immer die Anzahl nötiger Siege (legsToWinSet / setsToWin).
