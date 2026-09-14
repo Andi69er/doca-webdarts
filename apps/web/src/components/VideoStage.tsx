@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   StartAudio,
   VideoTrack,
+  useRoomContext,
   useTracks,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
@@ -19,7 +20,7 @@ import { emitAck } from "../net";
 import { audioCaptureOpts, videoCaptureOpts } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
 import { Avatar } from "./Avatar";
-import { BotDartboard } from "./BotDartboard";
+import { BOT_DART_FLIGHT_MS, BOT_DART_STAGGER_MS, BotDartboard } from "./BotDartboard";
 
 export function VideoStage({ room }: { room: RoomState }) {
   const [state, setState] = useState<
@@ -79,11 +80,48 @@ export function VideoStage({ room }: { room: RoomState }) {
       style={{ display: "contents" }}
     >
       <Stage room={room} />
+      <CameraAutoRetry />
       <RoomAudioRenderer />
       <AutoStartAudio />
       <StartAudio label="🔊 Ton aktivieren" />
     </LiveKitRoom>
   );
+}
+
+/**
+ * Manchmal ist die Kamera beim Matchstart noch kurz vom Lobby-Kameratest
+ * belegt (der Browser/Treiber gibt das Gerät nach `stream.stop()` nicht
+ * immer sofort frei) - dann schlägt LiveKits automatischer Erstversuch
+ * (`video={...}` auf <LiveKitRoom>) stillschweigend fehl und die eigene
+ * Kachel bleibt dauerhaft auf "Kamera aus" stehen. Prüft deshalb ein paar
+ * Mal nach, ob die eigene Kamera wirklich läuft, und versucht es sonst
+ * erneut (mit steigendem Abstand, da das Gerät ja erst frei werden muss).
+ */
+function CameraAutoRetry() {
+  const room = useRoomContext();
+  const attemptedRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const delays = [500, 1500, 3000, 5000];
+
+    const tryEnable = () => {
+      if (cancelled) return;
+      if (room.localParticipant.isCameraEnabled) return; // schon da, fertig
+      void room.localParticipant.setCameraEnabled(true, videoCaptureOpts()).catch(() => {});
+      const delay = delays[attemptedRef.current];
+      attemptedRef.current += 1;
+      if (delay !== undefined) setTimeout(tryEnable, delay);
+    };
+
+    const t = setTimeout(tryEnable, delays[0]);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [room]);
+
+  return null;
 }
 
 function Stage({ room }: { room: RoomState }) {
@@ -125,7 +163,7 @@ function Stage({ room }: { room: RoomState }) {
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (botVisitKey === 0 || botDarts.length === 0) return;
-    const holdMs = botDarts.length * 260 + 500;
+    const holdMs = (botDarts.length - 1) * BOT_DART_STAGGER_MS + BOT_DART_FLIGHT_MS + 250;
     setHoldBotUntil(Date.now() + holdMs);
     const t = setTimeout(() => forceTick((n) => n + 1), holdMs + 30);
     return () => clearTimeout(t);
