@@ -15,6 +15,9 @@ export function Scoreboard({ room }: { room: RoomState }) {
   const sb = scoreboard(match);
   const usesSets = match.config.setsToWin > 1;
   const isX01 = sb.mode === "x01";
+  // Bei Einzel (nicht Doppel) ist "Team A"/"Team B" nur eine leere Hülle um
+  // den einen Spielernamen - weglassen und den Platz fürs Profilbild nutzen.
+  const isSingles = match.config.teamSize === 1;
 
   return (
     <div className="stack" style={{ gap: 10 }}>
@@ -48,18 +51,28 @@ export function Scoreboard({ room }: { room: RoomState }) {
           const onThrow = sb.thrower?.teamIndex === ti;
           return (
             <div key={ti} className={`sb2-team ${onThrow ? "on-throw" : ""}`}>
-              <div className="sb2-head">
-                <span className="sb2-name">{t.name}</span>
-                {onThrow && <span className="sb2-arrow">◀</span>}
-              </div>
-              <div className="sb2-players">
-                {t.players.map((p, i) => (
-                  <span key={i} className="sb2-player">
-                    <Avatar src={t.playerImages[i]} name={p} size={32} />
-                    {p}
-                  </span>
-                ))}
-              </div>
+              {isSingles ? (
+                <div className="sb2-solo">
+                  <Avatar src={t.playerImages[0]} name={t.players[0] ?? t.name} size={48} />
+                  <span className="sb2-solo-name">{t.players[0] ?? t.name}</span>
+                  {onThrow && <span className="sb2-arrow">◀</span>}
+                </div>
+              ) : (
+                <>
+                  <div className="sb2-head">
+                    <span className="sb2-name">{t.name}</span>
+                    {onThrow && <span className="sb2-arrow">◀</span>}
+                  </div>
+                  <div className="sb2-players">
+                    {t.players.map((p, i) => (
+                      <span key={i} className="sb2-player">
+                        <Avatar src={t.playerImages[i]} name={p} size={32} />
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <div className="sb2-body">
                 <div className="sb2-legs">

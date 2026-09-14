@@ -530,6 +530,15 @@ body:not(.webdarts-embedded) #webdarts-root {
   color: #eafff0; font-size: 16px; font-weight: 600; margin-top: 6px;
   min-height: 34px; text-align: center;
 }
+/* Einzel: kein leerer "Team A/B"-Titel, Profilbild+Name stattdessen groß. */
+.sb2-solo {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  gap: 10px; padding: 2px 0 4px;
+}
+.sb2-solo-name {
+  font-family: "Oswald"; text-transform: uppercase; font-weight: 700;
+  letter-spacing: 0.03em; font-size: 20px; color: #eafff0;
+}
 .sb2-vs {
   display: flex; flex-direction: column; align-items: center; width: fit-content;
   margin: 0 auto 10px; background: #0c1a10; border: 1px solid var(--gold);
