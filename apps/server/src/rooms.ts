@@ -83,6 +83,14 @@ export class Room {
   private resultWritten = false;
   /** Bot-Gegner (bei nur 3 Spielern), beim Raum-Erstellen gewählt. */
   private bot: BotConfig | null = null;
+  /**
+   * "Guter/schlechter Tag" - einmal pro Match zufällig gewürfelt (0.85-1.15),
+   * multipliziert den Average für die ganze Matchdauer. Macht den Bot über
+   * mehrere Matches hinweg spürbar unterschiedlich stark, statt immer exakt
+   * gleich zu spielen. Absichtlich NICHT Teil von BotConfig/der Raum-Summary
+   * - bleibt intern, damit niemand die genaue Tagesform "ablesen" kann.
+   */
+  private botForm = 1;
   /** Pro Team: "Beide an einem Board" (nur Doppel). */
   private localTeams: [boolean, boolean] = [false, false];
   /** Partner auf Platz 2 eines lokalen Teams, key = seatKey des Partner-Platzes. */
@@ -445,6 +453,8 @@ export class Room {
     this.lastSeat.clear();
     this.resultWritten = false;
     this.phase = "match";
+    // Neue "Tagesform" pro Match (auch bei Revanche im selben Raum).
+    if (this.bot) this.botForm = 0.85 + Math.random() * 0.3;
   }
 
   startMatch(memberId: string): { ok: true } | { ok: false; error: string } {
@@ -668,7 +678,7 @@ export class Room {
   runBotTurn(): boolean {
     if (!this.botTurnPending() || !this.controller || !this.bot) return false;
     const st = this.controller.state;
-    const avg = this.bot.average;
+    const avg = this.bot.average * this.botForm;
 
     if (st.phase === "bulloff") {
       const team = this.seatTeam(BOT_ID);
@@ -684,9 +694,16 @@ export class Room {
 
     const thrower = currentThrower(st);
     if (thrower?.playerId !== BOT_ID) return false;
+    // Würde ein Checkout in dieser Aufnahme gleich das ganze Match entscheiden?
+    // Dann wird der Bot bei Doppel-Versuchen spürbar nervöser (siehe botX01Visit).
+    const usesSets = st.config.setsToWin > 1;
+    const isMatchDart = usesSets
+      ? st.setsWon[thrower.teamIndex] === st.config.setsToWin - 1 &&
+        st.legsWonInSet[thrower.teamIndex] === st.config.legsToWinSet - 1
+      : st.legsWonInSet[thrower.teamIndex] === st.config.legsToWinSet - 1;
     const darts =
       st.leg.mode === "x01"
-        ? botX01Visit(st.leg as X01LegState, thrower.teamIndex, avg, st.config.x01!.out)
+        ? botX01Visit(st.leg as X01LegState, thrower.teamIndex, avg, st.config.x01!.out, isMatchDart)
         : botCricketVisit(st.leg as CricketLegState, thrower.teamIndex, avg);
     this.controller.dispatch({ type: "RECORD_VISIT", darts });
     return true;

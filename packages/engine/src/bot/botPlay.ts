@@ -12,14 +12,32 @@ import { CHECKOUT_PATHS, DARTBOARD_NEIGHBORS } from "./boardData";
 
 const rnd = () => Math.random();
 
-/** Zielzahl (Bett) für den nächsten Bot-Dart bei X01. */
-function getBotTarget(score: number, dartsThrownInTurn: number): number {
+/**
+ * Zielzahl (Bett) für den nächsten Bot-Dart bei X01. Ein schwächerer Bot
+ * plant nicht immer den exakten, lehrbuchmäßigen Mehr-Dart-Pfad durch -
+ * beim "Setup-Dart" (nicht dem letzten Dart eines mehrteiligen Checkouts)
+ * wirft er manchmal einfach auf eine große Zahl statt auf das geplante Feld,
+ * ein sehr typischer Amateur-Fehler ("groß reinhauen statt vorausplanen").
+ * Bei Restwerten mit mehreren bekannten Alternativpfaden (z.B. 90, 88, 84)
+ * nimmt er außerdem nicht immer den ersten (kanonisch besten) Pfad.
+ */
+function getBotTarget(score: number, dartsThrownInTurn: number, skill: number): number {
   if (score > 170) return 20;
 
   const raw = CHECKOUT_PATHS[score];
   if (raw) {
-    const path = Array.isArray(raw) ? raw[0]! : raw;
+    const weak = 1 - Math.max(1, Math.min(100, skill)) / 100;
+    let path: string;
+    if (Array.isArray(raw)) {
+      path = rnd() < weak * 0.6 ? raw[Math.floor(rnd() * raw.length)]! : raw[0]!;
+    } else {
+      path = raw;
+    }
     const segments = path.split("-");
+    const isSetupDart = dartsThrownInTurn < segments.length - 1;
+    if (isSetupDart && rnd() < weak * 0.5) {
+      return rnd() < 0.5 ? 20 : 19;
+    }
     const seg = segments[dartsThrownInTurn];
     if (seg) {
       let num: number;
@@ -35,16 +53,21 @@ function getBotTarget(score: number, dartsThrownInTurn: number): number {
   return 19;
 }
 
-/** Wirft einen Dart auf `targetBed` mit gegebenem Skill – liefert einen Dart. */
-function throwDart(targetBed: number, skill: number, remainingScore: number): Dart {
+/**
+ * Wirft einen Dart auf `targetBed` mit gegebenem Skill – liefert einen Dart.
+ * `pressure`: reduziert die effektive Trefferquote auf ein Double, wenn's
+ * gerade um den Matchdart geht (Nervosität) - siehe `botX01Visit`.
+ */
+function throwDart(targetBed: number, skill: number, remainingScore: number, pressure: boolean): Dart {
   if (!(targetBed in DARTBOARD_NEIGHBORS)) targetBed = 20;
   const s = Math.max(1, Math.min(100, skill));
   const r = rnd();
 
   // Bull anvisiert
   if (targetBed === 25) {
-    if (r < (s / 100) * 0.2) return { value: 25, multiplier: 2 }; // Bulls Eye (50)
-    if (r < (s / 100) * 0.6) return { value: 25, multiplier: 1 }; // 25
+    const bs = pressure ? s * 0.8 : s;
+    if (r < (bs / 100) * 0.2) return { value: 25, multiplier: 2 }; // Bulls Eye (50)
+    if (r < (bs / 100) * 0.6) return { value: 25, multiplier: 1 }; // 25
     const miss = [1, 5, 20, 18, 13][Math.floor(rnd() * 5)]!;
     return { value: miss, multiplier: 1 };
   }
@@ -62,7 +85,11 @@ function throwDart(targetBed: number, skill: number, remainingScore: number): Da
   // einen Average von ~68 gespielt hat statt ~40 (durchsimuliert und gegen die
   // Presets in Hub.tsx kalibriert: 40/55/70/85 -> ~43/55/68/85 tatsächlicher
   // Average, 100 -> ~96, nah am alten Verhalten für die PDC-Star-Bots).
-  const sp = Math.pow(s / 100, 1.2);
+  // Bei "pressure" (Matchdart) sinkt die effektive Trefferquote NUR bei einem
+  // Doppel-Versuch spürbar - Nervosität schlägt vor allem beim entscheidenden
+  // Wurf zu, nicht beim normalen Punkten.
+  const effSkill = isDoubleAttempt && pressure ? s * 0.78 : s;
+  const sp = Math.pow(effSkill / 100, 1.2);
   const hitChance = Math.min(1, 0.15 + 0.95 * sp);
   const trebleShare = Math.min(1, 0.3 * sp);
   const doubleShare = Math.min(1, 0.39 * sp);
@@ -88,19 +115,25 @@ function throwDart(targetBed: number, skill: number, remainingScore: number): Da
 /**
  * Eine komplette Bot-Aufnahme für X01. Liefert 1–3 Darts.
  * Bust-/Finish-Prüfung macht die Engine anschließend selbst.
+ *
+ * `isMatchDart`: true, wenn ein Checkout in dieser Aufnahme gleich das ganze
+ * Match entscheiden würde - der Bot wird dann bei Doppel-Versuchen spürbar
+ * nervöser (siehe `throwDart`). Vom Aufrufer (Room.runBotTurn) anhand des
+ * aktuellen Spielstands (legsWonInSet/setsWon vs. Config) ermittelt.
  */
 export function botX01Visit(
   leg: X01LegState,
   teamIndex: number,
   average: number,
   _out: InOutMode,
+  isMatchDart = false,
 ): Dart[] {
   const darts: Dart[] = [];
   let rem = leg.remaining[teamIndex] ?? 0;
 
   for (let i = 0; i < 3; i++) {
-    const target = getBotTarget(rem, i);
-    const dart = throwDart(target, average, rem);
+    const target = getBotTarget(rem, i, average);
+    const dart = throwDart(target, average, rem, isMatchDart);
     darts.push(dart);
     const next = rem - dartPoints(dart);
     if (next <= 1) break; // Bust oder Checkout -> Aufnahme endet
