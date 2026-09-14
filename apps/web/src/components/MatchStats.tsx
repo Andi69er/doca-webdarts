@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { legCount, legStats, matchStats, type MatchState, type MatchStats as MatchStatsResult } from "@webdarts/engine";
+import {
+  legCount,
+  legStats,
+  matchStats,
+  scoreboard,
+  type MatchState,
+  type MatchStats as MatchStatsResult,
+} from "@webdarts/engine";
 import { Modal } from "./Modal";
 import { LegChart } from "./LegChart";
 
@@ -84,9 +91,16 @@ function StatsTable({ result, names }: { result: MatchStatsResult; names: [strin
 
 export function MatchStats({ match }: { match: MatchState }) {
   const [open, setOpen] = useState(true);
-  const [selectedLeg, setSelectedLeg] = useState<number | null>(null);
+  const [legModal, setLegModal] = useState<number | null>(null);
   const [showChart, setShowChart] = useState(false);
-  const names = match.teams.map((t) => t.name) as [string, string];
+
+  // Bei Einzel sagt "Team A/B" nichts aus - dort den echten Spielernamen zeigen.
+  const isSingles = match.config.teamSize === 1;
+  const sb = scoreboard(match);
+  const names: [string, string] = isSingles
+    ? [sb.teams[0]!.players[0] ?? match.teams[0]!.name, sb.teams[1]!.players[0] ?? match.teams[1]!.name]
+    : [match.teams[0]!.name, match.teams[1]!.name];
+
   const total = legCount(match);
   const whole = matchStats(match);
 
@@ -100,11 +114,7 @@ export function MatchStats({ match }: { match: MatchState }) {
           {total > 0 && (
             <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
               {Array.from({ length: total }, (_, i) => (
-                <button
-                  key={i}
-                  className={selectedLeg === i ? "primary" : "ghost"}
-                  onClick={() => setSelectedLeg(selectedLeg === i ? null : i)}
-                >
+                <button key={i} className="ghost" onClick={() => setLegModal(i)}>
                   Leg {i + 1}
                 </button>
               ))}
@@ -114,24 +124,14 @@ export function MatchStats({ match }: { match: MatchState }) {
             </div>
           )}
 
-          {selectedLeg !== null && (
-            <div className="stack">
-              <h4 className="section-title" style={{ margin: 0 }}>
-                Leg {selectedLeg + 1}
-              </h4>
-              <StatsTable result={legStats(match, selectedLeg)} names={names} />
-            </div>
-          )}
-
-          <div className="stack">
-            {selectedLeg !== null && (
-              <h4 className="section-title" style={{ margin: 0 }}>
-                Gesamtes Spiel
-              </h4>
-            )}
-            <StatsTable result={whole} names={names} />
-          </div>
+          <StatsTable result={whole} names={names} />
         </div>
+      )}
+
+      {legModal !== null && (
+        <Modal title={`Leg ${legModal + 1}`} onClose={() => setLegModal(null)} wide="x">
+          <StatsTable result={legStats(match, legModal)} names={names} />
+        </Modal>
       )}
 
       {showChart && (
