@@ -7,11 +7,19 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { scoreboard, type MatchState, type RoomState } from "@webdarts/engine";
+import {
+  scoreboard,
+  type CricketLegState,
+  type Dart,
+  type MatchState,
+  type RoomState,
+  type X01LegState,
+} from "@webdarts/engine";
 import { emitAck } from "../net";
 import { audioCaptureOpts, videoCaptureOpts } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
 import { Avatar } from "./Avatar";
+import { BotDartboard } from "./BotDartboard";
 
 export function VideoStage({ room }: { room: RoomState }) {
   const [state, setState] = useState<
@@ -89,6 +97,25 @@ function Stage({ room }: { room: RoomState }) {
       ? scoreboard(room.match as MatchState).thrower?.playerId ?? null
       : null;
 
+  // Bot-Platz: zeigt statt Kamerabild eine Mini-Dartscheibe mit den zuletzt
+  // geworfenen Darts. `visits` liegt bei X01 wie Cricket gleich (teamIndex +
+  // darts), daher hier generisch behandelt.
+  const botSeat = room.bot ? (room.seats.find((s) => s.key === room.bot!.seatKey) ?? null) : null;
+  let botDarts: Dart[] = [];
+  let botVisitKey = 0; // Zählt nur Aufnahmen DES BOTS - triggert die Flugbahn nicht bei fremden Würfen neu.
+  if (botSeat && room.match && room.phase === "match") {
+    const st = room.match as MatchState;
+    if (st.phase === "playing" || st.phase === "finished") {
+      const visits = (st.leg as X01LegState | CricketLegState).visits;
+      for (const v of visits) {
+        if (v.teamIndex === botSeat.teamIndex) {
+          botVisitKey += 1;
+          botDarts = v.darts;
+        }
+      }
+    }
+  }
+
   // Kamera-Track je LiveKit-Identity (= occupantId des Platzes).
   // Bei "lokal" teilen sich Platz 1 und der Partner-Platz denselben Track.
   const trackByIdentity = new Map<string, (typeof tracks)[number]>();
@@ -120,9 +147,12 @@ function Stage({ room }: { room: RoomState }) {
         const isThrower = s.playerId != null && s.playerId === activeId;
         const cls = isThrower && hasSpot ? "spot big" : count > 2 ? "small" : "";
         const label = s.playerName ?? "Spieler";
+        const isBot = botSeat != null && s.key === botSeat.key;
         return (
           <div key={s.key} className={`vtile ${cls}`}>
-            {tr?.publication ? (
+            {isBot ? (
+              <BotDartboard darts={botDarts} visitKey={botVisitKey} />
+            ) : tr?.publication ? (
               <VideoTrack trackRef={tr} />
             ) : (
               <div className="placeholder" style={{ width: "100%", height: "100%" }}>

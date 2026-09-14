@@ -356,6 +356,40 @@ body:not(.webdarts-embedded) #webdarts-root {
 .vtile.placeholder, .vtile .placeholder {
   display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px;
 }
+
+/* Bot-Videokachel: Mini-Dartscheibe statt Kamerabild (der Bot hat ja keine). */
+.bot-dartboard-container {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 45% 35%, #1c2230 0%, #0a0d14 75%);
+}
+.bot-dartboard-svg { width: 88%; height: 88%; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6)); }
+.bot-dartboard-svg .segment { stroke: #2b2b2b; stroke-width: 0.6; transition: fill 0.2s; }
+.bot-dartboard-svg .segment-hit {
+  fill: #ffd700 !important;
+  filter: brightness(1.15) drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
+}
+.bot-dartboard-wire {
+  fill: none; stroke: #d8d8d8; stroke-width: 0.4; pointer-events: none;
+  filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.6));
+}
+.bot-dartboard-number {
+  fill: #fff; font-family: "Oswald", "Segoe UI", Arial, sans-serif; font-weight: 700;
+  font-size: 16px; text-anchor: middle; dominant-baseline: middle; pointer-events: none;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 1));
+}
+.bot-dart-marker {
+  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.8));
+  animation: bot-dart-fly-in 0.5s ease-in forwards;
+  pointer-events: none; transform-origin: center; transform-box: fill-box;
+}
+@keyframes bot-dart-fly-in {
+  0% { transform: translateY(-310px) rotate(-22deg); opacity: 0.5; }
+  55% { transform: translateY(6px) rotate(0.8deg); opacity: 1; }
+  70% { transform: translateY(-3px) rotate(-0.4deg); }
+  83% { transform: translateY(2px) rotate(0.2deg); }
+  92% { transform: translateY(-1px) rotate(0deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
 .video-off {
   aspect-ratio: 16 / 10; display: flex; align-items: center; justify-content: center;
   text-align: center; color: var(--muted); background: var(--panel);
