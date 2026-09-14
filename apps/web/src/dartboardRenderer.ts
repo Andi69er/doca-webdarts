@@ -28,6 +28,7 @@ export class DartboardRenderer {
   private svg: SVGSVGElement;
   private readonly center = 225;
   private readonly radius = 200;
+  private dartCounter = 0;
 
   constructor(container: HTMLElement) {
     this.svg = document.createElementNS(SVG_NS, "svg") as SVGSVGElement;
@@ -149,27 +150,6 @@ export class DartboardRenderer {
       glow.appendChild(stop);
     });
     defs.appendChild(glow);
-
-    // Dart-Barrel (Metall-Zylinder).
-    const barrel = document.createElementNS(SVG_NS, "linearGradient");
-    barrel.setAttribute("id", "botDartBarrel");
-    barrel.setAttribute("x1", "0%");
-    barrel.setAttribute("y1", "0%");
-    barrel.setAttribute("x2", "0%");
-    barrel.setAttribute("y2", "100%");
-    [
-      { off: "0%", col: "#1a1a1a" },
-      { off: "20%", col: "#8a8a8a" },
-      { off: "50%", col: "#fdfdfd" },
-      { off: "80%", col: "#8a8a8a" },
-      { off: "100%", col: "#1a1a1a" },
-    ].forEach((s) => {
-      const stop = document.createElementNS(SVG_NS, "stop");
-      stop.setAttribute("offset", s.off);
-      stop.setAttribute("stop-color", s.col);
-      barrel.appendChild(stop);
-    });
-    defs.appendChild(barrel);
 
     this.svg.appendChild(defs);
   }
@@ -331,6 +311,15 @@ export class DartboardRenderer {
 
     const group = document.createElementNS(SVG_NS, "g");
     group.classList.add("bot-dart-marker");
+    // Die Flugbahn läuft entlang derselben Achse (dx/dist, dy/dist), auf der auch
+    // die Dart-Form selbst gezeichnet ist (Spitze innen, Flights außen) - der Dart
+    // fliegt also entlang seiner eigenen Längsachse ins Ziel, statt immer aus einer
+    // fixen Bildschirmrichtung. So sieht die Einflugrichtung für JEDEN Treffer
+    // (egal ob oben, unten oder seitlich am Board) konsistent und plausibel aus.
+    const flyDist = 250 + Math.random() * 50;
+    group.style.setProperty("--fly-x", `${(dx / dist) * flyDist}px`);
+    group.style.setProperty("--fly-y", `${(dy / dist) * flyDist}px`);
+    group.style.setProperty("--fly-rot", `${Math.random() * 14 - 7}deg`);
 
     // Einschlag-Schatten auf dem Board (3D-Eindruck: Dart steckt drin).
     const impact = document.createElementNS(SVG_NS, "ellipse");
@@ -341,31 +330,79 @@ export class DartboardRenderer {
     impact.setAttribute("fill", "rgba(0,0,0,0.55)");
     group.appendChild(impact);
 
-    const pointLen = 18;
-    const xP = x + (dx / dist) * pointLen;
-    const yP = y + (dy / dist) * pointLen;
-    const steel = document.createElementNS(SVG_NS, "path");
-    steel.setAttribute("d", `M ${x} ${y} L ${xP} ${yP}`);
-    steel.setAttribute("stroke", "#666");
-    steel.setAttribute("stroke-width", "1.5");
-    group.appendChild(steel);
+    // Perpendikulare Achse zur Flugrichtung - für die Breite von Spitze/Barrel
+    // und für den Metall-Glanzstreifen, der IMMER quer zur Dart-Längsachse
+    // laufen muss (nicht abhängig von der Einschlagrichtung am Board).
+    const ux = dx / dist;
+    const uy = dy / dist;
+    const px = -uy;
+    const py = ux;
 
-    const tipGlow = document.createElementNS(SVG_NS, "circle");
-    tipGlow.setAttribute("cx", String(x));
-    tipGlow.setAttribute("cy", String(y));
-    tipGlow.setAttribute("r", "2.6");
-    tipGlow.setAttribute("fill", "#00e5ff");
-    tipGlow.style.filter = "drop-shadow(0 0 5px #00e5ff)";
-    group.appendChild(tipGlow);
+    const pointLen = 18;
+    const xP = x + ux * pointLen;
+    const yP = y + uy * pointLen;
+    // Stahlspitze als gefülltes, spitz zulaufendes Dreieck statt dünner Linie
+    // mit unrealistischem Leuchtpunkt - sieht nach echtem Metall aus.
+    const tipW = 2.2;
+    const tip = document.createElementNS(SVG_NS, "path");
+    tip.setAttribute(
+      "d",
+      `M ${x} ${y} L ${xP + px * tipW} ${yP + py * tipW} L ${xP - px * tipW} ${yP - py * tipW} Z`,
+    );
+    tip.setAttribute("fill", "#8d8d8d");
+    tip.setAttribute("stroke", "#4a4a4a");
+    tip.setAttribute("stroke-width", "0.4");
+    group.appendChild(tip);
 
     const barrelLen = 35;
-    const xB = xP + (dx / dist) * barrelLen;
-    const yB = yP + (dy / dist) * barrelLen;
+    const xB = xP + ux * barrelLen;
+    const yB = yP + uy * barrelLen;
+    const xM = xP + ux * barrelLen * 0.5;
+    const yM = yP + uy * barrelLen * 0.5;
+    const wTip = 1.6;
+    const wMid = 3.4;
+    const wEnd = 2;
+
+    // Eigener, lokaler Glanzverlauf QUER zur Flugachse (nicht längs) - simuliert
+    // den runden Metall-Zylinder, der über seine Breite hell-dunkel-hell glänzt,
+    // und sieht dadurch aus JEDER Einschlagrichtung gleich plausibel aus.
+    const gradId = `dartBarrelShine-${this.dartCounter++}`;
+    const localDefs = document.createElementNS(SVG_NS, "defs");
+    const shine = document.createElementNS(SVG_NS, "linearGradient");
+    shine.setAttribute("id", gradId);
+    shine.setAttribute("gradientUnits", "userSpaceOnUse");
+    shine.setAttribute("x1", String(xM - px * wMid));
+    shine.setAttribute("y1", String(yM - py * wMid));
+    shine.setAttribute("x2", String(xM + px * wMid));
+    shine.setAttribute("y2", String(yM + py * wMid));
+    [
+      { off: "0%", col: "#1a1a1a" },
+      { off: "25%", col: "#8a8a8a" },
+      { off: "50%", col: "#fdfdfd" },
+      { off: "75%", col: "#8a8a8a" },
+      { off: "100%", col: "#1a1a1a" },
+    ].forEach((s) => {
+      const stop = document.createElementNS(SVG_NS, "stop");
+      stop.setAttribute("offset", s.off);
+      stop.setAttribute("stop-color", s.col);
+      shine.appendChild(stop);
+    });
+    localDefs.appendChild(shine);
+    group.appendChild(localDefs);
+
+    // Tailliertes Barrel (Linsenform: schmal-dick-schmal) statt einer flachen
+    // Strich-Linie - eher wie ein echter Dart-Barrel im Profil.
     const barrel = document.createElementNS(SVG_NS, "path");
-    barrel.setAttribute("d", `M ${xP} ${yP} L ${xB} ${yB}`);
-    barrel.setAttribute("stroke", "url(#botDartBarrel)");
-    barrel.setAttribute("stroke-width", "6");
-    barrel.setAttribute("stroke-linecap", "round");
+    barrel.setAttribute(
+      "d",
+      `M ${xP + px * wTip} ${yP + py * wTip} ` +
+        `Q ${xM + px * wMid} ${yM + py * wMid} ${xB + px * wEnd} ${yB + py * wEnd} ` +
+        `L ${xB - px * wEnd} ${yB - py * wEnd} ` +
+        `Q ${xM - px * wMid} ${yM - py * wMid} ${xP - px * wTip} ${yP - py * wTip} Z`,
+    );
+    barrel.setAttribute("fill", `url(#${gradId})`);
+    barrel.setAttribute("stroke", "#2a2a2a");
+    barrel.setAttribute("stroke-width", "0.4");
     group.appendChild(barrel);
 
     const shaftLen = 28;

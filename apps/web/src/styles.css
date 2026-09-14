@@ -381,14 +381,21 @@ body:not(.webdarts-embedded) #webdarts-root {
   filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.8));
   animation: bot-dart-fly-in 0.85s ease-in forwards;
   pointer-events: none; transform-origin: center; transform-box: fill-box;
+  /* Fallback, falls mal nicht per JS gesetzt - wird pro Dart in dartboardRenderer.ts
+     entlang seiner eigenen Flugachse (dx/dy zum Zentrum) überschrieben. */
+  --fly-x: 0px; --fly-y: -300px; --fly-rot: 0deg;
 }
+/* Läuft entlang der eigenen Dart-Achse (--fly-x/--fly-y) statt einer fixen
+   Bildschirmrichtung ein - dieselbe Achse, entlang der auch die Dart-Form
+   selbst gezeichnet wird. Die Prozentwerte skalieren den Bounce/Settle-Ausschlag
+   proportional zur Einflugstrecke (identische Verhältnisse wie zuvor mit fixem -310px). */
 @keyframes bot-dart-fly-in {
-  0% { transform: translateY(-310px) rotate(-22deg); opacity: 0.5; }
-  55% { transform: translateY(6px) rotate(0.8deg); opacity: 1; }
-  70% { transform: translateY(-3px) rotate(-0.4deg); }
-  83% { transform: translateY(2px) rotate(0.2deg); }
-  92% { transform: translateY(-1px) rotate(0deg); }
-  100% { transform: translateY(0) rotate(0deg); }
+  0% { transform: translate(var(--fly-x), var(--fly-y)) rotate(var(--fly-rot)); opacity: 0.5; }
+  55% { transform: translate(calc(var(--fly-x) * -0.0194), calc(var(--fly-y) * -0.0194)) rotate(calc(var(--fly-rot) * -0.0364)); opacity: 1; }
+  70% { transform: translate(calc(var(--fly-x) * 0.00968), calc(var(--fly-y) * 0.00968)) rotate(calc(var(--fly-rot) * 0.0182)); }
+  83% { transform: translate(calc(var(--fly-x) * -0.00645), calc(var(--fly-y) * -0.00645)) rotate(calc(var(--fly-rot) * -0.00909)); }
+  92% { transform: translate(calc(var(--fly-x) * 0.00323), calc(var(--fly-y) * 0.00323)) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
 }
 .video-off {
   aspect-ratio: 16 / 10; display: flex; align-items: center; justify-content: center;
