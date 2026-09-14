@@ -7,6 +7,8 @@ import {
   createMatch,
   currentThrower,
   findCheckout,
+  legCount,
+  legStats,
   nextBullOffTeam,
   nextLegBullOffPlayer,
   matchStats,
@@ -673,5 +675,59 @@ describe("bot difficulty calibration", () => {
     const avg = simulateAverage(preset, 6000);
     expect(avg).toBeGreaterThan(target - 15);
     expect(avg).toBeLessThan(target + 15);
+  });
+});
+
+describe("Leg-für-Leg-Statistik (legStats/legCount)", () => {
+  const solo: Player[] = [
+    { id: "a1", name: "A" },
+    { id: "b1", name: "B" },
+  ];
+  const soloTeams: Team[] = [
+    { id: "A", name: "A", playerIds: ["a1"] },
+    { id: "B", name: "B", playerIds: ["b1"] },
+  ];
+  const cfg: MatchConfig = {
+    mode: "x01",
+    x01: { startScore: 40, out: "double", in: "straight" },
+    legsToWinSet: 3,
+    setsToWin: 1,
+    bullOff: false,
+    teamSize: 1,
+  };
+
+  it("legCount zählt abgeschlossene + laufendes Leg, legStats summiert sich zu matchStats", () => {
+    let m = createMatch(cfg, solo, soloTeams);
+    // Leg 1: a1 checkt mit einem D20 sofort aus (Rest 40 -> 0).
+    m = reduceMatch(m, { type: "RECORD_VISIT", darts: [D20] });
+    expect(legCount(m)).toBe(2); // Leg 1 fertig + Leg 2 läuft
+
+    // Leg 2: b1 wirft zuerst (Anwurf wechselt), checkt auch mit D20 aus.
+    m = reduceMatch(m, { type: "RECORD_VISIT", darts: [D20] });
+    expect(legCount(m)).toBe(3); // Leg 1+2 fertig + Leg 3 läuft
+
+    const l0 = legStats(m, 0);
+    const l1 = legStats(m, 1);
+    const l2 = legStats(m, 2);
+    const whole = matchStats(m);
+
+    for (const t of [0, 1] as const) {
+      const summedDarts = l0.teams[t].dartsThrown + l1.teams[t].dartsThrown + l2.teams[t].dartsThrown;
+      const summedPoints = l0.teams[t].pointsScored + l1.teams[t].pointsScored + l2.teams[t].pointsScored;
+      const summedLegsWon = l0.teams[t].legsWon + l1.teams[t].legsWon + l2.teams[t].legsWon;
+      expect(summedDarts).toBe(whole.teams[t].dartsThrown);
+      expect(summedPoints).toBe(whole.teams[t].pointsScored);
+      expect(summedLegsWon).toBe(whole.teams[t].legsWon);
+    }
+
+    // Leg 1: a1 gewinnt mit einem Dart (D20 = 40 Punkte), b1 hat in Leg 1 gar nicht geworfen.
+    expect(l0.teams[0].legsWon).toBe(1);
+    expect(l0.teams[0].dartsThrown).toBe(1);
+    expect(l0.teams[0].pointsScored).toBe(40);
+    expect(l0.teams[1].dartsThrown).toBe(0);
+
+    // Ein nicht existierendes Leg liefert leere (Null-)Stats statt zu crashen.
+    const outOfRange = legStats(m, 99);
+    expect(outOfRange.teams[0].dartsThrown).toBe(0);
   });
 });

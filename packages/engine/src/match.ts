@@ -17,6 +17,7 @@ import { findCheckout } from "./checkout";
 import { applyCricketVisit, createCricketLeg } from "./cricket";
 import { applyX01Visit, createX01Leg } from "./x01";
 import type {
+  CricketLegState,
   Dart,
   GameMode,
   LegState,
@@ -505,38 +506,25 @@ function scoreBucket(score: number): BucketKey {
   return "b180";
 }
 
-export function matchStats(state: MatchState): MatchStats {
+/** Cricket-Kernberechnung, wiederverwendbar für Match- wie Einzel-Leg-Stats. */
+function computeCricketTeamStats(
+  legs: { visits: { teamIndex: number; dartsUsed: number }[]; points: number[] }[],
+): [TeamStats, TeamStats] {
   const teams: [TeamStats, TeamStats] = [emptyTeamStats(), emptyTeamStats()];
-  // Bei "finished" steckt das letzte Leg schon im Archiv – nicht doppelt zählen.
-  const includeCurrent = state.phase !== "finished";
-
-  if (state.config.mode !== "x01") {
-    // Cricket: nur Grundwerte (Darts + Punkte + MPR-artiger Wert als "average").
-    const legs = [
-      ...state.history.filter((r) => r.leg.mode === "cricket").map((r) => r.leg),
-      includeCurrent && state.leg.mode === "cricket" ? state.leg : null,
-    ].filter(Boolean) as { visits: { teamIndex: number; dartsUsed: number }[]; points: number[] }[];
-    for (let t = 0; t < 2; t++) {
-      const s = teams[t]!;
-      for (const leg of legs) {
-        s.dartsThrown += leg.visits
-          .filter((v) => v.teamIndex === t)
-          .reduce((n, v) => n + v.dartsUsed, 0);
-        s.pointsScored += leg.points[t] ?? 0;
-      }
-      s.average = s.dartsThrown ? (s.pointsScored / (s.dartsThrown / 3)) : 0;
+  for (let t = 0; t < 2; t++) {
+    const s = teams[t]!;
+    for (const leg of legs) {
+      s.dartsThrown += leg.visits.filter((v) => v.teamIndex === t).reduce((n, v) => n + v.dartsUsed, 0);
+      s.pointsScored += leg.points[t] ?? 0;
     }
-    return { mode: "cricket", teams };
+    s.average = s.dartsThrown ? s.pointsScored / (s.dartsThrown / 3) : 0;
   }
+  return teams;
+}
 
-  const start = state.config.x01!.startScore;
-
-  const legs: { leg: X01LegState }[] = [
-    ...state.history
-      .filter((r) => r.leg.mode === "x01")
-      .map((r) => ({ leg: r.leg as X01LegState })),
-    ...(includeCurrent ? [{ leg: state.leg as X01LegState }] : []),
-  ];
+/** X01-Kernberechnung, wiederverwendbar für Match- wie Einzel-Leg-Stats. */
+function computeX01TeamStats(startScore: number, legs: { leg: X01LegState }[]): [TeamStats, TeamStats] {
+  const teams: [TeamStats, TeamStats] = [emptyTeamStats(), emptyTeamStats()];
 
   for (let t = 0; t < 2; t++) {
     const s = teams[t]!;
@@ -545,7 +533,7 @@ export function matchStats(state: MatchState): MatchStats {
 
     for (const { leg } of legs) {
       const tv = leg.visits.filter((v) => v.teamIndex === t);
-      let rem = start;
+      let rem = startScore;
       let legDarts = 0;
 
       tv.forEach((v, i) => {
@@ -582,15 +570,78 @@ export function matchStats(state: MatchState): MatchStats {
     s.average = s.dartsThrown ? (s.pointsScored / s.dartsThrown) * 3 : 0;
     s.first9Average = f9darts ? (f9pts / f9darts) * 3 : 0;
     s.checkoutPct = s.doubleDarts ? (s.checkoutHits / s.doubleDarts) * 100 : 0;
+  }
 
-    const cur = state.leg as X01LegState;
-    const cv = cur.visits.filter((v) => v.teamIndex === t);
-    const cd = cv.reduce((n, v) => n + v.dartsUsed, 0);
-    const cp = cv.reduce((n, v) => n + (v.bust ? 0 : v.scored), 0);
-    s.legAverage = cd ? (cp / cd) * 3 : 0;
+  return teams;
+}
+
+/** Alle Legs des Matches, in Reihenfolge - abgeschlossene aus der History, das
+ *  laufende (falls das Match noch nicht "finished" ist) als letztes Element.
+ *  Gemeinsame Grundlage für matchStats/legStats/legCount, damit die
+ *  Leg-Nummerierung überall exakt gleich ist. */
+function allLegsInOrder(state: MatchState): { leg: LegState }[] {
+  const includeCurrent = state.phase !== "finished";
+  return [
+    ...state.history.map((r) => ({ leg: r.leg })),
+    ...(includeCurrent ? [{ leg: state.leg }] : []),
+  ];
+}
+
+export function matchStats(state: MatchState): MatchStats {
+  const legsAll = allLegsInOrder(state);
+
+  if (state.config.mode !== "x01") {
+    const legs = legsAll
+      .map((l) => l.leg)
+      .filter((l): l is CricketLegState => l.mode === "cricket");
+    return { mode: "cricket", teams: computeCricketTeamStats(legs) };
+  }
+
+  const start = state.config.x01!.startScore;
+  const legs = legsAll
+    .map((l) => l.leg)
+    .filter((l): l is X01LegState => l.mode === "x01")
+    .map((leg) => ({ leg }));
+  const teams = computeX01TeamStats(start, legs);
+
+  // 3-Dart-Average im GERADE laufenden Leg (unabhängig davon, welche Legs
+  // oben aggregiert wurden) - für die "aktuelle Form"-Anzeige während des Matches.
+  if (state.leg.mode === "x01") {
+    const cur = state.leg;
+    for (let t = 0; t < 2; t++) {
+      const cv = cur.visits.filter((v) => v.teamIndex === t);
+      const cd = cv.reduce((n, v) => n + v.dartsUsed, 0);
+      const cp = cv.reduce((n, v) => n + (v.bust ? 0 : v.scored), 0);
+      teams[t]!.legAverage = cd ? (cp / cd) * 3 : 0;
+    }
   }
 
   return { mode: "x01", teams };
+}
+
+/** Anzahl Legs im Match bisher (abgeschlossen + das laufende, falls noch nicht
+ *  fertig) - für die Leg-für-Leg-Buttons in der Statistik-Ansicht. */
+export function legCount(state: MatchState): number {
+  return allLegsInOrder(state).length;
+}
+
+/** Statistik für EIN einzelnes Leg (0-basierter Index wie bei `legCount`,
+ *  also 0 = erstes Leg des Matches). Nutzt dieselbe Berechnung wie
+ *  `matchStats`, nur auf genau ein Leg beschränkt - für die Leg-für-Leg-
+ *  Ansicht und das Formkurve-Diagramm in der Statistik. */
+export function legStats(state: MatchState, legIndex: number): MatchStats {
+  const target = allLegsInOrder(state)[legIndex]?.leg ?? null;
+  if (!target) {
+    return {
+      mode: state.config.mode,
+      teams: [emptyTeamStats(), emptyTeamStats()],
+    };
+  }
+  if (target.mode !== "x01") {
+    return { mode: "cricket", teams: computeCricketTeamStats([target]) };
+  }
+  const start = state.config.x01!.startScore;
+  return { mode: "x01", teams: computeX01TeamStats(start, [{ leg: target }]) };
 }
 
 // ---------------------------------------------------------------------------
