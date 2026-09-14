@@ -229,11 +229,15 @@ function scheduleBot(roomId: string) {
     return;
   }
   if (botTimers.has(roomId)) return;
+  // Genug Zeit lassen, damit ein Spieler einen eigenen Tippfehler noch per
+  // "Undo" korrigieren kann, BEVOR der Bot weiterwirft (sonst müsste man
+  // hinterher zweimal Undo drücken - einmal für den Bot-Zug, einmal für den
+  // eigenen Fehler - und hat oft gar keine Zeit mehr dafür).
   const t = setTimeout(() => {
     botTimers.delete(roomId);
     const r = manager.get(roomId);
     if (r && r.runBotTurn()) void broadcastRoom(roomId);
-  }, 1200 + Math.random() * 900);
+  }, 3000 + Math.random() * 1500);
   botTimers.set(roomId, t);
 }
 

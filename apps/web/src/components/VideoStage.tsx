@@ -20,7 +20,8 @@ import { emitAck } from "../net";
 import { audioCaptureOpts, videoCaptureOpts } from "../mediaPrefs";
 import { AutoStartAudio } from "./AutoStartAudio";
 import { Avatar } from "./Avatar";
-import { BOT_DART_FLIGHT_MS, BOT_DART_STAGGER_MS, BotDartboard } from "./BotDartboard";
+import { BotDartboard } from "./BotDartboard";
+import { DART_FLIGHT_MS, DART_STAGGER_MS } from "../dartboardRenderer";
 
 export function VideoStage({ room }: { room: RoomState }) {
   const [state, setState] = useState<
@@ -103,7 +104,9 @@ function CameraAutoRetry() {
 
   useEffect(() => {
     let cancelled = false;
-    const delays = [500, 1500, 3000, 5000];
+    // Kurz und oft nachschauen statt lang warten - die Kamera wird meist
+    // innerhalb von ein bis zwei Sekunden wieder frei, nicht erst nach zehn.
+    const delays = [300, 300, 300, 400, 400, 500, 500];
 
     const tryEnable = () => {
       if (cancelled) return;
@@ -114,7 +117,7 @@ function CameraAutoRetry() {
       if (delay !== undefined) setTimeout(tryEnable, delay);
     };
 
-    const t = setTimeout(tryEnable, delays[0]);
+    const t = setTimeout(tryEnable, 200);
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -163,7 +166,8 @@ function Stage({ room }: { room: RoomState }) {
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (botVisitKey === 0 || botDarts.length === 0) return;
-    const holdMs = (botDarts.length - 1) * BOT_DART_STAGGER_MS + BOT_DART_FLIGHT_MS + 250;
+    // +1,5s Pause nach dem letzten Dart, bevor die Großansicht weiterspringt.
+    const holdMs = (botDarts.length - 1) * DART_STAGGER_MS + DART_FLIGHT_MS + 1500;
     setHoldBotUntil(Date.now() + holdMs);
     const t = setTimeout(() => forceTick((n) => n + 1), holdMs + 30);
     return () => clearTimeout(t);
@@ -207,7 +211,7 @@ function Stage({ room }: { room: RoomState }) {
         return (
           <div key={s.key} className={`vtile ${cls}`}>
             {isBot ? (
-              <BotDartboard darts={botDarts} visitKey={botVisitKey} />
+              <BotDartboard darts={botDarts} visitKey={botVisitKey} focused={cls.includes("big")} />
             ) : tr?.publication ? (
               <VideoTrack trackRef={tr} />
             ) : (

@@ -1,13 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Dart } from "@webdarts/engine";
-import { DartboardRenderer } from "../dartboardRenderer";
-
-/** Zeitabstand zwischen zwei einfliegenden Darts (muss zur CSS-Animation
- *  `bot-dart-fly-in` in styles.css passen - siehe dort). Auch von
- *  VideoStage.tsx importiert, um die Großansicht passend lang zu halten. */
-export const BOT_DART_STAGGER_MS = 550;
-/** Dauer der Flugbahn-Animation je Dart (Wert aus der CSS-Animation). */
-export const BOT_DART_FLIGHT_MS = 850;
+import { DART_STAGGER_MS, DartboardRenderer } from "../dartboardRenderer";
 
 /** "T20", "D16", "20", "SB" (Single Bull/25), "BE" (Bullseye/50), "Miss". */
 function dartToSegmentLabel(d: Dart): string {
@@ -21,8 +14,18 @@ function dartToSegmentLabel(d: Dart): string {
  * `visitKey` triggert eine neue Animation NUR bei einer echt neuen Aufnahme
  * (z.B. `leg.visits.length`) - reine Referenzänderungen von `darts` durch
  * unrelated Raum-Updates (Chat etc.) sollen die Flugbahn nicht neu abspielen.
+ * `focused`: true, solange die Kachel groß/im Fokus ist (Bot ist am Wurf) -
+ * wird sie klein, werden die Darts sofort geleert statt erst beim nächsten Wurf.
  */
-export function BotDartboard({ darts, visitKey }: { darts: Dart[]; visitKey: number }) {
+export function BotDartboard({
+  darts,
+  visitKey,
+  focused,
+}: {
+  darts: Dart[];
+  visitKey: number;
+  focused: boolean;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<DartboardRenderer | null>(null);
 
@@ -41,10 +44,14 @@ export function BotDartboard({ darts, visitKey }: { darts: Dart[]; visitKey: num
     if (!renderer) return;
     renderer.clearDarts();
     darts.forEach((d, i) => {
-      setTimeout(() => renderer.addDart(dartToSegmentLabel(d)), i * BOT_DART_STAGGER_MS);
+      setTimeout(() => renderer.addDart(dartToSegmentLabel(d)), i * DART_STAGGER_MS);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visitKey]);
+
+  useEffect(() => {
+    if (!focused) rendererRef.current?.clearDarts();
+  }, [focused]);
 
   return <div ref={containerRef} className="bot-dartboard-container" />;
 }
