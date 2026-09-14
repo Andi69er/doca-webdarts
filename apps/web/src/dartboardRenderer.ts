@@ -11,11 +11,15 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const SEGMENTS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
-/** Zeitabstand zwischen zwei einfliegenden Darts. Von BotDartboard.tsx und
- *  VideoStage.tsx importiert (Großansicht-Haltezeit), damit alles synchron bleibt. */
-export const DART_STAGGER_MS = 550;
 /** Dauer der Flugbahn-Animation - MUSS zu `bot-dart-fly-in` in styles.css passen. */
 export const DART_FLIGHT_MS = 850;
+/** Echte Pause NACH der gelandeten Flugbahn, bevor der nächste Dart startet -
+ *  kein Mensch wirft 3 Darts in unter 2 Sekunden. */
+const DART_PAUSE_AFTER_LANDING_MS = 1250;
+/** Zeitabstand zwischen zwei einfliegenden Darts (= Flugbahn + Pause danach).
+ *  Von BotDartboard.tsx und VideoStage.tsx importiert (Großansicht-Haltezeit),
+ *  damit alles synchron bleibt. */
+export const DART_STAGGER_MS = DART_FLIGHT_MS + DART_PAUSE_AFTER_LANDING_MS;
 /** Anteil der Animation, bei dem der Dart optisch "landet" (siehe 55%-Keyframe
  *  in styles.css) - erst dann darf das getroffene Feld aufleuchten. */
 const DART_IMPACT_FRACTION = 0.55;
