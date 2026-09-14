@@ -910,6 +910,7 @@ body.webdarts-embedded #webdarts-root .hint { font-size: 14px; }
 .modal-close {
   flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
   border-radius: 50%; font-size: 14px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
 }
 .modal-wide { max-width: 620px; }
 .modal-xwide { max-width: min(1400px, calc(100vw - 40px)); }
