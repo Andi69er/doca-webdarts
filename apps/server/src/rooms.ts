@@ -13,6 +13,7 @@ import {
   currentThrower,
   matchStats,
   playerStats,
+  nextBullOffPlayer,
   nextBullOffTeam,
   seatKey,
   type AchievementCandidate,
@@ -665,8 +666,10 @@ export class Room {
     if (!this.bot || !this.controller || this.phase !== "match" || this.isPaused) return false;
     const st = this.controller.state;
     if (st.phase === "bulloff" && st.bullOff) {
-      const next = nextBullOffTeam(st.bullOff);
-      return next !== null && this.seatTeam(BOT_ID) === next;
+      // Im Doppel reihum (Team0-P0, Team1-P0, Team0-P1, Team1-P1, dann wieder
+      // von vorne) - nicht nur das TEAM prüfen, sonst wirft der Bot auch dann,
+      // wenn laut Reihenfolge eigentlich sein menschlicher Partner dran wäre.
+      return nextBullOffPlayer(st) === BOT_ID;
     }
     if (st.phase === "playing") {
       return currentThrower(st)?.playerId === BOT_ID;

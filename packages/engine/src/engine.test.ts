@@ -9,6 +9,7 @@ import {
   findCheckout,
   legCount,
   legStats,
+  nextBullOffPlayer,
   nextBullOffTeam,
   nextLegBullOffPlayer,
   matchStats,
@@ -445,18 +446,20 @@ describe("Ausbullen mit 3 Darts", () => {
     expect(m.bullOff?.rounds.length).toBe(1);
   });
 
-  it("Nachwerfen startet wieder mit Team 0 (immer s1 → s2)", () => {
+  it("Nachwerfen startet wieder mit Team 0, aber mit der zweiten Person je Team (a1→a2, b1→b2, dann wieder von vorne)", () => {
     let m = bullMatch();
     // Runde 1: Gleichstand → Nachwerfen
     m = bull(m, 0, "a1", ["DBULL", "MISS", "MISS"]);
     m = bull(m, 1, "b1", ["DBULL", "MISS", "MISS"]);
     expect(m.bullOff?.rounds.length).toBe(1);
     expect(nextBullOffTeam(m.bullOff!)).toBe(0);
-    // Wurf von Team 1 zuerst wird auch in Runde 2 ignoriert
-    m = bull(m, 1, "b1", ["DBULL"]);
+    expect(nextBullOffPlayer(m)).toBe("a2");
+    // a1 hat in Runde 1 schon geworfen - in Runde 2 ist a2 dran, a1 wird ignoriert
+    m = bull(m, 0, "a1", ["DBULL"]);
     expect(m.bullOff?.currentRound.length).toBe(0);
-    m = bull(m, 0, "a1", ["SBULL", "MISS", "MISS"]);
+    m = bull(m, 0, "a2", ["SBULL", "MISS", "MISS"]);
     expect(nextBullOffTeam(m.bullOff!)).toBe(1);
+    expect(nextBullOffPlayer(m)).toBe("b2");
   });
 
   it("Wurf außer der Reihe wird ignoriert", () => {

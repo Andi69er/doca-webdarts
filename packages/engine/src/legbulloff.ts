@@ -34,6 +34,26 @@ export function nextLegBullOffPlayer(state: LegBullOffState): string | null {
   return state.order[state.attempts.length] ?? null;
 }
 
+/**
+ * playerId, der beim MATCH-ERÖFFNUNGS-Ausbullen (bulloff.ts, `BullOffState`)
+ * als Nächstes an der Reihe ist - im Doppel reihum nach Sitzplatz (Team0-P0,
+ * Team1-P0, Team0-P1, Team1-P1, dann wieder von vorne), im Einzel einfach der
+ * eine Spieler pro Team. `nextBullOffTeam()` kennt nur das TEAM, nicht die
+ * Person - beim Doppel könnte sonst je Runde eine beliebige der beiden
+ * Personen werfen, statt korrekt abzuwechseln. Nutzt dieselbe feste
+ * Reihenfolge wie `legBullOffOrder`, wiederholt sie aber endlos (statt nach
+ * einem Durchlauf aufzuhören) - das Match-Ausbullen kann bei Gleichstand
+ * beliebig oft nachwerfen.
+ */
+export function nextBullOffPlayer(match: MatchState): string | null {
+  const bo = match.bullOff;
+  if (!bo || bo.done) return null;
+  const order = legBullOffOrder(match);
+  if (order.length === 0) return null;
+  const attemptIndex = bo.rounds.length * 2 + bo.currentRound.length;
+  return order[attemptIndex % order.length] ?? null;
+}
+
 /** Bester Wurf eines Teams (kleinster Vergleichswert zuerst). */
 function bestOf(attempts: LegBullOffAttempt[]): LegBullOffAttempt | null {
   if (attempts.length === 0) return null;

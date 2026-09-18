@@ -11,6 +11,7 @@ import {
   addLegBullOffThrow,
   createLegBullOff,
   legBullOffOrder,
+  nextBullOffPlayer,
   shouldStartLegBullOff,
 } from "./legbulloff";
 import { findCheckout } from "./checkout";
@@ -115,6 +116,10 @@ export function reduceMatch(state: MatchState, action: MatchAction): MatchState 
 
     case "BULLOFF_THROW": {
       if (state.phase !== "bulloff" || !state.bullOff) return state;
+      // Im Doppel muss reihum geworfen werden (Team0-P0, Team1-P0, Team0-P1,
+      // Team1-P1, dann wieder von vorne) - addBullOffThrow() allein prüft nur
+      // das TEAM, nicht welche der beiden Personen dran ist.
+      if (action.playerId !== nextBullOffPlayer(state)) return state;
       const bull = addBullOffThrow(state.bullOff, {
         teamIndex: action.teamIndex,
         playerId: action.playerId,
